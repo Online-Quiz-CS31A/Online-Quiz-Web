@@ -14,14 +14,14 @@ const form = reactive({
 
 const handleLogin = async () => {
   isLoading.value = true
-  
+
   try {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500))
-    
+
     // Here you would typically make an API call to authenticate
     console.log('Login attempt:', form)
-    
+
     // For demo purposes, redirect to home after "login"
     router.push('/')
   } catch (error) {
@@ -48,7 +48,7 @@ const handleLogin = async () => {
           <rect width="100" height="100" fill="url(#grid)" />
         </svg>
       </div>
-      
+
       <!-- Content -->
       <div class="relative z-10 flex flex-col justify-center px-12 py-12 text-white">
         <!-- Logo -->
@@ -59,7 +59,7 @@ const handleLogin = async () => {
           <h1 class="text-4xl font-bold mb-2">ACLC College of Mandaue</h1>
           <p class="text-xl text-blue-100 font-medium">Online Quiz System</p>
         </div>
-        
+
         <!-- Welcome Text -->
         <div class="space-y-4">
           <h2 class="text-2xl font-semibold">Welcome Back!</h2>
@@ -174,7 +174,7 @@ const handleLogin = async () => {
         <!-- Support Link -->
         <div class="mt-8 text-center">
           <p class="text-sm text-gray-600">
-            Need help? Contact your instructor or 
+            Need help? Contact your instructor or
             <a href="#" class="text-blue-600 hover:text-blue-500 font-medium transition duration-200">IT Support</a>
           </p>
         </div>
