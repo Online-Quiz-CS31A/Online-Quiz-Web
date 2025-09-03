@@ -6,7 +6,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('../views/TeacherView.vue'),
     },
     {
       path: '/login',
@@ -14,21 +14,32 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
     },
     {
+      path: '/quiz',
+      name: 'quiz',
+      component: () => import('../views/QuizView.vue'),
+    },
+    {
+      path: '/student',
+      name: 'student',
+      component: () => import('../views/StudentView.vue'),
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
     },
     {
-    path: '/subject',
-    name: 'subject',
-    component: () => import('../views/SubjectView.vue'),
+      path: '/teacher/classes/:id',
+      name: 'teacher-class',
+      component: () => import('../views/TeacherClassView.vue'),
+      props: true,
     },
     {
-    path: '/manager',
-    name: 'manager',
-    component: () => import('../views/ManagerView.vue'),
+      path: '/teacher/classes/:id/dashboard',
+      name: 'teacher-class-dashboard',
+      component: () => import('../views/ClassroomDashboardView.vue'),
+      props: true,
     },
-
   ],
 })
 
