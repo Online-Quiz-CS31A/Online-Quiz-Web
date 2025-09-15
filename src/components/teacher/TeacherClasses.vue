@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useCounterStore, type ClassItem } from '@/stores/counter'
+import { useCounterStore } from '@/stores/counter'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
 
-const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
+import type { ClassItem } from '@/stores/counter'
+
+const props = defineProps<{ showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
 const showViewAll = computed(() => props.showViewAll !== false)
 const showHeader = computed(() => props.showHeader !== false)
 
 const store = useCounterStore()
-const classes = computed<ClassItem[]>(() => props.classes ?? store.myClasses)
+const classes = computed<ClassItem[]>(() => store.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
   const list = classes.value
   return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
@@ -111,13 +113,12 @@ const getInitials = (name: string) => {
           <div class="absolute inset-0 bg-gradient-to-br from-black/30 via-black/15 to-black/10"></div>
 
           <div class="absolute inset-0 p-4 text-white select-none">
-            <p class="text-xs opacity-90">CS31A</p>
             <h3 class="mt-1 text-xl font-bold leading-snug line-clamp-2">{{ classItem.name }}</h3>
           </div>
           <div class="absolute right-2 top-2 actions-menu">
             <button 
               @click.stop="toggleMenu(classItem.id)"
-              class="text-white hover:text-white p-1"
+              class="text-white hover:text-white p-1 cursor-pointer"
               aria-label="More options"
               title="More options"
             >
@@ -129,9 +130,16 @@ const getInitials = (name: string) => {
             >
               <button 
                 @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
               >
-                Leave class
+                Edit 
+              </button>
+              
+              <button 
+                @click.stop="handleLeaveClass(classItem)"
+                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+              >
+                Leave
               </button>
             </div>
           </div>
@@ -153,7 +161,7 @@ const getInitials = (name: string) => {
         </div>
 
         <div class="bg-white px-4 py-3 flex items-center justify-end">
-          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
+          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap cursor-pointer">
             Enter class
           </button>
         </div>
