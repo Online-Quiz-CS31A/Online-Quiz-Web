@@ -1,32 +1,58 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCounterStore } from '@/stores/counter'
 
 const router = useRouter()
 const showPassword = ref(false)
 const isLoading = ref(false)
+const errorMessage = ref('')
+const store = useCounterStore()
 
 const form = reactive({
-  email: '',
+  username: '',
   password: '',
   rememberMe: false
 })
 
 const handleLogin = async () => {
   isLoading.value = true
+  errorMessage.value = ''
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // Basic username validation: starts with 01 or 02 and exactly 10 digits total
+    const usernamePattern = /^0[12]\d{8}$/
+    if (!usernamePattern.test(form.username)) {
+      errorMessage.value = 'Username must start with 01 (teacher) or 02 (student) and be exactly 10 digits.'
+      return
+    }
 
-    // Here you would typically make an API call to authenticate
-    console.log('Login attempt:', form)
+    // Simulate a short delay (optional)
+    await new Promise(resolve => setTimeout(resolve, 600))
 
-    // For demo purposes, redirect to home after "login"
-    router.push('/')
+    const result = store.login(form.username, form.password)
+    if (!result.success) {
+      errorMessage.value = result.message || 'Login failed'
+      return
+    }
+
+    // Persist session regardless of Remember Me for now
+    if (store.currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(store.currentUser))
+    }
+
+    // Navigate based on role
+    if (result.role === 'teacher') {
+      router.push({ name: 'teacher' })
+    } else if (result.role === 'student') {
+      router.push({ name: 'student' })
+    } else {
+      // Fallback to login
+      router.push({ name: 'login' })
+    }
   } catch (error) {
     console.error('Login error:', error)
-    // Handle login error here
+    errorMessage.value = 'An unexpected error occurred. Please try again.'
   } finally {
     isLoading.value = false
   }
@@ -102,6 +128,11 @@ const handleLogin = async () => {
           <p class="text-gray-600">Enter your credentials to access your account</p>
         </div>
 
+        <!-- Error Alert -->
+        <div v-if="errorMessage" class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
+          {{ errorMessage }}
+        </div>
+
         <!-- Login Form -->
         <form @submit.prevent="handleLogin" class="space-y-6">
           <!-- Email Field -->
@@ -110,12 +141,12 @@ const handleLogin = async () => {
               <font-awesome-icon icon="envelope" class="h-5 w-5 text-gray-400" />
             </div>
             <input
-              id="email"
-              v-model="form.email"
-              type="email"
+              id="username"
+              v-model="form.username"
+              type="text"
               required
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-              placeholder="Enter your email address"
+              placeholder="Enter your username (01******** or 02********)"
             />
           </div>
 
@@ -189,3 +220,4 @@ const handleLogin = async () => {
     </div>
   </div>
 </template>
+

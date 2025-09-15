@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ActiveQuizzes from '@/components/teacher/TeacherQuiz.vue'
-import Header from '@/components/teacher/Header.vue'
+import Header from '@/components/Header.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,7 +34,7 @@ const professorInitials = computed(() => {
 })
 
 function navigateToQuizCreator() {
-  router.push(`/teacher/classes/${classId.value}/quiz/create`)
+  router.push(`/teacher/create-quiz`)
 }
 
 const breadcrumbText = computed(() => `Dashboard > Courses > ${classMeta.title}`)

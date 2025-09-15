@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCounterStore } from '@/stores/counter'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
@@ -18,14 +20,21 @@ interface Quiz {
 }
 
 interface Props {
-  quizzes: Quiz[]
+  quizzes?: Quiz[]
+  hideHeader?: boolean
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  'view-all': []
+}>()
 
 const router = useRouter()
 
 const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
+
+const store = useCounterStore()
+const displayedQuizzes = computed(() => props.quizzes ?? store.myStudentQuizzes)
 
 const getDeterministicIndex = (key: string) => {
   let hash = 0
@@ -47,14 +56,14 @@ const getCoverStyle = (quiz: Quiz) => {
 
 <template>
   <div class="mb-8">
-    <div class="flex justify-between items-center mb-4">
+    <div v-if="!props.hideHeader" class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-bold text-gray-800">My Quizzes</h2>
-      <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
+      <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
-        v-for="quiz in quizzes" 
+        v-for="quiz in displayedQuizzes" 
         :key="quiz.id"
         class="quiz-card rounded-xl shadow-md overflow-hidden cursor-pointer"
         :style="{ ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"

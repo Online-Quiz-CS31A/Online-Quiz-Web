@@ -23,6 +23,9 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  'view-all': []
+}>()
  
 const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 
@@ -88,10 +91,10 @@ const handleDeleteQuiz = (quiz: Quiz) => {
   <div class="mb-8">
     <div v-if="!props.hideHeader" class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-bold text-gray-800">Quizzes</h2>
-      <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
+      <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View All</button>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 cursor-pointer">
       <div 
         v-for="quiz in quizzes" 
         :key="quiz.id"
@@ -105,7 +108,7 @@ const handleDeleteQuiz = (quiz: Quiz) => {
             <div class="relative">
               <button
                 @click.stop="toggleMenu(quiz.id)"
-                class="text-white hover:text-gray-200 text-lg transition-colors"
+                class="text-white hover:text-gray-200 text-lg transition-colors cursor-pointer"
                 title="More options"
               >
                 <i class="fas fa-ellipsis-vertical"></i>
@@ -116,18 +119,14 @@ const handleDeleteQuiz = (quiz: Quiz) => {
                 @click.stop
               >
                 <button
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                   @click="handleEditQuiz(quiz)"
-                >
-                  <i class="fas fa-pen"></i>
-                  <span>Edit</span>
+                >Edit 
                 </button>
                 <button
-                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                   @click="handleDeleteQuiz(quiz)"
-                >
-                  <i class="fas fa-trash-alt"></i>
-                  <span>Delete</span>
+                >Delete
                 </button>
               </div>
             </div>
@@ -135,7 +134,7 @@ const handleDeleteQuiz = (quiz: Quiz) => {
           <h3 class="text-lg font-bold text-white mb-2">{{ quiz.title }}</h3>
           <p class="text-white/90 text-sm mb-4">{{ quiz.subject }}</p>
         </div>
-        <div class="bg-gray-50 px-5 py-3">
+        <div class="bg-white px-5 py-3">
           <div class="flex items-center justify-between">
             <span class="text-xs text-gray-500">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
             <div class="w-full bg-gray-200 rounded-full h-1.5 ml-2">

@@ -1,77 +1,25 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import StudentSidebar from '@/components/student/StudentSidebar.vue'
-import StudentHeader from '@/components/student/StudentHeader.vue'
+import { useRouter } from 'vue-router'
+import { useCounterStore } from '@/stores/counter'
+import Sidebar from '@/components/Sidebar.vue'
+import Header from '@/components/Header.vue'
 import StudentClasses from '@/components/student/StudentClasses.vue'
-import StudentUpcomingQuizzes from '@/components/student/StudenQuiz.vue'
+import StudentUpcomingQuizzes from '@/components/student/StudentQuiz.vue'
+import SchoolCalendar from '@/components/SchoolCalendar.vue'
+import ViewAllCourses from '@/components/ViewAllCourses.vue'
+import ViewAllQuizzes from '@/components/ViewAllQuizzes.vue'
 
 const sidebarActive = ref(false)
 const showJoinClass = ref(false)
 const showFindQuizzes = ref(false)
 
+const router = useRouter()
 
-const studentClasses = ref([
-  {
-    id: 1,
-    name: 'Information Assurance',
-    teacher: 'Noel Lehitimas',
-    description: '',
-    students: 24,
-    color: 'red'
-  },
-  {
-    id: 2,
-    name: 'Automata',
-    teacher: 'Donald Francisco',
-    description: '',
-    students: 22,
-    color: 'blue'
-  },
-  {
-    id: 3,
-    name: 'Computer Architecture',
-    teacher: 'Winslie Dada',
-    description: '',
-    students: 26,
-    color: 'green'
-  }
-])
+const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
 
-const upcomingQuizzes = ref([
-  {
-    id: 1,
-    subject: 'Information Assurance',
-    title: 'Week 1 Quiz',
-    description: '',
-    dueDate: 'May 15',
-    class: 'CS31A',
-    timeLimit: '45 min',
-    status: 'Not Started',
-    color: 'blue'
-  },
-  {
-    id: 2,
-    subject: 'Information Assurance',
-    title: 'Week 2 Quiz',
-    description: '',
-    dueDate: 'May 18',
-    class: 'CS31A',
-    timeLimit: '30 min',
-    status: 'Not Started',
-    color: 'green'
-  },
-  {
-    id: 3,
-    subject: 'Computer Architecture',
-    title: 'Week 5 Quiz',
-    description: '',
-    dueDate: 'May 20',
-    class: 'CS31A',
-    timeLimit: '25 min',
-    status: 'Not Started',
-    color: 'purple'
-  }
-])
+const store = useCounterStore()
+const upcomingQuizzes = store.myStudentQuizzes
 
 const toggleSidebar = () => {
   sidebarActive.value = !sidebarActive.value
@@ -91,15 +39,23 @@ const showFindQuizzesModal = () => {
   closeSidebar()
 }
 
-const handleClassJoined = (classData: any) => {
-  studentClasses.value.push(classData)
-  showJoinClass.value = false
-  console.log('Joined class:', classData)
+const navigateToHome = () => {
+  currentSection.value = 'home'
+  closeSidebar()
 }
 
-const handleQuizSelected = (quiz: any) => {
-  showFindQuizzes.value = false
-  console.log('Selected quiz:', quiz)
+const navigateToQuizzes = () => {
+  currentSection.value = 'quizzes'
+  closeSidebar()
+}
+
+const navigateToCalendar = () => {
+  currentSection.value = 'calendar'
+  closeSidebar()
+}
+
+const navigateToCourses = () => {
+  currentSection.value = 'courses'
 }
 
 const handleClickOutside = (e: Event) => {
@@ -129,28 +85,33 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- Sidebar -->
-    <StudentSidebar 
+    <!-- Shared Sidebar (role-aware) -->
+    <Sidebar 
       :isActive="sidebarActive" 
+      :activeSection="currentSection"
       @close="closeSidebar"
       @join-class="showJoinClassModal"
-      @find-quizzes="showFindQuizzesModal"
+      @nav-home="navigateToHome"
+      @nav-quizzes="navigateToQuizzes"
+      @nav-calendar="navigateToCalendar"
     />
 
     <!-- Main Content -->
     <div class="md:ml-64 min-h-screen">
       <!-- Header -->
-      <StudentHeader />
+      <Header />
 
       <!-- Main Dashboard -->
       <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-
-        <!-- Classes Section -->
-        <StudentClasses :classes="studentClasses" />
-
-        <!-- Quizzes Section -->
-        <StudentUpcomingQuizzes :quizzes="upcomingQuizzes" />
-
+        <div v-if="currentSection === 'home'" class="space-y-8">
+          <!-- Classes Section (limit to top 3 on home) -->
+          <StudentClasses :max-items="3" @view-all="navigateToCourses" />
+          <!-- Quizzes Section -->
+          <StudentUpcomingQuizzes :quizzes="upcomingQuizzes.slice(0, 3)" @view-all="navigateToQuizzes" />
+        </div>
+        <ViewAllQuizzes v-else-if="currentSection === 'quizzes'" />
+        <SchoolCalendar v-else-if="currentSection === 'calendar'" />
+        <ViewAllCourses v-else />
       </main>
     </div>
   </div>
