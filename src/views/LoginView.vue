@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCounterStore } from '@/stores/counter'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const showPassword = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
-const store = useCounterStore()
+const store = useAuthStore()
 
 const form = reactive({
   username: '',
@@ -79,8 +79,9 @@ const handleLogin = async () => {
       <div class="relative z-10 flex flex-col justify-center px-12 py-12 text-white">
         <!-- Logo -->
         <div class="mb-8">
-          <div class="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm">
-            <font-awesome-icon icon="graduation-cap" class="w-10 h-10 text-white" />
+          <div class="w-20 h-20 bg-white bg-opacity-20 rounded-[50%] flex items-center justify-center mb-6 backdrop-blur-sm">
+            <!-- <font-awesome-icon icon="graduation-cap" class="w-10 h-10 text-white" /> -->
+            <img src="/src/assets/image/ACLC.png"/>
           </div>
           <h1 class="text-4xl font-bold mb-2">ACLC College of Mandaue</h1>
           <p class="text-xl text-blue-100 font-medium">Online Quiz System</p>
@@ -168,8 +169,8 @@ const handleLogin = async () => {
               @click="showPassword = !showPassword"
               class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition duration-200"
             >
-              <font-awesome-icon v-if="!showPassword" icon="eye" class="h-5 w-5" />
-              <font-awesome-icon v-else icon="eye-slash" class="h-5 w-5" />
+              <font-awesome-icon v-if="!showPassword" icon="eye" class="h-5 w-5 cursor-pointer" />
+              <font-awesome-icon v-else icon="eye-slash" class="h-5 w-5 cursor-pointer" />
             </button>
           </div>
 
@@ -180,7 +181,7 @@ const handleLogin = async () => {
                 id="remember-me"
                 v-model="form.rememberMe"
                 type="checkbox"
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
               />
               <label for="remember-me" class="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -195,7 +196,7 @@ const handleLogin = async () => {
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 transform hover:scale-[1.02]"
+            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 transform hover:scale-[1.02] cursor-pointer"
           >
             <font-awesome-icon v-if="isLoading" icon="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
             {{ isLoading ? 'Signing in...' : 'Sign in' }}

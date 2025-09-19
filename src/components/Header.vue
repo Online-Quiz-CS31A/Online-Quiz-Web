@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCounterStore } from '@/stores/counter'
+import { useAuthStore } from '@/stores/authStore'
 
 interface Props {
   breadcrumb?: string
@@ -31,7 +31,7 @@ const emit = defineEmits<{
 const showProfileDropdown = ref(false)
 const showPublishModal = ref(false)
 
-const store = useCounterStore()
+const store = useAuthStore()
 const displayName = computed(() => store.currentUser?.name || 'Guest')
 const initials = computed(() => {
   const name = displayName.value.trim()
@@ -58,13 +58,13 @@ function logout() {
 }
 
 function viewProfile() {
-  console.log('Viewing profile...')
   closeProfileDropdown()
+  router.push({ name: 'teacher-profile' })
 }
 
 function settings() {
-  console.log('Opening settings...')
   closeProfileDropdown()
+  router.push({ name: 'teacher-profile', query: { tab: 'account' } })
 }
 
 function openPublishModal() {
@@ -128,7 +128,7 @@ function handleBreadcrumbClick(segment: string) {
         <button 
           v-if="published"
           @click="emit('content')"
-          class="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+          class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
             'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-builder',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-builder'
@@ -139,7 +139,7 @@ function handleBreadcrumbClick(segment: string) {
         <button 
           v-if="published"
           @click="emit('assign')"
-          class="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+          class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
             'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-assign',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-assign'
@@ -150,7 +150,7 @@ function handleBreadcrumbClick(segment: string) {
         <button 
           v-if="published"
           @click="emit('results')"
-          class="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+          class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
             'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-results',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-results'
@@ -164,28 +164,25 @@ function handleBreadcrumbClick(segment: string) {
       <div class="flex items-center space-x-4">
         <!-- Action buttons for quiz creator -->
         <div v-if="actionButtons" class="flex items-center space-x-2">
-          <!-- Save always visible -->
           <button @click="emit('save')" 
-                  class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors">
+                  class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Save
           </button>
           
-          <!-- Before publish: show Publish -->
           <button v-if="!published" @click="openPublishModal"
-                  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors">
+                  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Publish
           </button>
           
-          <!-- After publish: show Preview -->
           <button v-if="published" @click="emit('preview')"
-                  class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center transition-colors">
+                  class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Preview
           </button>
         </div>
         
         <!-- Notification bell -->
         <div v-if="showNotification" class="relative">
-          <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <button class="p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer">
             <i class="fas fa-bell text-gray-600"></i>
             <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
           </button>
@@ -194,7 +191,7 @@ function handleBreadcrumbClick(segment: string) {
         <!-- Profile dropdown -->
         <div class="relative">
           <button @click="toggleProfileDropdown" 
-                  class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
             <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
               {{ initials }}
             </div>
@@ -207,18 +204,18 @@ function handleBreadcrumbClick(segment: string) {
                @click="closeProfileDropdown"
                class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
             <button @click="viewProfile" 
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center cursor-pointer">
               <i class="fas fa-user mr-3"></i>
               View Profile
             </button>
             <button @click="settings" 
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center cursor-pointer">
               <i class="fas fa-cog mr-3"></i>
               Settings
             </button>
             <hr class="my-1">
             <button @click="logout" 
-                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center">
+                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center cursor-pointer">
               <i class="fas fa-sign-out-alt mr-3"></i>
               Logout
             </button>

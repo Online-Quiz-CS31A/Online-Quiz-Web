@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCounterStore } from '@/stores/counter'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import Sidebar from '@/components/Sidebar.vue'
 import Header from '@/components/Header.vue'
 import StudentClasses from '@/components/student/StudentClasses.vue'
@@ -18,8 +18,8 @@ const router = useRouter()
 
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
 
-const store = useCounterStore()
-const upcomingQuizzes = store.myStudentQuizzes
+const quizzesStore = useQuizzesStore()
+const upcomingQuizzes = quizzesStore.myStudentQuizzes
 
 const toggleSidebar = () => {
   sidebarActive.value = !sidebarActive.value

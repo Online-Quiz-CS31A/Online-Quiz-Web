@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useCounterStore, type ClassItem } from '@/stores/counter'
+import { useClassesStore } from '@/stores/classesStore'
+import type { ClassItem } from '@/stores/types'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -11,8 +12,8 @@ const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHe
 const showViewAll = computed(() => props.showViewAll !== false)
 const showHeader = computed(() => props.showHeader !== false)
 
-const store = useCounterStore()
-const classes = computed<ClassItem[]>(() => props.classes ?? store.myClasses)
+const classesStore = useClassesStore()
+const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
   const list = classes.value
   return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list

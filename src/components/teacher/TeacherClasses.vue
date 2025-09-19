@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useCounterStore } from '@/stores/counter'
+import { useRouter } from 'vue-router'
+import { useClassesStore } from '@/stores/classesStore'
+import type { ClassItem } from '@/stores/types'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
 
-import type { ClassItem } from '@/stores/counter'
-
 const props = defineProps<{ showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
 const showViewAll = computed(() => props.showViewAll !== false)
 const showHeader = computed(() => props.showHeader !== false)
 
-const store = useCounterStore()
-const classes = computed<ClassItem[]>(() => store.myClasses)
+const classesStore = useClassesStore()
+const classes = computed<ClassItem[]>(() => classesStore.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
   const list = classes.value
   return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
@@ -48,8 +48,10 @@ onBeforeUnmount(() => {
 
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
 
+const router = useRouter()
+
 const handleEnterClass = (classItem: ClassItem) => {
-  console.log(`Entering class: ${classItem.name}`)
+  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {

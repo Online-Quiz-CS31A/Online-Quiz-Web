@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import StudentClasses from '@/components/student/StudentClasses.vue'
-import { useCounterStore } from '@/stores/counter'
+import { useClassesStore } from '@/stores/classesStore'
 
-const store = useCounterStore()
+const classesStore = useClassesStore()
 
 const query = ref('')
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
-  const list = store.myClasses
+  const list = classesStore.myClasses
   if (!q) return list
   return list.filter(c =>
     c.name.toLowerCase().includes(q) ||

@@ -171,7 +171,7 @@ const names = [
 
 const participants = reactive<Participant[]>(names.map((name, index) => ({
   name,
-  email: `${name.split(' ')[0].toLowerCase()}.${name.split(' ')[1].toLowerCase()}@example.com`,
+  email: `${name.split(' ')[0].toLowerCase()}.${name.split(' ')[1].toLowerCase()}@gmail.com`,
   avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
   section: sections[Math.floor(Math.random() * sections.length)],
   score: Math.floor(Math.random() * 21), // Random score between 0-20
@@ -242,14 +242,14 @@ const filteredParticipants = computed(() => {
           <nav class="-mb-px flex">
             <button
               @click="activeTab = 'questions'"
-              class="tab-button py-4 px-6 border-b-2 font-medium text-sm"
+              class="tab-button py-4 px-6 border-b-2 font-medium text-sm cursor-pointer"
               :class="activeTab === 'questions' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
             >
               Questions Analysis
             </button>
             <button
               @click="activeTab = 'participants'"
-              class="tab-button py-4 px-6 border-b-2 font-medium text-sm"
+              class="tab-button py-4 px-6 border-b-2 font-medium text-sm cursor-pointer"
               :class="activeTab === 'participants' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
             >
               Participants
