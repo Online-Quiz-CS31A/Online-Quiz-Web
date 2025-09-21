@@ -5,7 +5,7 @@
       <h2 class="text-2xl font-bold mb-4 text-blue-700 text-center">User Dashboard</h2>
       <div class="mb-6">
         <p class="text-gray-700"><span class="font-semibold">Name:</span> John Doe</p>
-        <p class="text-gray-700"><span class="font-semibold">Email:</span> johndoe@gmail.com</p>
+        <p class="text-gray-700"><span class="font-semibold">Email:</span> johndoe@example.com</p>
         <p class="text-gray-700"><span class="font-semibold">Role:</span> Student</p>
       </div>
       <div class="space-y-2">
