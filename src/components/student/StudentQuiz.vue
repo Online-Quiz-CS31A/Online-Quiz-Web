@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCounterStore } from '@/stores/counter'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
@@ -33,8 +33,8 @@ const router = useRouter()
 
 const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 
-const store = useCounterStore()
-const displayedQuizzes = computed(() => props.quizzes ?? store.myStudentQuizzes)
+const quizzesStore = useQuizzesStore()
+const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
 
 const getDeterministicIndex = (key: string) => {
   let hash = 0

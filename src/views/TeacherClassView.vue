@@ -72,12 +72,7 @@ const editingId = ref<string | null>(null)
 function toggleMenu(id: string) { openMenuId.value = openMenuId.value === id ? null : id }
 
 function openCreateClass() {
-  isEditing.value = false
-  editingId.value = null
-  newClass.name = ''
-  newClass.description = ''
-  newClass.students = 1
-  showCreateClass.value = true
+  router.push({ name: 'class-management', params: { id: props.id } })
 }
 
 function closeCreateClass() {
@@ -185,7 +180,7 @@ function openDashboard(id: string) {
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800">Your Classes</h2>
           <button @click="openCreateClass"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer">
             <i class="fas fa-plus mr-2"></i> New Class
           </button>
         </div>
@@ -194,7 +189,7 @@ function openDashboard(id: string) {
           <div v-for="cls in classes" :key="cls.id"
             class="rounded-xl shadow-md overflow-hidden class-card transition-all duration-300 text-white"
             @click="openDashboard(cls.id)">
-            <div class="p-6 relative">
+            <div class="p-6 relative cursor-pointer">
               <div class="relative z-10">
                 <div class="flex justify-end items-start">
                   <div class="relative">
@@ -202,7 +197,7 @@ function openDashboard(id: string) {
                       class="text-white hover:text-gray-200 text-lg" 
                       aria-label="More options" 
                       :aria-expanded="openMenuId === cls.id">
-                      <i class="fas fa-ellipsis-vertical"></i>
+                      <i class="fas fa-ellipsis-vertical cursor-pointer"></i>
                     </button>
                     <!-- Dropdown menu -->
                     <div v-if="openMenuId === cls.id" @click.stop 
@@ -210,13 +205,11 @@ function openDashboard(id: string) {
                       <!-- Edit button -->
                       <button @click="openEditClass(cls.id)" 
                         class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                        <i class="fas fa-pen"></i>
                         <span>Edit</span>
                       </button>
                       <!-- Delete button -->
                       <button @click="deleteClass(cls.id); openMenuId = null" 
                         class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                        <i class="fas fa-trash-alt"></i>
                         <span>Delete</span>
                       </button>
                     </div>

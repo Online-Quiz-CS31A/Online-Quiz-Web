@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useCounterStore } from '@/stores/counter'
+import { useAuthStore } from '@/stores/authStore'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import StudentQuizList from '@/components/student/StudentQuiz.vue'
 import TeacherQuizList from '@/components/teacher/TeacherQuiz.vue'
 
-const store = useCounterStore()
+const auth = useAuthStore()
+const quizzesStore = useQuizzesStore()
 
-const isTeacher = computed(() => store.userRole === 'teacher')
-const quizzes = computed(() => (isTeacher.value ? store.myTeacherQuizzes : store.myStudentQuizzes))
+const isTeacher = computed(() => auth.userRole === 'teacher')
+const quizzes = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes : quizzesStore.myStudentQuizzes))
 
 const query = ref('')
 const filtered = computed(() => {

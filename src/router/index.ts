@@ -14,6 +14,16 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
     },
     {
+      path: '/manager',
+      name: 'manager',
+      component: () => import('../views/ManagerView.vue'),
+    },
+    {
+      path: '/teacher/profile',
+      name: 'teacher-profile',
+      component: () => import('../views/TeacherProfileView.vue'),
+    },
+    {
       path: '/quiz',
       name: 'quiz',
       component: () => import('../views/QuizView.vue'),
@@ -66,6 +76,12 @@ const router = createRouter({
       ]
     },
     {
+      path: '/teacher/classes/:id/manage',
+      name: 'class-management',
+      component: () => import('../views/ClassManagementView.vue'),
+      props: true,
+    },
+    {
       path: '/teacher/create-quiz',
       redirect: '/teacher/classes/1/quiz/create',
     },
@@ -77,3 +93,4 @@ const router = createRouter({
 })
 
 export default router
+

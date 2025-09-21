@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useCounterStore } from '@/stores/counter'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import Sidebar from '@/components/Sidebar.vue'
 import Header from '@/components/Header.vue'
 import ActiveQuizzes from '@/components/teacher/TeacherQuiz.vue'
@@ -15,9 +15,8 @@ const showCreateQuiz = ref(false)
 const showImport = ref(false)
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
 
-
-const store = useCounterStore()
-const activeQuizzes = store.myTeacherQuizzes
+const quizzesStore = useQuizzesStore()
+const activeQuizzes = quizzesStore.myTeacherQuizzes
 
 const router = useRouter()
 const route = useRoute()

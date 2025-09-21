@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { useCounterStore } from '@/stores/counter'
+import { useAuthStore } from '@/stores/authStore'
+import { useClassesStore } from '@/stores/classesStore'
 interface Props {
   isActive: boolean
   activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses'
@@ -34,10 +35,11 @@ const activeSection = computed(() => props.activeSection)
 const isQuizzesActive = computed(() => activeSection.value === 'quizzes')
 const isCalendarActive = computed(() => activeSection.value === 'calendar')
 
-const store = useCounterStore()
-const isTeacher = computed(() => store.userRole === 'teacher')
-const isStudent = computed(() => store.userRole === 'student')
-const myClasses = computed(() => store.myClasses)
+const auth = useAuthStore()
+const classesStore = useClassesStore()
+const isTeacher = computed(() => auth.userRole === 'teacher')
+const isStudent = computed(() => auth.userRole === 'student')
+const myClasses = computed(() => classesStore.myClasses)
 
 const colorMap: Record<string, string> = {
   red: 'bg-red-500',
@@ -91,7 +93,6 @@ function navigateToQuizCreator() {
             </button>
             <ul v-show="classesOpen" class="mt-1 ml-6">
               <li v-for="cls in myClasses" :key="cls.id" class="mb-1">
-                <!-- Teachers: real navigation to classroom; Students: visually same, no navigation -->
                 <RouterLink
                   v-if="isTeacher"
                   :to="{ name: 'teacher-class', params: { id: cls.id } }"

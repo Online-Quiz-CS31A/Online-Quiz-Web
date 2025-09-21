@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useCounterStore } from '@/stores/counter'
+import { useCalendarStore } from '@/stores/calendarStore'
 
 const now = ref(new Date())
 const currentMonth = ref(now.value.getMonth())
@@ -16,9 +16,9 @@ interface CalendarEvent {
   isDeadline?: boolean
 }
 
-const store = useCounterStore()
+const calendarStore = useCalendarStore()
 const events = computed<CalendarEvent[]>(() => {
-  return (store.myCalendarEvents || []).map(e => ({
+  return (calendarStore.myCalendarEvents || []).map(e => ({
     id: e.id,
     title: e.title,
     date: new Date(e.date),
@@ -131,7 +131,7 @@ function closeModal() {
 
 function onSubmit() {
   if (!formTitle.value || !formDate.value) return
-  store.addCalendarEvent({
+  calendarStore.addCalendarEvent({
     title: formTitle.value,
     date: formDate.value,
     type: formType.value,
@@ -164,7 +164,7 @@ onMounted(() => {
     <div class="items-center mb-8">
       <div class="flex justify-between space-x-4">
         <div class="text-blue-700 font-medium">{{ currentTimeString }}</div>
-        <button @click="openModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow transition">
+        <button @click="openModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow transition cursor-pointer">
           <i class="fas fa-plus mr-2"></i> Add Event
         </button>
       </div>

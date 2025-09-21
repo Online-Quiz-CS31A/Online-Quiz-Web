@@ -460,7 +460,7 @@ function getBadgeClass(type: string, index: number) {
         
         <div class="bg-white mt-6 p-4 pb-10 ">
           <button @click="openAddQuestionModal" 
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors">
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors cursor-pointer">
             <i class="fas fa-plus mr-2"></i> Add Question
           </button>
         </div>
@@ -474,7 +474,7 @@ function getBadgeClass(type: string, index: number) {
             <!-- Add Question Button -->
             <div class="flex-shrink-0">
               <button @click="openAddQuestionModal"
-                      class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors">
+                      class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
                 <i class="fas fa-plus mr-2"></i>
                 Add Question
               </button>
