@@ -1,58 +1,32 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const showPassword = ref(false)
 const isLoading = ref(false)
-const errorMessage = ref('')
-const store = useAuthStore()
 
 const form = reactive({
-  username: '',
+  email: '',
   password: '',
   rememberMe: false
 })
 
 const handleLogin = async () => {
   isLoading.value = true
-  errorMessage.value = ''
 
   try {
-    // Basic username validation: starts with 01 or 02 and exactly 10 digits total
-    const usernamePattern = /^0[12]\d{8}$/
-    if (!usernamePattern.test(form.username)) {
-      errorMessage.value = 'Username must start with 01 (teacher) or 02 (student) and be exactly 10 digits.'
-      return
-    }
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500))
 
-    // Simulate a short delay (optional)
-    await new Promise(resolve => setTimeout(resolve, 600))
+    // Here you would typically make an API call to authenticate
+    console.log('Login attempt:', form)
 
-    const result = store.login(form.username, form.password)
-    if (!result.success) {
-      errorMessage.value = result.message || 'Login failed'
-      return
-    }
-
-    // Persist session regardless of Remember Me for now
-    if (store.currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(store.currentUser))
-    }
-
-    // Navigate based on role
-    if (result.role === 'teacher') {
-      router.push({ name: 'teacher' })
-    } else if (result.role === 'student') {
-      router.push({ name: 'student' })
-    } else {
-      // Fallback to login
-      router.push({ name: 'login' })
-    }
+    // For demo purposes, redirect to home after "login"
+    router.push('/')
   } catch (error) {
     console.error('Login error:', error)
-    errorMessage.value = 'An unexpected error occurred. Please try again.'
+    // Handle login error here
   } finally {
     isLoading.value = false
   }
@@ -79,9 +53,8 @@ const handleLogin = async () => {
       <div class="relative z-10 flex flex-col justify-center px-12 py-12 text-white">
         <!-- Logo -->
         <div class="mb-8">
-          <div class="w-20 h-20 bg-white bg-opacity-20 rounded-[50%] flex items-center justify-center mb-6 backdrop-blur-sm">
-            <!-- <font-awesome-icon icon="graduation-cap" class="w-10 h-10 text-white" /> -->
-            <img src="/src/assets/image/ACLC.png"/>
+          <div class="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm">
+            <font-awesome-icon icon="graduation-cap" class="w-10 h-10 text-white" />
           </div>
           <h1 class="text-4xl font-bold mb-2">ACLC College of Mandaue</h1>
           <p class="text-xl text-blue-100 font-medium">Online Quiz System</p>
@@ -129,11 +102,6 @@ const handleLogin = async () => {
           <p class="text-gray-600">Enter your credentials to access your account</p>
         </div>
 
-        <!-- Error Alert -->
-        <div v-if="errorMessage" class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
-          {{ errorMessage }}
-        </div>
-
         <!-- Login Form -->
         <form @submit.prevent="handleLogin" class="space-y-6">
           <!-- Email Field -->
@@ -142,12 +110,12 @@ const handleLogin = async () => {
               <font-awesome-icon icon="envelope" class="h-5 w-5 text-gray-400" />
             </div>
             <input
-              id="username"
-              v-model="form.username"
-              type="text"
+              id="email"
+              v-model="form.email"
+              type="email"
               required
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-              placeholder="Enter your username (01******** or 02********)"
+              placeholder="Enter your email address"
             />
           </div>
 
@@ -169,8 +137,8 @@ const handleLogin = async () => {
               @click="showPassword = !showPassword"
               class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition duration-200"
             >
-              <font-awesome-icon v-if="!showPassword" icon="eye" class="h-5 w-5 cursor-pointer" />
-              <font-awesome-icon v-else icon="eye-slash" class="h-5 w-5 cursor-pointer" />
+              <font-awesome-icon v-if="!showPassword" icon="eye" class="h-5 w-5" />
+              <font-awesome-icon v-else icon="eye-slash" class="h-5 w-5" />
             </button>
           </div>
 
@@ -181,7 +149,7 @@ const handleLogin = async () => {
                 id="remember-me"
                 v-model="form.rememberMe"
                 type="checkbox"
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label for="remember-me" class="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -196,7 +164,7 @@ const handleLogin = async () => {
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 transform hover:scale-[1.02] cursor-pointer"
+            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 transform hover:scale-[1.02]"
           >
             <font-awesome-icon v-if="isLoading" icon="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
             {{ isLoading ? 'Signing in...' : 'Sign in' }}
@@ -221,4 +189,3 @@ const handleLogin = async () => {
     </div>
   </div>
 </template>
-

@@ -4,34 +4,14 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/teacher',
-      name: 'teacher',
-      component: () => import('../views/TeacherView.vue'),
+      path: '/',
+      name: 'home',
+      component: () => import('../views/HomeView.vue'),
     },
     {
-      path: '/',
+      path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-    },
-    {
-      path: '/manager',
-      name: 'manager',
-      component: () => import('../views/ManagerView.vue'),
-    },
-    {
-      path: '/teacher/profile',
-      name: 'teacher-profile',
-      component: () => import('../views/TeacherProfileView.vue'),
-    },
-    {
-      path: '/quiz',
-      name: 'quiz',
-      component: () => import('../views/QuizView.vue'),
-    },
-    {
-      path: '/student',
-      name: 'student',
-      component: () => import('../views/StudentView.vue'),
     },
     {
       path: '/admin',
@@ -39,58 +19,17 @@ const router = createRouter({
       component: () => import('../views/AdminView.vue'),
     },
     {
-      path: '/teacher/classes/:id',
-      name: 'teacher-class',
-      component: () => import('../views/TeacherClassView.vue'),
-      props: true,
+    path: '/subject',
+    name: 'subject',
+    component: () => import('../views/SubjectView.vue'),
     },
     {
-      path: '/teacher/classes/:id/dashboard',
-      name: 'teacher-class-dashboard',
-      component: () => import('../views/ClassroomDashboardView.vue'),
-      props: true,
+    path: '/manager',
+    name: 'manager',
+    component: () => import('../views/ManagerView.vue'),
     },
-    {
-      path: '/teacher/classes/:id/quiz',
-      component: () => import('../views/QuizBuilderView.vue'),
-      props: true,
-      children: [
-        {
-          path: 'create',
-          name: 'quiz-builder',
-          component: () => import('../components/quiz/QuizContent.vue'),
-          props: true,
-        },
-        {
-          path: 'assign',
-          name: 'quiz-assign',
-          component: () => import('../components/quiz/QuizAssign.vue'),
-          props: true,
-        },
-        {
-          path: 'results',
-          name: 'quiz-results',
-          component: () => import('../components/quiz/QuizResults.vue'),
-          props: true,
-        },
-      ]
-    },
-    {
-      path: '/teacher/classes/:id/manage',
-      name: 'class-management',
-      component: () => import('../views/ClassManagementView.vue'),
-      props: true,
-    },
-    {
-      path: '/teacher/create-quiz',
-      redirect: '/teacher/classes/1/quiz/create',
-    },
-    {
-      path: '/teacher/classes/:id/quiz/results',
-      redirect: (to) => ({ name: 'quiz-results', params: to.params }),
-    },
+
   ],
 })
 
 export default router
-
