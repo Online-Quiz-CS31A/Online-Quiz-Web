@@ -130,7 +130,7 @@ function handleBreadcrumbClick(segment: string) {
           @click="emit('content')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
-            'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-builder',
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-builder',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-builder'
           }"
         >
@@ -141,7 +141,7 @@ function handleBreadcrumbClick(segment: string) {
           @click="emit('assign')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
-            'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-assign',
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-assign',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-assign'
           }"
         >
@@ -152,7 +152,7 @@ function handleBreadcrumbClick(segment: string) {
           @click="emit('results')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
-            'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-results',
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-results',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-results'
           }"
         >
