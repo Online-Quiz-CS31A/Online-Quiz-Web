@@ -3,14 +3,16 @@ import { ref, computed } from 'vue'
 import { Bell } from 'lucide-vue-next'
 import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import AdminDashboard from '@/components/admin/AdminDashboard.vue'
+import AdminUserManagement from '@/components/admin/AdminUserManagement.vue'
+import AdminCourseCatalog from '@/components/admin/AdminCourseCatalog.vue'
 
 const activeSection = ref('dashboard')
 
 const componentMap: Record<string, any> = {
   dashboard: AdminDashboard,
-  users: AdminDashboard, 
-  courses: AdminDashboard, 
-  'quiz-settings': AdminDashboard, 
+  users: AdminUserManagement,
+  courses: AdminCourseCatalog,
+  'quiz-settings': AdminDashboard,
   data: AdminDashboard,
   analytics: AdminDashboard
 }

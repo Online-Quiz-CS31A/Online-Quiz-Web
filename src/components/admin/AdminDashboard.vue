@@ -64,8 +64,6 @@ const recentActivity = ref<Activity[]>([
 
 <template>
   <div class="animate-fade-in">
-    <h2 class="text-2xl font-semibold text-gray-900">System Overview</h2>
-    
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 gap-5 mt-5 sm:grid-cols-2 lg:grid-cols-4">
       <!-- Active Users -->

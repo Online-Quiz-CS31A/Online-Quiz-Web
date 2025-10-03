@@ -18,9 +18,9 @@ const setActiveSection = (section: string) => {
 <template>
   <div class="flex flex-col w-64 bg-white border-r border-gray-200">
     <!-- Header -->
-    <div class="flex items-center justify-center h-16 px-4 bg-blue-600">
+    <div class="flex items-center justify-center h-16 px-4 bg-white">
       <div class="flex items-center">
-        <span class="text-xl font-semibold text-white">Quiz Portal Admin</span>
+        <span class="text-xl font-semibold text-blue-600">Quiz Portal Admin</span>
       </div>
     </div>
     
@@ -33,7 +33,7 @@ const setActiveSection = (section: string) => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             activeSection === 'dashboard' 
-              ? 'text-blue-700 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -52,7 +52,7 @@ const setActiveSection = (section: string) => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             activeSection === 'users' 
-              ? 'text-blue-700 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -71,7 +71,7 @@ const setActiveSection = (section: string) => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             activeSection === 'courses' 
-              ? 'text-blue-700 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -90,7 +90,7 @@ const setActiveSection = (section: string) => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             activeSection === 'quiz-settings' 
-              ? 'text-blue-700 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -109,7 +109,7 @@ const setActiveSection = (section: string) => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             activeSection === 'data' 
-              ? 'text-blue-700 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -128,7 +128,7 @@ const setActiveSection = (section: string) => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             activeSection === 'analytics' 
-              ? 'text-blue-700 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
