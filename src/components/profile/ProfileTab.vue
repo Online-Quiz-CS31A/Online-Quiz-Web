@@ -2,11 +2,18 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeachersStore } from '@/stores/teachersStore'
+import { useStudentsStore } from '@/stores/studentsStore'
+import { useClassesStore } from '@/stores/classesStore'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 
 const auth = useAuthStore()
 const teachers = useTeachersStore()
+const students = useStudentsStore()
+const classesStore = useClassesStore()
+const quizzesStore = useQuizzesStore()
 
-const profile = computed(() => teachers.currentProfile)
+const isTeacher = computed(() => auth.userRole === 'teacher')
+const profile = computed(() => (isTeacher.value ? teachers.currentProfile : students.currentProfile))
 const fullName = computed(() => {
   if (profile.value) return `${profile.value.firstName} ${profile.value.lastName}`
   return auth.currentUser?.name || 'Guest'
@@ -16,7 +23,9 @@ const firstName = ref(profile.value?.firstName || '')
 const lastName = ref(profile.value?.lastName || '')
 const email = ref(profile.value?.email || '')
 const phone = ref(profile.value?.phone || '')
-const department = ref(profile.value?.department || '')
+const department = ref((profile.value as any)?.department || '')
+const yearLevel = ref((profile.value as any)?.yearLevel || '')
+const program = ref((profile.value as any)?.program || '')
 const bio = ref(profile.value?.bio || '')
 
 const placeholderPhoto = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
@@ -30,7 +39,11 @@ const onFileChange: (e: Event) => void = (e) => {
   reader.onload = (ev) => {
     const url = String(ev.target?.result || imageUrl.value)
     imageUrl.value = url
-    teachers.setCurrentPhoto(url)
+    if (isTeacher.value) {
+      teachers.setCurrentPhoto(url)
+    } else {
+      students.setCurrentPhoto(url)
+    }
   }
   reader.readAsDataURL(file)
 }
@@ -41,7 +54,9 @@ function resetFromStore() {
   lastName.value = p?.lastName || ''
   email.value = p?.email || ''
   phone.value = p?.phone || ''
-  department.value = p?.department || ''
+  department.value = (p as any)?.department || ''
+  yearLevel.value = (p as any)?.yearLevel || ''
+  program.value = (p as any)?.program || ''
   bio.value = p?.bio || ''
   imageUrl.value = p?.photoUrl || placeholderPhoto
 }
@@ -52,17 +67,32 @@ function onCancel() {
 
 function onSubmit(e: Event) {
   e.preventDefault()
-  teachers.updateCurrentTeacherProfile({
-    firstName: firstName.value,
-    lastName: lastName.value,
-    email: email.value,
-    phone: phone.value,
-    department: department.value,
-    bio: bio.value,
-    photoUrl: imageUrl.value,
-  })
+  if (isTeacher.value) {
+    teachers.updateCurrentTeacherProfile({
+      email: email.value,
+      phone: phone.value,
+      bio: bio.value,
+      photoUrl: imageUrl.value,
+    })
+  } else {
+    students.updateCurrentStudentProfile({
+      email: email.value,
+      phone: phone.value,
+      photoUrl: imageUrl.value,
+    })
+  }
   alert('Profile changes saved successfully!')
 }
+
+const subtitle = computed(() => {
+  if (!profile.value) return isTeacher.value ? 'Department' : 'Year • Course'
+  return isTeacher.value
+    ? (department.value || (profile.value as any).department || 'Department')
+    : `${yearLevel.value || (profile.value as any).yearLevel || 'Year'}${program.value || (profile.value as any).program ? ' • ' : ''}${program.value || (profile.value as any).program || ''}`
+})
+
+const coursesCount = computed(() => classesStore.myClasses.length)
+const quizzesCount = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes.length : quizzesStore.myStudentQuizzes.length))
 </script>
 
 <template>
@@ -79,7 +109,7 @@ function onSubmit(e: Event) {
         </div>
         <div class="text-center">
           <h3 class="text-xl font-semibold text-gray-800">{{ fullName }}</h3>
-          <p class="text-gray-600">{{ department || profile?.department || 'Department' }}</p>
+          <p class="text-gray-600">{{ subtitle }}</p>
 
         </div>
         <div class="mt-6 bg-gray-50 p-4 rounded-lg">
@@ -87,15 +117,15 @@ function onSubmit(e: Event) {
           <div class="space-y-3">
             <div class="flex justify-between">
               <span class="text-gray-600">Courses</span>
-              <span class="font-medium">5</span>
+              <span class="font-medium">{{ coursesCount }}</span>
             </div>
-            <div class="flex justify-between">
+            <div class="flex justify-between" v-if="isTeacher">
               <span class="text-gray-600">Students</span>
               <span class="font-medium">142</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-600">Quizzes</span>
-              <span class="font-medium">8</span>
+              <span class="font-medium">{{ quizzesCount }}</span>
             </div>
           </div>
         </div>
@@ -108,11 +138,11 @@ function onSubmit(e: Event) {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label class="block text-gray-700 mb-2" for="first-name">First Name</label>
-              <input v-model="firstName" type="text" id="first-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+              <input v-model="firstName" type="text" id="first-name" disabled class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" />
             </div>
             <div>
               <label class="block text-gray-700 mb-2" for="last-name">Last Name</label>
-              <input v-model="lastName" type="text" id="last-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+              <input v-model="lastName" type="text" id="last-name" disabled class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" />
             </div>
             <div>
               <label class="block text-gray-700 mb-2" for="email">Email</label>
@@ -123,20 +153,28 @@ function onSubmit(e: Event) {
               <input v-model="phone" type="tel" id="phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
             </div>
           </div>
-          <div class="mb-6">
+          <div class="mb-6" v-if="isTeacher">
             <label class="block text-gray-700 mb-2" for="department">Department</label>
-            <select v-model="department" id="department" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-              <option>Mathematics</option>
-              <option>Physics</option>
-              <option>Computer Science</option>
-              <option>Engineering</option>
-              <option>Biology</option>
-              <option>Information Technology</option>
-            </select>
+            <input v-model="department" type="text" id="department" disabled class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" />
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" v-else>
+            <div>
+              <label class="block text-gray-700 mb-2" for="year">Year Level</label>
+              <select v-model="yearLevel" id="year" disabled class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed">
+                <option>1st Year</option>
+                <option>2nd Year</option>
+                <option>3rd Year</option>
+                <option>4th Year</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-700 mb-2" for="program">Course/Program</label>
+              <input v-model="program" type="text" id="program" disabled class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" />
+            </div>
           </div>
           <div class="mb-6">
             <label class="block text-gray-700 mb-2" for="bio">Bio</label>
-            <textarea v-model="bio" id="bio" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></textarea>
+            <textarea v-model="bio" id="bio" rows="4" :disabled="!isTeacher" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"></textarea>
           </div>
           <div class="flex justify-end">
             <button type="button" @click="onCancel" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 mr-4 hover:bg-gray-50">Cancel</button>

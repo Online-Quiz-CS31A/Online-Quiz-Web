@@ -1,3 +1,26 @@
+export interface TeacherProfile {
+  username: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  department: string
+  bio: string
+  photoUrl?: string
+}
+
+export interface StudentProfile {
+  username: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  yearLevel: string
+  program: string
+  bio: string
+  photoUrl?: string
+}
+
 export interface ClassItem {
   id: number
   name: string

@@ -5,7 +5,16 @@ import type { Role, User } from './types'
 export const useAuthStore = defineStore('auth', () => {
   const users = ref<User[]>([
     { username: '0112345678', password: 'teacher', role: 'teacher', name: 'Donald Francisco' },
+    { username: '0111111111', password: 'teacher', role: 'teacher', name: 'Alice Mao' },
+    { username: '0112222222', password: 'teacher', role: 'teacher', name: 'Brian Lopez' },
+    { username: '0113333333', password: 'teacher', role: 'teacher', name: 'Celine Garcia' },
+    { username: '0114444444', password: 'teacher', role: 'teacher', name: 'Diego Santos' },
+    
     { username: '0212345678', password: 'student', role: 'student', name: 'Chitoge Kirisaki' },
+    { username: '0221111111', password: 'student', role: 'student', name: 'Mika Tan' },
+    { username: '0222222222', password: 'student', role: 'student', name: 'Ken Yamada' },
+    { username: '0223333333', password: 'student', role: 'student', name: 'Sofia Dafirst' },
+    { username: '0224444444', password: 'student', role: 'student', name: 'Liam Cruz' },
   ])
 
   const currentUser = ref<User | null>(null)
