@@ -23,12 +23,25 @@ export interface StudentProfile {
 
 export interface ClassItem {
   id: number
+  code: string
   name: string
   teacher: string
   description: string
   students: number
   color: string
   studentUsernames?: string[]
+}
+
+export interface ClassSection {
+  id: number
+  name: string
+  students: number
+  studentUsernames: string[]
+}
+
+export interface CourseSectionMapping {
+  courseId: number
+  sectionId: number
 }
 
 export type CalendarEventType = 'quiz' | 'holiday' | 'other'

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useClassesStore } from '@/stores/classesStore'
+import { useClassesStore } from '@/stores/coursesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem } from '@/stores/types'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
@@ -9,12 +9,13 @@ import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
 
-const props = defineProps<{ showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
+const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
 const showViewAll = computed(() => props.showViewAll !== false)
 const showHeader = computed(() => props.showHeader !== false)
 
 const classesStore = useClassesStore()
-const classes = computed<ClassItem[]>(() => classesStore.myClasses)
+const sectionsStore = useSectionsStore()
+const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
   const list = classes.value
   return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
@@ -48,10 +49,8 @@ onBeforeUnmount(() => {
 
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
 
-const router = useRouter()
-
 const handleEnterClass = (classItem: ClassItem) => {
-  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  console.log(`Entering class: ${classItem.name}`)
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
@@ -92,6 +91,12 @@ const getInitials = (name: string) => {
   const last = parts[parts.length - 1]?.[0] || ''
   return (first + last).toUpperCase()
 }
+
+// Get actual student count from sections
+const getStudentCount = (courseId: number) => {
+  const sections = sectionsStore.getSectionsByCourse(courseId)
+  return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+}
 </script>
 
 <template>
@@ -115,12 +120,13 @@ const getInitials = (name: string) => {
           <div class="absolute inset-0 bg-gradient-to-br from-black/30 via-black/15 to-black/10"></div>
 
           <div class="absolute inset-0 p-4 text-white select-none">
+            <p class="text-xs opacity-90">{{ classItem.code }}</p>
             <h3 class="mt-1 text-xl font-bold leading-snug line-clamp-2">{{ classItem.name }}</h3>
           </div>
           <div class="absolute right-2 top-2 actions-menu">
             <button 
               @click.stop="toggleMenu(classItem.id)"
-              class="text-white hover:text-white p-1 cursor-pointer"
+              class="text-white hover:text-white p-1"
               aria-label="More options"
               title="More options"
             >
@@ -132,16 +138,9 @@ const getInitials = (name: string) => {
             >
               <button 
                 @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
               >
-                Edit 
-              </button>
-              
-              <button 
-                @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-              >
-                Leave
+                Leave class
               </button>
             </div>
           </div>
@@ -156,14 +155,14 @@ const getInitials = (name: string) => {
               </div>
               <div class="min-w-0 leading-tight">
                 <div class="text-xs truncate max-w-[180px]">{{ classItem.teacher }}</div>
-                <div class="text-[11px] opacity-90">{{ classItem.students }} students</div>
+                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem.id) }} students</div>
               </div>
             </div>
           </div>
         </div>
 
         <div class="bg-white px-4 py-3 flex items-center justify-end">
-          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap cursor-pointer">
+          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
             Enter class
           </button>
         </div>

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import StudentClasses from '@/components/student/StudentClasses.vue'
-import { useClassesStore } from '@/stores/classesStore'
+import { useAuthStore } from '@/stores/authStore'
+import TeacherCourses from '@/components/teacher/TeacherCourses.vue'
+import StudentClasses from '@/components/student/StudentCourses.vue'
+import { useClassesStore } from '@/stores/coursesStore'
 
+const auth = useAuthStore()
 const classesStore = useClassesStore()
+const isTeacher = computed(() => auth.userRole === 'teacher')
 
 const query = ref('')
 const filtered = computed(() => {
@@ -12,6 +16,7 @@ const filtered = computed(() => {
   if (!q) return list
   return list.filter(c =>
     c.name.toLowerCase().includes(q) ||
+    c.code.toLowerCase().includes(q) ||
     c.teacher.toLowerCase().includes(q) ||
     String(c.students).includes(q)
   )
@@ -30,13 +35,14 @@ const filtered = computed(() => {
         <input
           v-model="query"
           type="text"
-          placeholder="Search by course name, teacher, or students..."
+          placeholder="Search by course name, code, teacher, or students..."
           class="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
         />
       </div>
     </div>
 
-    <StudentClasses :classes="filtered" :show-header="false" />
+    <TeacherCourses v-if="isTeacher" :classes="filtered" :show-header="false" />
+    <StudentClasses v-else :classes="filtered" :show-header="false" />
 
     <div v-if="filtered.length === 0" class="text-center text-gray-500 py-12">
       No courses found for "{{ query }}".

@@ -1,38 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '@/stores/calendarStore'
+import type { CalendarEventType, CalendarEventItem } from '../stores/types'
 
 const now = ref(new Date())
 const currentMonth = ref(now.value.getMonth())
 const currentYear = ref(now.value.getFullYear())
 const currentTimeString = ref('')
 
-interface CalendarEvent {
-  id: number
-  title: string
-  date: Date
-  type: 'quiz' | 'holiday' | 'other'
-  time?: string
-  isDeadline?: boolean
-}
-
 const calendarStore = useCalendarStore()
-const events = computed<CalendarEvent[]>(() => {
-  return (calendarStore.myCalendarEvents || []).map(e => ({
-    id: e.id,
-    title: e.title,
-    date: new Date(e.date),
-    type: e.type,
-    time: e.time,
-    isDeadline: e.isDeadline,
-  }))
-})
+const events = computed<CalendarEventItem[]>(() => calendarStore.myCalendarEvents)
 
 const showModal = ref(false)
 const formTitle = ref('')
 const formDate = ref<string>('')
 const formTime = ref<string>('')
-const formType = ref<CalendarEvent['type']>('quiz')
+const formType = ref<CalendarEventType>('quiz')
 const formIsDeadline = ref(false)
 
 const monthYearLabel = computed(() =>
@@ -50,7 +33,7 @@ const calendarCells = computed(() => {
   const cells: Array<{
     dayNumber: number
     inCurrentMonth: boolean
-    date: Date
+    date: string
   }> = []
 
   let day = 1
@@ -59,44 +42,40 @@ const calendarCells = computed(() => {
   for (let i = 0; i < 42; i++) {
     if (i < firstDay) {
       const prevDay = prevMonthDays - firstDay + i + 1
+      const date = new Date(currentYear.value, currentMonth.value - 1, prevDay)
       cells.push({
         dayNumber: prevDay,
         inCurrentMonth: false,
-        date: new Date(currentYear.value, currentMonth.value - 1, prevDay),
+        date: date.toISOString().split('T')[0],
       })
     } else if (day > daysInMonth) {
+      const date = new Date(currentYear.value, currentMonth.value + 1, nextMonthDay)
       cells.push({
         dayNumber: nextMonthDay,
         inCurrentMonth: false,
-        date: new Date(currentYear.value, currentMonth.value + 1, nextMonthDay++),
+        date: date.toISOString().split('T')[0],
       })
+      nextMonthDay++
     } else {
+      const date = new Date(currentYear.value, currentMonth.value, day)
       cells.push({
         dayNumber: day,
         inCurrentMonth: true,
-        date: new Date(currentYear.value, currentMonth.value, day++),
+        date: date.toISOString().split('T')[0],
       })
+      day++
     }
   }
   return cells
 })
 
-function eventsForDate(d: Date) {
-  return events.value.filter(
-    (e) =>
-      e.date.getDate() === d.getDate() &&
-      e.date.getMonth() === d.getMonth() &&
-      e.date.getFullYear() === d.getFullYear()
-  )
+function eventsForDate(dateStr: string) {
+  return events.value.filter(e => e.date === dateStr)
 }
 
-function isToday(d: Date) {
-  const t = new Date()
-  return (
-    d.getDate() === t.getDate() &&
-    d.getMonth() === t.getMonth() &&
-    d.getFullYear() === t.getFullYear()
-  )
+function isToday(dateStr: string) {
+  const today = new Date().toISOString().split('T')[0]
+  return dateStr === today
 }
 
 function prevMonth() {
@@ -115,10 +94,9 @@ function nextMonth() {
   }
 }
 
-function openModal(defaultDate?: Date) {
-  const todayISO = (defaultDate ?? new Date()).toISOString().split('T')[0]
+function openModal(defaultDate?: string) {
   formTitle.value = ''
-  formDate.value = todayISO
+  formDate.value = defaultDate ?? new Date().toISOString().split('T')[0]
   formTime.value = ''
   formType.value = 'quiz'
   formIsDeadline.value = false

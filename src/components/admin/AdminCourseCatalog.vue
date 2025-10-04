@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
 import AdminCourseDetails from '@/components/admin/AdminCourseDetails.vue'
-import { useClassesStore } from '@/stores/classesStore'
+import { useClassesStore } from '@/stores/coursesStore'
 import { storeToRefs } from 'pinia'
 
 interface CourseInstructor {

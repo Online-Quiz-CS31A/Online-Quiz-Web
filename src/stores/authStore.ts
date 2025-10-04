@@ -13,8 +13,18 @@ export const useAuthStore = defineStore('auth', () => {
     { username: '0212345678', password: 'student', role: 'student', name: 'Chitoge Kirisaki' },
     { username: '0221111111', password: 'student', role: 'student', name: 'Mika Tan' },
     { username: '0222222222', password: 'student', role: 'student', name: 'Ken Yamada' },
-    { username: '0223333333', password: 'student', role: 'student', name: 'Sofia Dafirst' },
+    { username: '0223333333', password: 'student', role: 'student', name: 'Sofia Romero' },
     { username: '0224444444', password: 'student', role: 'student', name: 'Liam Cruz' },
+    { username: '0225555555', password: 'student', role: 'student', name: 'Emma Garcia' },
+    { username: '0226666666', password: 'student', role: 'student', name: 'Noah Santos' },
+    { username: '0227777777', password: 'student', role: 'student', name: 'Olivia Reyes' },
+    { username: '0228888888', password: 'student', role: 'student', name: 'James Dela Cruz' },
+    { username: '0229999999', password: 'student', role: 'student', name: 'Ava Martinez' },
+    { username: '0231111111', password: 'student', role: 'student', name: 'Lucas Villanueva' },
+    { username: '0232222222', password: 'student', role: 'student', name: 'Isabella Ramos' },
+    { username: '0233333333', password: 'student', role: 'student', name: 'Mason Torres' },
+    { username: '0234444444', password: 'student', role: 'student', name: 'Sophia Hernandez' },
+    { username: '0235555555', password: 'student', role: 'student', name: 'Ethan Bautista' },
   ])
 
   const currentUser = ref<User | null>(null)

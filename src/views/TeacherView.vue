@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar.vue'
 import Header from '@/components/Header.vue'
 import ActiveQuizzes from '@/components/teacher/TeacherQuiz.vue'
 import SchoolCalendar from '@/components/SchoolCalendar.vue'
-import StudentClasses from '@/components/teacher/TeacherClasses.vue'
+import StudentClasses from '@/components/teacher/TeacherCourses.vue'
 import ViewAllCourses from '@/components/ViewAllCourses.vue'
 import ViewAllQuizzes from '@/components/ViewAllQuizzes.vue'
 

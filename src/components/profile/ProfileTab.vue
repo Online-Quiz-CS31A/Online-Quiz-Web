@@ -3,13 +3,15 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeachersStore } from '@/stores/teachersStore'
 import { useStudentsStore } from '@/stores/studentsStore'
-import { useClassesStore } from '@/stores/classesStore'
+import { useClassesStore } from '@/stores/coursesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 const auth = useAuthStore()
 const teachers = useTeachersStore()
 const students = useStudentsStore()
 const classesStore = useClassesStore()
+const sectionsStore = useSectionsStore()
 const quizzesStore = useQuizzesStore()
 
 const isTeacher = computed(() => auth.userRole === 'teacher')
@@ -92,6 +94,23 @@ const subtitle = computed(() => {
 })
 
 const coursesCount = computed(() => classesStore.myClasses.length)
+
+const studentsCount = computed(() => {
+  if (!isTeacher.value) return 0
+  
+  const teacherCourses = classesStore.myClasses
+  let totalStudents = 0
+  
+  for (const course of teacherCourses) {
+    const sections = sectionsStore.getSectionsByCourse(course.id)
+    for (const section of sections) {
+      totalStudents += section.studentUsernames.length
+    }
+  }
+  
+  return totalStudents
+})
+
 const quizzesCount = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes.length : quizzesStore.myStudentQuizzes.length))
 </script>
 
@@ -121,7 +140,7 @@ const quizzesCount = computed(() => (isTeacher.value ? quizzesStore.myTeacherQui
             </div>
             <div class="flex justify-between" v-if="isTeacher">
               <span class="text-gray-600">Students</span>
-              <span class="font-medium">142</span>
+              <span class="font-medium">{{ studentsCount }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-600">Quizzes</span>

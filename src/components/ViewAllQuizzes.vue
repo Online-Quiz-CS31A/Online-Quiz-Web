@@ -43,7 +43,6 @@ const filtered = computed(() => {
       </div>
     </div>
 
-    <!-- Reuse existing list components without their headers -->
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as any" :hide-header="true" />
     <StudentQuizList v-else :quizzes="filtered as any" :hide-header="true" />
 

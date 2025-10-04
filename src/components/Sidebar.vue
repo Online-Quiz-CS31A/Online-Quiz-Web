@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { useClassesStore } from '@/stores/classesStore'
+import { useClassesStore } from '@/stores/coursesStore'
 interface Props {
   isActive: boolean
   activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses'
