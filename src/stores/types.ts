@@ -9,16 +9,27 @@ export interface TeacherProfile {
   photoUrl?: string
 }
 
+export type YearLevel = '1st Year' | '2nd Year' | '3rd Year' | '4th Year' | 'TESDA'
+
 export interface StudentProfile {
   username: string
   firstName: string
   lastName: string
   email: string
   phone: string
-  yearLevel: string
+  yearLevel: YearLevel
   program: string
   bio: string
   photoUrl?: string
+}
+
+export interface StudentViewModel {
+  username: string
+  name: string
+  email: string
+  year: YearLevel
+  major: string
+  avatar: string
 }
 
 export interface ClassItem {
