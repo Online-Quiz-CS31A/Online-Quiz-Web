@@ -3,6 +3,7 @@ import { ref, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineAsyncComponent } from 'vue'
 import { useStudentsStore } from '../stores/studentsStore'
+import { useSectionsStore } from '../stores/sectionsStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '../stores/types'
 const Header = defineAsyncComponent(() => import('../components/Header.vue'))
 
@@ -19,6 +20,7 @@ const form = reactive({
 })
 
 const studentsStore = useStudentsStore()
+const sectionsStore = useSectionsStore()
 
 const students = computed<StudentViewModel[]>(() => {
   return Object.entries(studentsStore.profiles).map(([username, profile]: [string, StudentProfile]) => ({
@@ -102,7 +104,26 @@ function onImportMasterList(e: Event) {
 
 function saveClass() {
   if (!form.className) return alert('Please enter a class name')
-  alert('Class saved!')
+  
+  const studentUsernames = selectedStudents.value.map(s => s.username)
+  const courseId = Number(classId.value)
+  
+  sectionsStore.addSection({
+    name: form.className,
+    students: studentUsernames.length,
+    studentUsernames: studentUsernames
+  }, courseId)
+  
+  const newSectionId = sectionsStore.allSections[sectionsStore.allSections.length - 1].id
+  
+  sectionsStore.setSchedule(courseId, newSectionId, {
+    scheduleDay: form.scheduleDay,
+    scheduleTime: form.scheduleTime,
+    classroom: form.classroom
+  })
+  
+  alert('Class saved successfully!')
+  router.back()
 }
 
 function goBack() {

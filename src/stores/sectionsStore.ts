@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { ClassSection, CourseSectionMapping } from './types'
+import type { ClassSection, CourseSectionMapping, CourseSectionSchedule } from './types'
 import { useAuthStore } from './authStore'
 
 export const useSectionsStore = defineStore('sections', () => {
@@ -41,10 +41,18 @@ export const useSectionsStore = defineStore('sections', () => {
     { courseId: 1, sectionId: 1 },
     { courseId: 2, sectionId: 2 },  
     { courseId: 3, sectionId: 3 }, 
-    
     { courseId: 5, sectionId: 4 },  
     { courseId: 6, sectionId: 1 }, 
     { courseId: 6, sectionId: 5 },  
+  ])
+
+  const courseSectionSchedules = ref<CourseSectionSchedule[]>([
+    { courseId: 1, sectionId: 1, scheduleDay: 'Monday', scheduleTime: '15:00', classroom: 'Room 101' },
+    { courseId: 2, sectionId: 2, scheduleDay: 'Tuesday', scheduleTime: '10:00', classroom: 'Room 202' },
+    { courseId: 3, sectionId: 3, scheduleDay: 'Wednesday', scheduleTime: '13:00', classroom: 'Room 303' },
+    { courseId: 5, sectionId: 4, scheduleDay: 'Thursday', scheduleTime: '15:00', classroom: 'Room 404' },
+    { courseId: 6, sectionId: 1, scheduleDay: 'Tuesday', scheduleTime: '13:00', classroom: 'Room 105' },
+    { courseId: 6, sectionId: 5, scheduleDay: 'Friday', scheduleTime: '09:00', classroom: 'Room 505' },
   ])
 
   const auth = useAuthStore()
@@ -90,16 +98,45 @@ export const useSectionsStore = defineStore('sections', () => {
   function deleteSection(id: number) {
     allSections.value = allSections.value.filter(s => s.id !== id)
     courseSectionMappings.value = courseSectionMappings.value.filter(m => m.sectionId !== id)
+    courseSectionSchedules.value = courseSectionSchedules.value.filter(s => s.sectionId !== id)
+  }
+
+  function getSchedule(courseId: number, sectionId: number): CourseSectionSchedule | undefined {
+    return courseSectionSchedules.value.find(
+      s => s.courseId === courseId && s.sectionId === sectionId
+    )
+  }
+
+  function setSchedule(courseId: number, sectionId: number, schedule: Omit<CourseSectionSchedule, 'courseId' | 'sectionId'>) {
+    const index = courseSectionSchedules.value.findIndex(
+      s => s.courseId === courseId && s.sectionId === sectionId
+    )
+    
+    if (index !== -1) {
+      courseSectionSchedules.value[index] = { courseId, sectionId, ...schedule }
+    } else {
+      courseSectionSchedules.value.push({ courseId, sectionId, ...schedule })
+    }
+  }
+
+  function removeSchedule(courseId: number, sectionId: number) {
+    courseSectionSchedules.value = courseSectionSchedules.value.filter(
+      s => !(s.courseId === courseId && s.sectionId === sectionId)
+    )
   }
 
   return {
     allSections,
     courseSectionMappings,
+    courseSectionSchedules,
     getSectionsByCourse,
     addSection,
     addSectionToCourse,
     updateSection,
     removeSectionFromCourse,
     deleteSection,
+    getSchedule,
+    setSchedule,
+    removeSchedule,
   }
 })

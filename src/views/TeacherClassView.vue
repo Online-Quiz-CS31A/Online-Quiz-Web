@@ -22,6 +22,27 @@ const sections = computed(() => {
   return sectionsStore.getSectionsByCourse(cid)
 })
 
+function formatTime(time24: string): string {
+  if (!time24 || time24 === '—') return '—'
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+}
+
+const sectionsWithSchedule = computed(() => {
+  const cid = Number(props.id)
+  return sections.value.map(section => {
+    const schedule = sectionsStore.getSchedule(cid, section.id)
+    return {
+      ...section,
+      scheduleDay: schedule?.scheduleDay || 'TBA',
+      scheduleTime: schedule?.scheduleTime ? formatTime(schedule.scheduleTime) : '—',
+      classroom: schedule?.classroom || 'TBA'
+    }
+  })
+})
+
 const current = computed<ClassItem>(() => {
   const cid = Number(props.id)
   const found = classesStore.allClasses.find((c: ClassItem) => c.id === cid)
@@ -168,12 +189,13 @@ function openDashboard(id: number) {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="section in sections" :key="section.id"
+          <div v-for="section in sectionsWithSchedule" :key="section.id"
             class="rounded-xl shadow-md overflow-hidden class-card transition-all duration-300 text-white"
             @click="openDashboard(section.id)">
             <div class="p-6 relative cursor-pointer">
               <div class="relative z-10">
-                <div class="flex justify-end items-start">
+                <div class="flex justify-between items-start">
+                  <h3 class="text-lg font-bold text-white">{{ section.name }}</h3>
                   <div class="relative">
                     <button @click.stop="toggleMenu(section.id)" 
                       class="text-white hover:text-gray-200 text-lg" 
@@ -197,8 +219,17 @@ function openDashboard(id: number) {
                     </div>
                   </div>
                 </div>
-                <h3 class="text-lg font-bold text-white mt-2">{{ section.name }}</h3>
-                <span class="inline-block mt-2 bg-white/20 text-white text-xs px-2 py-1 rounded-full">
+                <div class="mt-3 space-y-1">
+                  <div class="flex items-center text-white/90 text-sm">
+                    <i class="fas fa-calendar-day w-5 mr-2"></i>
+                    <span>{{ section.scheduleDay }} {{ section.scheduleTime }}</span>
+                  </div>
+                  <div class="flex items-center text-white/90 text-sm">
+                    <i class="fas fa-door-open w-5 mr-2"></i>
+                    <span>{{ section.classroom }}</span>
+                  </div>
+                </div>
+                <span class="inline-block mt-3 bg-white/20 text-white text-xs px-2 py-1 rounded-full">
                   {{ section.students }} students
                 </span>
               </div>

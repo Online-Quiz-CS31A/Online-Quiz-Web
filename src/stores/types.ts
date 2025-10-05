@@ -55,6 +55,14 @@ export interface CourseSectionMapping {
   sectionId: number
 }
 
+export interface CourseSectionSchedule {
+  courseId: number
+  sectionId: number
+  scheduleDay: string
+  scheduleTime: string
+  classroom: string
+}
+
 export type CalendarEventType = 'quiz' | 'holiday' | 'other'
 export interface CalendarEventItem {
   id: number
