@@ -26,6 +26,7 @@ const emit = defineEmits<{
   assign: []
   results: []
   preview: []
+  segmentClick: [segment: string]
 }>()
 
 const showProfileDropdown = ref(false)
@@ -94,6 +95,8 @@ function handleBreadcrumbClick(segment: string) {
     router.push({ name: 'teacher' })
   } else if (key === 'courses') {
     router.push({ name: 'teacher', query: { section: 'courses' } })
+  } else {
+    emit('segmentClick', segment)
   }
 }
 </script>
@@ -107,7 +110,7 @@ function handleBreadcrumbClick(segment: string) {
           <template v-if="breadcrumbSegments.length">
             <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
               <span
-                v-if="['dashboard','courses'].includes(seg.toLowerCase()) && idx < breadcrumbSegments.length - 1"
+                v-if="idx < breadcrumbSegments.length - 1"
                 @click="handleBreadcrumbClick(seg)"
                 class="cursor-pointer"
               >
