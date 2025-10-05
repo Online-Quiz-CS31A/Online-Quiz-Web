@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineAsyncComponent } from 'vue'
 import { useStudentsStore } from '../stores/studentsStore'
 import { useSectionsStore } from '../stores/sectionsStore'
+import { useClassesStore } from '../stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '../stores/types'
 const Header = defineAsyncComponent(() => import('../components/Header.vue'))
 
@@ -11,16 +12,30 @@ const route = useRoute()
 const router = useRouter()
 const classId = computed(() => String(route.params.id || '1'))
 
+const studentsStore = useStudentsStore()
+const sectionsStore = useSectionsStore()
+const classesStore = useClassesStore()
+
+const teacherCourses = computed(() => classesStore.myClasses)
+
+const currentCourse = computed(() => {
+  const cid = Number(classId.value)
+  return teacherCourses.value.find(c => c.id === cid) || teacherCourses.value[0]
+})
+
 const form = reactive({
   className: '',
-  subject: 'Information Assurance',
+  subject: currentCourse.value?.name || 'Information Assurance',
   scheduleDay: 'Monday',
   scheduleTime: '',
   classroom: '',
 })
 
-const studentsStore = useStudentsStore()
-const sectionsStore = useSectionsStore()
+watch(currentCourse, (newCourse) => {
+  if (newCourse) {
+    form.subject = newCourse.name
+  }
+}, { immediate: true })
 
 const students = computed<StudentViewModel[]>(() => {
   return Object.entries(studentsStore.profiles).map(([username, profile]: [string, StudentProfile]) => ({
@@ -106,15 +121,15 @@ function saveClass() {
   if (!form.className) return alert('Please enter a class name')
   
   const studentUsernames = selectedStudents.value.map(s => s.username)
-  const courseId = Number(classId.value)
   
-  sectionsStore.addSection({
+  const selectedCourse = teacherCourses.value.find(c => c.name === form.subject)
+  const courseId = selectedCourse ? selectedCourse.id : Number(classId.value)
+  
+  const newSectionId = sectionsStore.addSection({
     name: form.className,
     students: studentUsernames.length,
     studentUsernames: studentUsernames
   }, courseId)
-  
-  const newSectionId = sectionsStore.allSections[sectionsStore.allSections.length - 1].id
   
   sectionsStore.setSchedule(courseId, newSectionId, {
     scheduleDay: form.scheduleDay,
@@ -164,11 +179,9 @@ function yearPillClass(year: YearLevel) {
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                 <select v-model="form.subject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option>Information Assurance</option>
-                  <option>Computer Architecture</option>
-                  <option>Social and Profession</option>
-                  <option>Automata</option>
-                  <option>Physical Education</option>
+                  <option v-for="course in teacherCourses" :key="course.id" :value="course.name">
+                    {{ course.name }}
+                  </option>
                 </select>
               </div>
               <div>
