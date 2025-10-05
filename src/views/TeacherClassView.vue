@@ -137,6 +137,8 @@ function closeDetails() {
   selectedClassId.value = null
 }
 
+const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
+
 const router = useRouter()
 function openDashboard(id: number) {
   router.push({ name: 'teacher-class-dashboard', params: { id: String(id) } })
@@ -146,7 +148,7 @@ function openDashboard(id: number) {
 
 <template>
   <div class="bg-gray-50 min-h-screen">
-    <Header breadcrumb="Dashboard > Courses" />
+    <Header :breadcrumb="breadcrumbText" />
     
     <!-- Hero section -->
     <div class="relative">
