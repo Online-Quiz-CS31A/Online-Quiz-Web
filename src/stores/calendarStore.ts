@@ -35,6 +35,26 @@ export const useCalendarStore = defineStore('calendar', () => {
     list.push({ id: nextId, ...evt })
   }
 
+  function updateCalendarEvent(id: number, patch: Partial<Omit<CalendarEventItem, 'id'>>) {
+    const uname = auth.currentUser?.username
+    if (!uname) return
+    const list = calendarEventsByUser.value[uname]
+    if (!list) return
+    const idx = list.findIndex(e => e.id === id)
+    if (idx === -1) return
+    list[idx] = { ...list[idx], ...patch }
+  }
+
+  function deleteCalendarEvent(id: number) {
+    const uname = auth.currentUser?.username
+    if (!uname) return
+    const list = calendarEventsByUser.value[uname]
+    if (!list) return
+    const idx = list.findIndex(e => e.id === id)
+    if (idx === -1) return
+    list.splice(idx, 1)
+  }
+
   function todayISOWithDayOffset(offset: number): string {
     const d = new Date()
     d.setDate(d.getDate() + offset)
@@ -51,5 +71,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   return {
     myCalendarEvents,
     addCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
   }
 })

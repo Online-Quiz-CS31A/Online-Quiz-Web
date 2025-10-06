@@ -17,6 +17,11 @@ const formDate = ref<string>('')
 const formTime = ref<string>('')
 const formType = ref<CalendarEventType>('quiz')
 const formIsDeadline = ref(false)
+const editingEventId = ref<number | null>(null)
+
+const selectedDateEvents = computed(() =>
+  formDate.value ? events.value.filter(e => e.date === formDate.value) : []
+)
 
 const monthYearLabel = computed(() =>
   new Date(currentYear.value, currentMonth.value).toLocaleDateString('en-US', {
@@ -95,11 +100,26 @@ function nextMonth() {
 }
 
 function openModal(defaultDate?: string) {
+  editingEventId.value = null
   formTitle.value = ''
   formDate.value = defaultDate ?? new Date().toISOString().split('T')[0]
   formTime.value = ''
   formType.value = 'quiz'
   formIsDeadline.value = false
+  showModal.value = true
+}
+
+function openAddForDate(dateStr: string) {
+  openModal(dateStr)
+}
+
+function openEdit(ev: CalendarEventItem) {
+  editingEventId.value = ev.id
+  formTitle.value = ev.title
+  formDate.value = ev.date
+  formTime.value = ev.time ?? ''
+  formType.value = ev.type
+  formIsDeadline.value = !!ev.isDeadline
   showModal.value = true
 }
 
@@ -109,14 +129,31 @@ function closeModal() {
 
 function onSubmit() {
   if (!formTitle.value || !formDate.value) return
-  calendarStore.addCalendarEvent({
-    title: formTitle.value,
-    date: formDate.value,
-    type: formType.value,
-    isDeadline: formIsDeadline.value,
-    ...(formTime.value ? { time: formTime.value } : {}),
-  })
+  if (editingEventId.value != null) {
+    calendarStore.updateCalendarEvent(editingEventId.value, {
+      title: formTitle.value,
+      date: formDate.value,
+      type: formType.value,
+      isDeadline: formIsDeadline.value,
+      ...(formTime.value ? { time: formTime.value } : { time: undefined }),
+    })
+  } else {
+    calendarStore.addCalendarEvent({
+      title: formTitle.value,
+      date: formDate.value,
+      type: formType.value,
+      isDeadline: formIsDeadline.value,
+      ...(formTime.value ? { time: formTime.value } : {}),
+    })
+  }
   closeModal()
+}
+
+function onDelete() {
+  if (editingEventId.value != null) {
+    calendarStore.deleteCalendarEvent(editingEventId.value)
+    closeModal()
+  }
 }
 
 function updateClock() {
@@ -173,8 +210,9 @@ onMounted(() => {
         <div
           v-for="(cell, idx) in calendarCells"
           :key="idx"
-          class="bg-white min-h-24 p-2 relative"
+          class="bg-white min-h-24 p-2 relative cursor-pointer"
           :class="{ 'bg-gray-50 text-gray-400': !cell.inCurrentMonth }"
+          @click="openAddForDate(cell.date)"
         >
           <span
             class="font-medium inline-flex items-center justify-center"
@@ -198,6 +236,7 @@ onMounted(() => {
                 'bg-blue-100 text-blue-800',
                 ev.isDeadline ? 'deadline' : ''
               ]"
+              @click.stop="openEdit(ev)"
             >
               {{ ev.title }}<span v-if="ev.time"> ({{ ev.time }})</span>
             </div>
@@ -211,10 +250,22 @@ onMounted(() => {
     <div v-if="showModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xl font-semibold text-blue-800">Add New Event</h3>
+          <h3 class="text-xl font-semibold text-blue-800">{{ editingEventId !== null ? 'Edit Event' : 'Add New Event' }}</h3>
           <button @click="closeModal" class="text-gray-500 hover:text-gray-700">
             <i class="fas fa-times"></i>
           </button>
+        </div>
+        <div v-if="selectedDateEvents.length" class="mb-4">
+          <div class="text-sm font-medium text-gray-700 mb-2">Events on {{ formDate }}:</div>
+          <ul class="space-y-1">
+            <li v-for="ev in selectedDateEvents" :key="'sel-' + ev.id" class="flex items-center justify-between text-sm bg-gray-50 px-2 py-1 rounded">
+              <span class="truncate">{{ ev.title }}<span v-if="ev.time"> ({{ ev.time }})</span></span>
+              <div class="space-x-2">
+                <button class="text-blue-600 hover:underline" @click="openEdit(ev)">Edit</button>
+                <button class="text-red-600 hover:underline" @click="() => { editingEventId = ev.id; onDelete() }">Delete</button>
+              </div>
+            </li>
+          </ul>
         </div>
         <form @submit.prevent="onSubmit">
           <div class="mb-4">
@@ -246,11 +297,13 @@ onMounted(() => {
           </div>
           <div class="flex justify-end space-x-3">
             <button type="button" @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Event</button>
+            <button v-if="editingEventId !== null" type="button" @click="onDelete" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Delete</button>
+            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">{{ editingEventId !== null ? 'Save Changes' : 'Save Event' }}</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 </template>
+
 
