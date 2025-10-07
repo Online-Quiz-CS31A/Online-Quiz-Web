@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSectionsStore } from '@/stores/sectionsStore'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
@@ -14,7 +14,7 @@ const router = useRouter()
 const sectionId = computed(() => Number(route.params.id || 0))
 
 const sectionsStore = useSectionsStore()
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 
@@ -29,7 +29,7 @@ const currentCourseId = computed(() => {
 
 const currentCourse = computed(() => {
   if (!currentCourseId.value) return null
-  return classesStore.allClasses.find(c => c.id === currentCourseId.value)
+  return classesStore.allCourses.find(c => c.id === currentCourseId.value)
 })
 
 const schedule = computed(() => {

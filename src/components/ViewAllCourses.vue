@@ -2,12 +2,12 @@
 import { ref, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 const TeacherCourses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
 
 const auth = useAuthStore()
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 const isTeacher = computed(() => auth.userRole === 'teacher')
 
 const query = ref('')

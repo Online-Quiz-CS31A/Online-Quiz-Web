@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 const AdminCourseDetails = defineAsyncComponent(() => import('@/components/admin/AdminCourseDetails.vue'))
 
 
@@ -33,12 +33,12 @@ const searchQuery = ref('')
 const filterStatus = ref<'All Courses' | 'Active' | 'Archived'>('All Courses')
 
 const courses = ref<Course[]>([])
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 
 const nameToId = (name: string): number => people.value.find(p => p.name === name)?.id || 0
 
 onMounted(() => {
-  courses.value = (classesStore.allClasses || []).map((c) => {
+  courses.value = (classesStore.allCourses || []).map((c) => {
     const code = `CLS-${String(c.id).padStart(3,'0')}`
     const subjectCode = (c.name.split(' ')[0] || 'GEN').toUpperCase()
     const instructorId = c.teacher ? nameToId(c.teacher) : 0

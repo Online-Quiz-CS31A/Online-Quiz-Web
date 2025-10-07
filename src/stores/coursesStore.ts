@@ -4,8 +4,8 @@ import type { ClassItem } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useSectionsStore } from './sectionsStore'
 
-export const useClassesStore = defineStore('classes', () => {
-  const allClasses = ref<ClassItem[]>([
+export const useCoursesStore = defineStore('classes', () => {
+  const allCourses = ref<ClassItem[]>([
     { id: 1, code: 'CS401', name: 'Information Assurance',  teacher: 'Donald Francisco', description: 'This course covers the principles of information security, risk management, cryptography, and security policies to protect information systems against threats and vulnerabilities.', students: 0, color: 'red',    studentUsernames: ['0212345678'] },
     { id: 2, code: 'CS301', name: 'Automata',               teacher: 'Donald Francisco', description: 'Deep dive into automata theory.', students: 0, color: 'blue',   studentUsernames: ['0212345678'] },
     { id: 3, code: 'CS302', name: 'Computer Architecture',  teacher: 'Donald Francisco', description: 'Pipelines, caches, and performance optimization.', students: 0, color: 'green',  studentUsernames: ['0212345678'] },
@@ -15,9 +15,9 @@ export const useClassesStore = defineStore('classes', () => {
     { id: 7, code: 'IT301', name: 'Database Systems',       teacher: 'Gojo Satoru',      description: 'This course covers the principles of database systems, including database design, SQL, and NoSQL databases.', students: 0, color: 'pink',   studentUsernames: [] },
   ])
   
-  const allClassesWithCounts = computed<ClassItem[]>(() => {
+  const allCoursesWithCounts = computed<ClassItem[]>(() => {
     const sectionsStore = useSectionsStore()
-    return allClasses.value.map(course => {
+    return allCourses.value.map(course => {
       const sections = sectionsStore.getSectionsByCourse(course.id)
       const studentCount = sections.reduce((total, section) => total + section.studentUsernames.length, 0)
       return {
@@ -32,21 +32,21 @@ export const useClassesStore = defineStore('classes', () => {
     const user = auth.currentUser
     if (!user) return []
     if (user.role === 'teacher') {
-      return allClassesWithCounts.value.filter(c => c.teacher === (user?.name || ''))
+      return allCoursesWithCounts.value.filter(c => c.teacher === (user?.name || ''))
     } else {
       const uname = user.username
-      return allClassesWithCounts.value.filter(c => (c.studentUsernames || []).includes(uname))
+      return allCoursesWithCounts.value.filter(c => (c.studentUsernames || []).includes(uname))
     }
   })
 
   function addClass(newClass: Omit<ClassItem, 'id'>) {
-    const last = allClasses.value.length ? allClasses.value[allClasses.value.length - 1] : undefined
+    const last = allCourses.value.length ? allCourses.value[allCourses.value.length - 1] : undefined
     const nextId = ((last?.id) || 0) + 1
-    allClasses.value.push({ id: nextId, ...newClass })
+    allCourses.value.push({ id: nextId, ...newClass })
   }
 
   return {
-    allClasses: allClassesWithCounts,
+    allCourses: allCoursesWithCounts,
     myClasses,
     addClass,
   }

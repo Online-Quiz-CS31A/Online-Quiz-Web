@@ -3,14 +3,14 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeachersStore } from '@/stores/teachersStore'
 import { useStudentsStore } from '@/stores/studentsStore'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 const auth = useAuthStore()
 const teachers = useTeachersStore()
 const students = useStudentsStore()
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const quizzesStore = useQuizzesStore()
 

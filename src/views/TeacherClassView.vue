@@ -7,7 +7,7 @@ import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
@@ -15,7 +15,7 @@ const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 interface Props { id: string }
 const props = defineProps<Props>()
 
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 
 const sections = computed(() => {
@@ -46,7 +46,7 @@ const sectionsWithSchedule = computed(() => {
 
 const current = computed<ClassItem>(() => {
   const cid = Number(props.id)
-  const found = classesStore.allClasses.find((c: ClassItem) => c.id === cid)
+  const found = classesStore.allCourses.find((c: ClassItem) => c.id === cid)
   return (
     found || { id: cid, code: '', name: `Class ${props.id}`, teacher: '', description: '—', students: 0, color: 'gray' }
   )

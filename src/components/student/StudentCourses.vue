@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem } from '@/interfaces/interfaces'
 import bg1 from '@/assets/image/bg1.jpg'
@@ -13,7 +13,7 @@ const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHe
 const showViewAll = computed(() => props.showViewAll !== false)
 const showHeader = computed(() => props.showHeader !== false)
 
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
