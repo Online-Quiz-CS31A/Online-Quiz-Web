@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './authStore'
-import type { TeacherProfile } from './types'
+import type { TeacherProfile } from '../interfaces/interfaces'
 
 export const useTeachersStore = defineStore('teachers', () => {
   const profiles = ref<Record<string, TeacherProfile>>({

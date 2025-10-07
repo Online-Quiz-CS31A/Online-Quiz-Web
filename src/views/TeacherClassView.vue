@@ -9,7 +9,7 @@ import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
 import { useClassesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
-import type { ClassItem, ClassSection } from '@/stores/types'
+import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 
 interface Props { id: string }
 const props = defineProps<Props>()

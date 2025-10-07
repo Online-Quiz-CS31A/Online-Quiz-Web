@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useClassesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
-import type { ClassItem } from '@/stores/types'
+import type { ClassItem } from '@/interfaces/interfaces'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'

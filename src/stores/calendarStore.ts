@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { CalendarEventItem } from './types'
+import type { CalendarEventItem } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 
 export const useCalendarStore = defineStore('calendar', () => {

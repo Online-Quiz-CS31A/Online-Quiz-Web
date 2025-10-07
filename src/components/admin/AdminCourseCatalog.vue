@@ -3,7 +3,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
 import AdminCourseDetails from '@/components/admin/AdminCourseDetails.vue'
 import { useClassesStore } from '@/stores/coursesStore'
-import { storeToRefs } from 'pinia'
 
 interface CourseInstructor {
   teacherId: number
@@ -33,12 +32,11 @@ const filterStatus = ref<'All Courses' | 'Active' | 'Archived'>('All Courses')
 
 const courses = ref<Course[]>([])
 const classesStore = useClassesStore()
-const { allClasses } = storeToRefs(classesStore)
 
 const nameToId = (name: string): number => people.value.find(p => p.name === name)?.id || 0
 
 onMounted(() => {
-  courses.value = (allClasses.value || []).map((c) => {
+  courses.value = (classesStore.allClasses || []).map((c) => {
     const code = `CLS-${String(c.id).padStart(3,'0')}`
     const subjectCode = (c.name.split(' ')[0] || 'GEN').toUpperCase()
     const instructorId = c.teacher ? nameToId(c.teacher) : 0

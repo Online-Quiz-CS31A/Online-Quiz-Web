@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '@/stores/calendarStore'
-import type { CalendarEventType, CalendarEventItem } from '../stores/types'
+import type { CalendarEventType, CalendarEventItem } from '../interfaces/interfaces'
 
 const now = ref(new Date())
 const currentMonth = ref(now.value.getMonth())

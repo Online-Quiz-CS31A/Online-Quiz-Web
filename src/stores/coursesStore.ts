@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { ClassItem } from './types'
+import type { ClassItem } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useSectionsStore } from './sectionsStore'
 

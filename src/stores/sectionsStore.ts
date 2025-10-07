@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import type { ClassSection, CourseSectionMapping, CourseSectionSchedule } from './types'
+import type { ClassSection, CourseSectionMapping, CourseSectionSchedule } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 
 const STORAGE_KEY_SECTIONS = 'app_sections'
