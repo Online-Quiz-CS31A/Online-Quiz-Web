@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { Bell } from 'lucide-vue-next'
-import AdminSidebar from '@/components/admin/AdminSidebar.vue'
-import AdminDashboard from '@/components/admin/AdminDashboard.vue'
-import AdminUserManagement from '@/components/admin/AdminUserManagement.vue'
-import AdminCourseCatalog from '@/components/admin/AdminCourseCatalog.vue'
+const AdminSidebar = defineAsyncComponent(() => import('@/components/admin/AdminSidebar.vue'))
+const AdminDashboard = defineAsyncComponent(() => import('@/components/admin/AdminDashboard.vue'))
+const AdminUserManagement = defineAsyncComponent(() => import('@/components/admin/AdminUserManagement.vue'))
+const AdminCourseCatalog = defineAsyncComponent(() => import('@/components/admin/AdminCourseCatalog.vue'))
+
 
 const activeSection = ref('dashboard')
 

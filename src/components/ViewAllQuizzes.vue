@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import StudentQuizList from '@/components/student/StudentQuiz.vue'
-import TeacherQuizList from '@/components/teacher/TeacherQuiz.vue'
+const StudentQuizList = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
+const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 
 const auth = useAuthStore()
 const quizzesStore = useQuizzesStore()

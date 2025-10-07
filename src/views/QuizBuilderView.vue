@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
-import QuizContent from '@/components/quiz/QuizContent.vue'
-import QuizResults from '@/components/quiz/QuizResults.vue'
-import QuizAssign from '@/components/quiz/QuizAssign.vue'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
 const route = useRoute()
 const router = useRouter()

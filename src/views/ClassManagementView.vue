@@ -2,11 +2,11 @@
 import { ref, computed, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineAsyncComponent } from 'vue'
-import { useStudentsStore } from '../stores/studentsStore'
-import { useSectionsStore } from '../stores/sectionsStore'
-import { useClassesStore } from '../stores/coursesStore'
-import type { StudentProfile, StudentViewModel, YearLevel } from '../interfaces/interfaces'
-const Header = defineAsyncComponent(() => import('../components/Header.vue'))
+import { useStudentsStore } from '@/stores/studentsStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import { useClassesStore } from '@/stores/coursesStore'
+import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 const route = useRoute()
 const router = useRouter()

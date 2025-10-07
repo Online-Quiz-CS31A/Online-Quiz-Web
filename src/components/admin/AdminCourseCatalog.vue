@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
-import AdminCourseDetails from '@/components/admin/AdminCourseDetails.vue'
 import { useClassesStore } from '@/stores/coursesStore'
+const AdminCourseDetails = defineAsyncComponent(() => import('@/components/admin/AdminCourseDetails.vue'))
+
 
 interface CourseInstructor {
   teacherId: number

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import ActiveQuizzes from '@/components/teacher/TeacherQuiz.vue'
-import Header from '@/components/Header.vue'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useClassesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
+const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 const route = useRoute()
 const router = useRouter()

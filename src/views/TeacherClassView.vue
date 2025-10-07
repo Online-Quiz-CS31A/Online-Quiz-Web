@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -10,6 +10,7 @@ import bg5 from '@/assets/image/bg5.jpg'
 import { useClassesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 interface Props { id: string }
 const props = defineProps<Props>()
