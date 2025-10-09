@@ -6,39 +6,10 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import type { Course, CourseInstructor, Person } from '@/interfaces/interfaces'
 const AdminCourseDetails = defineAsyncComponent(() => import('@/components/admin/AdminCourseDetails.vue'))
 
+// REFs
 const searchQuery = ref('')
 const filterStatus = ref<'All Courses' | 'Active' | 'Archived'>('All Courses')
-
 const courses = ref<Course[]>([])
-const classesStore = useCoursesStore()
-
-const nameToId = (name: string): number => people.value.find(p => p.name === name)?.id || 0
-
-onMounted(() => {
-  courses.value = (classesStore.allCourses || []).map((c) => {
-    const code = `CLS-${String(c.id).padStart(3,'0')}`
-    const subjectCode = (c.name.split(' ')[0] || 'GEN').toUpperCase()
-    const instructorId = c.teacher ? nameToId(c.teacher) : 0
-    const instructors = instructorId ? [{ teacherId: instructorId, section: 'IT11D', students: c.students || 0 }] : []
-    if (c.name === 'Information Assurance') {
-      const extraId = nameToId('Angel Mangubat') || nameToId('Ada Wong') || nameToId('Gojo Satoru')
-      if (extraId && !instructors.find(i => i.teacherId === extraId)) {
-        instructors.push({ teacherId: extraId, section: instructors.length ? 'IT12C' : 'A', students: 0 })
-      }
-    }
-    return {
-      id: c.id,
-      title: c.name,
-      code,
-      status: 'Active',
-      subjectCode,
-      instructors,
-      description: c.description || '',
-      units: undefined,
-    }
-  })
-})
-
 const people = ref<Person[]>([
   { id: 101, name: 'Donald Francisco', role: 'Teacher' },
   { id: 103, name: 'Ada Wong', role: 'Teacher' },
@@ -47,14 +18,67 @@ const people = ref<Person[]>([
   { id: 102, name: 'Neil Vallecer', role: 'Student' },
   { id: 104, name: 'Jan Rosalijos', role: 'Student' },
 ])
-
-const teachers = computed(() => people.value.filter(p => p.role === 'Teacher'))
-const studentsDir = computed(() => people.value.filter(p => p.role === 'Student'))
-const getPersonName = (id?: number) => people.value.find(p => p.id === id)?.name || ''
-const getTotalStudents = (c: Course) => (c.instructors || []).reduce((sum, i) => sum + (i.students || 0), 0)
-
+const pageSize = ref(10)
+const currentPage = ref(1)
+const showModal = ref(false)
+const isEditing = ref(false)
+const showCourseDetails = ref(false) 
+const selectedCourseForDetails = ref<Course | null>(null)
+const selectedCourseInline = ref<Course | null>(null)
 // IMPORT COURSES
 const importInput = ref<HTMLInputElement | null>(null)
+
+// REACTIVE
+const form = reactive<Course>({
+  id: 0,
+  title: '',
+  code: '',
+  status: 'Active',
+  subjectCode: '',
+  instructors: [],
+  description: '',
+  units: undefined
+})
+const errors = reactive<Record<string, string>>({})
+const classesStore = useCoursesStore()
+
+// COMPUTED
+const teachers = computed(() => people.value.filter(p => p.role === 'Teacher'))
+const studentsDir = computed(() => people.value.filter(p => p.role === 'Student'))
+const filteredCourses = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  const f = filterStatus.value
+  return courses.value.filter(c => {
+    const instructorText = (c.instructors || []).map(i => getPersonName(i.teacherId)).join(' ')
+    const matchesSearch = !q || c.title.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || (c.subjectCode || '').toLowerCase().includes(q) || instructorText.toLowerCase().includes(q)
+    const matchesStatus = f === 'All Courses' || c.status === f
+    return matchesSearch && matchesStatus
+  })
+})
+const totalItems = computed(() => filteredCourses.value.length)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
+const displayStart = computed(() => (totalItems.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1))
+const displayEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
+const paginatedCourses = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredCourses.value.slice(start, start + pageSize.value)
+})
+const pageNumbers = computed(() => {
+  const pages: (number | string)[] = []
+  const tp = totalPages.value
+  if (tp <= 6) { for (let i = 1; i <= tp; i++) pages.push(i); return pages }
+  pages.push(1, 2, 3, '...', tp - 2, tp - 1, tp)
+  return pages
+})
+
+// WATCHERS
+watchEffect(() => { currentPage.value = 1 })
+watchEffect(() => { if (showModal.value) validateForm() })
+
+// METHODS
+const nameToId = (name: string): number => people.value.find(p => p.name === name)?.id || 0
+const getPersonName = (id?: number) => people.value.find(p => p.id === id)?.name || ''
+const getTotalStudents = (c: Course) => (c.instructors || []).reduce((sum, i) => sum + (i.students || 0), 0)
 
 const parseCSV = (text: string): Record<string, string>[] => {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length)
@@ -121,54 +145,10 @@ const onImport = async (e: Event) => {
   if (importInput.value) importInput.value.value = ''
 }
 
-const filteredCourses = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  const f = filterStatus.value
-  return courses.value.filter(c => {
-    const instructorText = (c.instructors || []).map(i => getPersonName(i.teacherId)).join(' ')
-    const matchesSearch = !q || c.title.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || (c.subjectCode || '').toLowerCase().includes(q) || instructorText.toLowerCase().includes(q)
-    const matchesStatus = f === 'All Courses' || c.status === f
-    return matchesSearch && matchesStatus
-  })
-})
-
-const pageSize = ref(10)
-const currentPage = ref(1)
-const totalItems = computed(() => filteredCourses.value.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
-const displayStart = computed(() => (totalItems.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1))
-const displayEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
-const paginatedCourses = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredCourses.value.slice(start, start + pageSize.value)
-})
-watchEffect(() => { currentPage.value = 1 })
 const goToPage = (n: number) => { if (n >= 1 && n <= totalPages.value) currentPage.value = n }
 const prevPage = () => goToPage(currentPage.value - 1)
 const nextPage = () => goToPage(currentPage.value + 1)
-const pageNumbers = computed(() => {
-  const pages: (number | string)[] = []
-  const tp = totalPages.value
-  if (tp <= 6) { for (let i = 1; i <= tp; i++) pages.push(i); return pages }
-  pages.push(1, 2, 3, '...', tp - 2, tp - 1, tp)
-  return pages
-})
 
-const showModal = ref(false)
-const isEditing = ref(false)
-
-const form = reactive<Course>({
-  id: 0,
-  title: '',
-  code: '',
-  status: 'Active',
-  subjectCode: '',
-  instructors: [],
-  description: '',
-  units: undefined
-})
-
-const errors = reactive<Record<string, string>>({})
 const clearErrors = () => { Object.keys(errors).forEach(k => delete (errors as any)[k]) }
 const validateIncoming = (c: Course) => {
   return !!(c.title && c.code && c.subjectCode)
@@ -182,6 +162,7 @@ const getComparable = (c: Course) => ({
   description: (c.description || '').trim().toLowerCase(),
   units: Number.isFinite(Number(c.units)) ? Number(c.units) : undefined
 })
+
 const isExactDuplicate = (a: Course, b: Course) => JSON.stringify(getComparable(a)) === JSON.stringify(getComparable(b))
 
 const validateForm = (): boolean => {
@@ -202,14 +183,14 @@ const openAdd = () => {
   Object.assign(form, { id: 0, title: '', code: '', status: 'Active', subjectCode: '', instructors: [], description: '', units: undefined })
   showModal.value = true
 }
+
 const openEdit = (c: Course) => {
   isEditing.value = true
   Object.assign(form, { ...c })
   showModal.value = true
 }
-const closeModal = () => { showModal.value = false }
 
-watchEffect(() => { if (showModal.value) validateForm() })
+const closeModal = () => { showModal.value = false }
 
 const saveCourse = () => {
   if (!validateForm()) return
@@ -223,12 +204,36 @@ const saveCourse = () => {
   showModal.value = false
 }
 
-const showCourseDetails = ref(false) // kept for backward compatibility (modal not used on card click)
-const selectedCourseForDetails = ref<Course | null>(null)
-const selectedCourseInline = ref<Course | null>(null)
 const openCourseDetails = (c: Course) => { selectedCourseForDetails.value = c; showCourseDetails.value = true }
 const openCourseDetailsInline = (c: Course) => { selectedCourseInline.value = c }
 const backToCatalog = () => { selectedCourseInline.value = null }
+
+// LIFECYCLE
+onMounted(() => {
+  courses.value = (classesStore.allCourses || []).map((c) => {
+    const code = `CLS-${String(c.id).padStart(3,'0')}`
+    const subjectCode = (c.name.split(' ')[0] || 'GEN').toUpperCase()
+    const instructorId = c.teacher ? nameToId(c.teacher) : 0
+    const instructors = instructorId ? [{ teacherId: instructorId, section: 'IT11D', students: c.students || 0 }] : []
+    if (c.name === 'Information Assurance') {
+      const extraId = nameToId('Angel Mangubat') || nameToId('Ada Wong') || nameToId('Gojo Satoru')
+      if (extraId && !instructors.find(i => i.teacherId === extraId)) {
+        instructors.push({ teacherId: extraId, section: instructors.length ? 'IT12C' : 'A', students: 0 })
+      }
+    }
+    return {
+      id: c.id,
+      title: c.name,
+      code,
+      status: 'Active',
+      subjectCode,
+      instructors,
+      description: c.description || '',
+      units: undefined,
+    }
+  })
+})
+
 </script>
 
 <template>
