@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { BookOpen, Home, Users, BookOpenCheck, Settings, Database, BarChart2 } from 'lucide-vue-next'
 
+// PROPS
 defineProps<{
   activeSection: string
 }>()
 
+// EMITS
 const emit = defineEmits<{
   'update:activeSection': [value: string]
 }>()
 
+
+// METHODS
 const setActiveSection = (section: string) => {
   emit('update:activeSection', section)
 }

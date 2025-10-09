@@ -3,9 +3,13 @@ import { ref, reactive, computed, watchEffect } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 import type { AdminUser } from '@/interfaces/interfaces'
 
+// CONSTANTS / TYPRS
+const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+
+
+// REFS
 const searchQuery = ref('')
 const filterRole = ref('All Users')
-
 const users = ref<AdminUser[]>([
   {
     id: 1,
@@ -44,10 +48,80 @@ const users = ref<AdminUser[]>([
     avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
   }
 ])
-
-// IMPORT USERS
 const importInput = ref<HTMLInputElement | null>(null)
+const pageSize = ref(10)
+const currentPage = ref(1)
+const showModal = ref(false)
+const isEditing = ref(false)
 
+// REACTIVE
+const form = reactive<User>({
+  id: 0,
+  name: '',
+  email: '',
+  role: 'Student',
+  status: 'Active',
+  lastActive: '',
+  avatar: defaultAvatar,
+  username: '',
+  password: '',
+  course: '',
+  year: '',
+  section: '',
+  department: ''
+})
+
+const errors = reactive<Record<string, string>>({})
+
+// COMPUTED
+const filteredUsers = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  const role = filterRole.value
+  return users.value.filter(u => {
+    const matchesSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+    const matchesRole =
+      role === 'All Users' ||
+      (role === 'Students' && u.role === 'Student') ||
+      (role === 'Teachers' && u.role === 'Teacher') ||
+      (role === 'Administrators' && u.role === 'Administrator') ||
+      (role === 'Inactive' && u.status === 'Inactive')
+    return matchesSearch && matchesRole
+  })
+})
+
+const totalItems = computed(() => filteredUsers.value.length)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
+const displayStart = computed(() => (totalItems.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1))
+const displayEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredUsers.value.slice(start, start + pageSize.value)
+})
+
+const pageNumbers = computed(() => {
+  const pages: (number | string)[] = []
+  const tp = totalPages.value
+  if (tp <= 6) {
+    for (let i = 1; i <= tp; i++) pages.push(i)
+    return pages
+  }
+  pages.push(1, 2, 3)
+  pages.push('...')
+  pages.push(tp - 2, tp - 1, tp)
+  return pages
+})
+
+
+// WATCHERS
+watchEffect(() => {
+  currentPage.value = 1
+})
+
+watchEffect(() => {
+  if (showModal.value) validateForm()
+})
+
+// METHODS
 const normalizeRole = (val: string): 'Student' | 'Teacher' | 'Administrator' => {
   const v = (val || '').toLowerCase()
   if (v.startsWith('teach')) return 'Teacher'
@@ -107,75 +181,12 @@ const onImport = async (e: Event) => {
   if (importInput.value) importInput.value.value = ''
 }
 
-const filteredUsers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  const role = filterRole.value
-  return users.value.filter(u => {
-    const matchesSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-    const matchesRole =
-      role === 'All Users' ||
-      (role === 'Students' && u.role === 'Student') ||
-      (role === 'Teachers' && u.role === 'Teacher') ||
-      (role === 'Administrators' && u.role === 'Administrator') ||
-      (role === 'Inactive' && u.status === 'Inactive')
-    return matchesSearch && matchesRole
-  })
-})
-
-const pageSize = ref(10)
-const currentPage = ref(1)
-const totalItems = computed(() => filteredUsers.value.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
-const displayStart = computed(() => (totalItems.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1))
-const displayEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredUsers.value.slice(start, start + pageSize.value)
-})
-
-watchEffect(() => {
-  currentPage.value = 1
-})
-
 const goToPage = (n: number) => {
   if (n < 1 || n > totalPages.value) return
   currentPage.value = n
 }
 const prevPage = () => goToPage(currentPage.value - 1)
 const nextPage = () => goToPage(currentPage.value + 1)
-
-const pageNumbers = computed(() => {
-  const pages: (number | string)[] = []
-  const tp = totalPages.value
-  if (tp <= 6) {
-    for (let i = 1; i <= tp; i++) pages.push(i)
-    return pages
-  }
-  pages.push(1, 2, 3)
-  pages.push('...')
-  pages.push(tp - 2, tp - 1, tp)
-  return pages
-})
-
-const showModal = ref(false)
-const isEditing = ref(false)
-const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-
-const form = reactive<User>({
-  id: 0,
-  name: '',
-  email: '',
-  role: 'Student',
-  status: 'Active',
-  lastActive: '',
-  avatar: defaultAvatar,
-  username: '',
-  password: '',
-  course: '',
-  year: '',
-  section: '',
-  department: ''
-})
 
 const randomAlnum = (len: number) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
@@ -243,7 +254,6 @@ const onRoleChange = () => {
   form.username = genUsernameByRole(form.role)
 }
 
-const errors = reactive<Record<string, string>>({})
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const clearErrors = () => {
@@ -307,10 +317,6 @@ const validateForm = (): boolean => {
 
   return Object.keys(errors).length === 0
 }
-
-watchEffect(() => {
-  if (showModal.value) validateForm()
-})
 
 const saveUser = () => {
   if (!form.username) form.username = genUsernameByRole(form.role)

@@ -3,10 +3,12 @@ import { ref } from 'vue'
 import { Users, BookOpen, Clipboard, Activity as ActivityIcon, User, Book, Calendar, Clock } from 'lucide-vue-next'
 import type { Stats, Activity } from '@/interfaces/interfaces'
 
+// EMITS
 defineEmits<{
   navigate: [section: string]
 }>()
 
+// REFS
 const stats = ref<Stats>({
   activeUsers: 1248,
   activeCourses: 87,
