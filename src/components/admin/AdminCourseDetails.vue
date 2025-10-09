@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import { Clock, BookOpen, Users, Book, ChevronDown, Edit2, Mail, FileText, Plus, Search, X } from 'lucide-vue-next'
+import type { Course, CourseInstructor, AdminQuiz } from '@/interfaces/interfaces'
 
 const showAddTeacherModal = ref(false)
 const teacherSearchQuery = ref('')
@@ -34,31 +35,6 @@ const goToTeacherPage = (page: number) => {
   }
 }
 
-interface CourseInstructor {
-  teacherId: number
-  section: string
-  students: number
-}
-
-interface Course {
-  id: number
-  title: string
-  code: string
-  status: 'Active' | 'Archived'
-  subjectCode: string
-  instructors: CourseInstructor[]
-  description?: string
-  units?: number
-}
-
-interface Quiz {
-  id: number
-  title: string
-  dueDate: string
-  status: 'Active' | 'Closed' | 'Draft'
-  instructorId: number
-}
-
 const props = defineProps<{
   course: Course
   getPersonName: (id?: number) => string
@@ -88,8 +64,8 @@ const groupedInstructors = computed(() => {
   return grouped
 })
 
-const quizzesByInstructor = computed<Record<number, Quiz[]>>(() => {
-  const result: Record<number, Quiz[]> = {}
+const quizzesByInstructor = computed<Record<number, AdminQuiz[]>>(() => {
+  const result: Record<number, AdminQuiz[]> = {}
   for (const gi of groupedInstructors.value) {
     result[gi.teacherId] = [
       { id: Number(`${gi.teacherId}01`), title: 'Quiz 1', dueDate: 'Sep 15, 2025', status: 'Active', instructorId: gi.teacherId },

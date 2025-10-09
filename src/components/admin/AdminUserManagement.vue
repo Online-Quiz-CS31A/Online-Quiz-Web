@@ -1,27 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watchEffect } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
-
-interface User {
-  id: number
-  name: string
-  email: string
-  role: string
-  status: string
-  lastActive: string
-  avatar: string
-  username?: string
-  password?: string
-  course?: string
-  year?: string
-  section?: string
-  department?: string
-}
+import type { AdminUser } from '@/interfaces/interfaces'
 
 const searchQuery = ref('')
 const filterRole = ref('All Users')
 
-const users = ref<User[]>([
+const users = ref<AdminUser[]>([
   {
     id: 1,
     name: 'Donald Francisco',
@@ -100,7 +85,7 @@ const onImport = async (e: Event) => {
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
   for (const r of records) {
     const role = normalizeRole(r.role || r.type || r.userrole || '')
-    const newUser: User = {
+    const newUser: AdminUser = {
       id: 0,
       name: r.name || r.fullname || '',
       email: r.email || '',
@@ -232,7 +217,7 @@ const openAdd = () => {
   showModal.value = true
 }
 
-const openEdit = (u: User) => {
+const openEdit = (u: AdminUser) => {
   isEditing.value = true
   Object.assign(form, {
     id: u.id,
@@ -271,7 +256,7 @@ const usernameMatchesRole = (username: string, role: string) => {
   return isDigits && username.startsWith(prefix)
 }
 
-const getComparable = (u: User) => ({
+const getComparable = (u: AdminUser) => ({
   name: u.name.trim().toLowerCase(),
   email: u.email.trim().toLowerCase(),
   role: u.role,
@@ -283,7 +268,7 @@ const getComparable = (u: User) => ({
   department: (u.department || '').trim().toLowerCase(),
 })
 
-const isExactDuplicate = (a: User, b: User) => {
+const isExactDuplicate = (a: AdminUser, b: AdminUser) => {
   const ca = getComparable(a)
   const cb = getComparable(b)
   return JSON.stringify(ca) === JSON.stringify(cb)

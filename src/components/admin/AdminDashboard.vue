@@ -1,23 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Users, BookOpen, Clipboard, Activity, User, Book, Calendar, Clock } from 'lucide-vue-next'
-
-interface Stats {
-  activeUsers: number
-  activeCourses: number
-  quizzesTaken: number
-  systemHealth: string
-}
-
-interface Activity {
-  id: number
-  title: string
-  status: string
-  icon: any
-  user: string
-  date: string
-  timeAgo: string
-}
+import { Users, BookOpen, Clipboard, Activity as ActivityIcon, User, Book, Calendar, Clock } from 'lucide-vue-next'
+import type { Stats, Activity } from '@/interfaces/interfaces'
 
 defineEmits<{
   navigate: [section: string]
@@ -150,7 +134,7 @@ const recentActivity = ref<Activity[]>([
           <div class="flex items-center">
             <div class="flex-shrink-0">
               <div class="p-3 bg-purple-100 rounded-md">
-                <Activity class="w-6 h-6 text-purple-600" />
+                <ActivityIcon class="w-6 h-6 text-purple-600" />
               </div>
             </div>
             <div class="flex-1 w-0 ml-5">

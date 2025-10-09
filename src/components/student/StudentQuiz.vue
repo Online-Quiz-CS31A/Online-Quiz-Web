@@ -2,25 +2,15 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import type { StudentQuiz } from '@/interfaces/interfaces'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
 import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.png'
 import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
-interface Quiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  timeLimit: string
-  status: string
-  color: string
-}
 
 interface Props {
-  quizzes?: Quiz[]
+  quizzes?: StudentQuiz[]
   hideHeader?: boolean
 }
 
@@ -45,7 +35,7 @@ const getDeterministicIndex = (key: string) => {
   return Math.abs(hash)
 }
 
-const getCoverStyle = (quiz: Quiz) => {
+const getCoverStyle = (quiz: StudentQuiz) => {
   const index = getDeterministicIndex(`${quiz.id}-${quiz.title}`)
   const url = coverImages[index % coverImages.length]
   return {

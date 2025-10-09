@@ -6,6 +6,7 @@ import { useSectionsStore } from '@/stores/sectionsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
+import type { Student } from '@/interfaces/interfaces'
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
@@ -75,8 +76,6 @@ const breadcrumbText = computed(() => {
 
 type TabKey = 'dashboard' | 'people' | 'grades'
 const activeTab = ref<TabKey>('dashboard')
-
-interface Student { id: number; name: string; email: string; grade: string; progress: number; initials: string; avatar: string }
 
 const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 

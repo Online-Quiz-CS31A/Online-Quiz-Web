@@ -2,14 +2,9 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import type { HeaderProps } from '@/interfaces/interfaces'
 
-interface Props {
-  breadcrumb?: string
-  showNotification?: boolean
-  actionButtons?: boolean
-  showQuizCreatorControls?: boolean
-  published?: boolean
-}
+interface Props extends HeaderProps {}
 
 const props = withDefaults(defineProps<Props>(), {
   breadcrumb: '',

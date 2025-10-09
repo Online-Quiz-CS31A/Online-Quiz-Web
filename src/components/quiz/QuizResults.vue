@@ -1,28 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import type { QuizResultChoice, QuizResultQuestion } from '@/interfaces/interfaces'
 
 const activeTab = ref<'questions' | 'participants'>('questions')
 const totalStudents = ref(142)
 const totalSubmissions = ref(128)
 
-interface Choice {
-  text: string
-  correct: boolean
-  percentage: number
-}
-interface Question {
-  id: number
-  title: string
-  text: string
-  points: number
-  correctPercentage: string
-  correctPercentageNum: number
-  choices: Choice[]
-  correctResponses: number
-  incorrectResponses: number
-}
-
-const questions = reactive<Question[]>([
+const questions = reactive<QuizResultQuestion[]>([
   {
     id: 1,
     title: 'Question #1',

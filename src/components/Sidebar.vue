@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 interface Props {
   isActive: boolean
   activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses'
@@ -36,7 +36,7 @@ const isQuizzesActive = computed(() => activeSection.value === 'quizzes')
 const isCalendarActive = computed(() => activeSection.value === 'calendar')
 
 const auth = useAuthStore()
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 const isTeacher = computed(() => auth.userRole === 'teacher')
 const isStudent = computed(() => auth.userRole === 'student')
 const myClasses = computed(() => classesStore.myClasses)

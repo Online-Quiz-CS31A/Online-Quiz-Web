@@ -3,31 +3,8 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { Search, Plus, ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
 import { useCoursesStore } from '@/stores/coursesStore'
+import type { Course, CourseInstructor, Person } from '@/interfaces/interfaces'
 const AdminCourseDetails = defineAsyncComponent(() => import('@/components/admin/AdminCourseDetails.vue'))
-
-
-interface CourseInstructor {
-  teacherId: number
-  section: string
-  students: number
-}
-
-interface Course {
-  id: number
-  title: string
-  code: string
-  status: 'Active' | 'Archived'
-  subjectCode: string
-  instructors: CourseInstructor[]
-  description?: string
-  units?: number
-}
-
-interface Person {
-  id: number
-  name: string
-  role: 'Teacher' | 'Student'
-}
 
 const searchQuery = ref('')
 const filterStatus = ref<'All Courses' | 'Active' | 'Archived'>('All Courses')

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { defineAsyncComponent } from 'vue'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
-import { useClassesStore } from '@/stores/coursesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
@@ -14,7 +14,7 @@ const classId = computed(() => String(route.params.id || '1'))
 
 const studentsStore = useStudentsStore()
 const sectionsStore = useSectionsStore()
-const classesStore = useClassesStore()
+const classesStore = useCoursesStore()
 
 const teacherCourses = computed(() => classesStore.myClasses)
 

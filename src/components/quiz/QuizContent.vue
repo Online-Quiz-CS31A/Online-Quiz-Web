@@ -1,39 +1,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { QuestionOption, MatchingPair, QuizQuestion } from '@/interfaces/interfaces'
 
 const route = useRoute()
 const router = useRouter()
 const classId = computed(() => String(route.params.id || ''))
 
-interface QuestionOption {
-  text: string
-  isCorrect: boolean
-  imageUrl?: string
-}
-
 function getOptionLetter(index: number) {
   const base = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   return base[index] || String(index + 1)
-}
-
-interface MatchingPair {
-  left: string
-  right: string
-}
-
-interface Question {
-  id: number
-  type: string
-  text: string
-  points: number
-  mediaType: string
-  mediaUrl: string
-  required: boolean
-  options: QuestionOption[]
-  correctAnswer: string
-  pairs: MatchingPair[]
-  items: string[]
 }
 
 const quiz = reactive({
@@ -41,7 +17,7 @@ const quiz = reactive({
   subject: '',
   timeLimit: '',
   description: '',
-  questions: [] as Question[],
+  questions: [] as QuizQuestion[],
   currentQuestionIndex: -1
 })
 
@@ -83,7 +59,7 @@ function closeAddQuestionModal() {
 }
 
 function addQuestion(type: string) {
-  const newQuestion: Question = {
+  const newQuestion: QuizQuestion = {
     id: Date.now(),
     type: type,
     text: '',
