@@ -3,17 +3,44 @@ import { ref, computed, reactive, watch } from 'vue'
 import { Clock, BookOpen, Users, Book, ChevronDown, Edit2, Mail, FileText, Plus, Search, X } from 'lucide-vue-next'
 import type { Course, CourseInstructor, AdminQuiz } from '@/interfaces/interfaces'
 
+// PROPS
+const props = defineProps<{
+  course: Course
+  getPersonName: (id?: number) => string
+}>()
+
+// EMITS
+const emit = defineEmits<{
+  (e: 'back'): void
+}>()
+
+// REFS
 const showAddTeacherModal = ref(false)
 const teacherSearchQuery = ref('')
 const currentTeacherPage = ref(1)
 const teacherPageSize = 5
+const activeTab = ref<'instructors' | 'quizzes' | 'settings'>('instructors')
+const expandedSections = ref<string[]>([])
+const pageSize = 5
 
+// REACTIVE
 const teachers = reactive([
   { id: 1, name: 'Jovelyn Comaingking', email: 'jovelyn@gmail.com', department: 'Computer Studies', status: 'Active' },
   { id: 2, name: 'Winslie Dada', email: 'winslie@gmail.com', department: 'HM', status: 'Active' },
   { id: 3, name: 'Jeniffer Lopez', email: 'jeniffer@gmail.com', department: 'Accounting', status: 'Active' },
 ])
 
+const sectionPage = reactive<Record<string, number>>({})
+
+const detailsForm = reactive<Pick<Course, 'title' | 'status' | 'subjectCode' | 'units' | 'description'>>({
+  title: props.course.title,
+  status: props.course.status,
+  subjectCode: props.course.subjectCode,
+  units: props.course.units,
+  description: props.course.description || ''
+})
+
+// COMPUTED
 const filteredTeachers = computed(() => {
   return teachers.filter(t =>
     t.name.toLowerCase().includes(teacherSearchQuery.value.toLowerCase()) ||
@@ -21,31 +48,6 @@ const filteredTeachers = computed(() => {
     t.department.toLowerCase().includes(teacherSearchQuery.value.toLowerCase())
   )
 })
-
-const totalTeacherPages = computed(() => Math.ceil(filteredTeachers.value.length / teacherPageSize))
-
-const paginatedTeachers = computed(() => {
-  const start = (currentTeacherPage.value - 1) * teacherPageSize
-  return filteredTeachers.value.slice(start, start + teacherPageSize)
-})
-
-const goToTeacherPage = (page: number) => {
-  if (page >= 1 && page <= totalTeacherPages.value) {
-    currentTeacherPage.value = page
-  }
-}
-
-const props = defineProps<{
-  course: Course
-  getPersonName: (id?: number) => string
-}>()
-
-const emit = defineEmits<{
-  (e: 'back'): void
-}>()
-
-const activeTab = ref<'instructors' | 'quizzes' | 'settings'>('instructors')
-const expandedSections = ref<string[]>([])
 
 const groupedInstructors = computed(() => {
   const map = new Map<number, { teacherId: number; sections: { section: string; students: number }[] }>()
@@ -75,15 +77,14 @@ const quizzesByInstructor = computed<Record<number, AdminQuiz[]>>(() => {
   return result
 })
 
-const toggleSection = (key: string) => {
-  const idx = expandedSections.value.indexOf(key)
-  if (idx > -1) expandedSections.value.splice(idx, 1)
-  else expandedSections.value.push(key)
-}
+const totalTeacherPages = computed(() => Math.ceil(filteredTeachers.value.length / teacherPageSize))
 
-const pageSize = 5
-const sectionPage = reactive<Record<string, number>>({})
-const makeKey = (teacherId: number, sIdx: number) => `${teacherId}-${sIdx}`
+const paginatedTeachers = computed(() => {
+  const start = (currentTeacherPage.value - 1) * teacherPageSize
+  return filteredTeachers.value.slice(start, start + teacherPageSize)
+})
+
+
 const sectionStudentsMap = computed<Record<string, { id: string; name: string; email: string; status: 'Active' | 'Inactive' }[]>>(() => {
   const result: Record<string, { id: string; name: string; email: string; status: 'Active' | 'Inactive' }[]> = {}
   const humanNames = [
@@ -118,26 +119,7 @@ const sectionStudentsMap = computed<Record<string, { id: string; name: string; e
   return result
 })
 
-const totalPagesFor = (key: string) => Math.max(1, Math.ceil(((sectionStudentsMap.value[key] || []).length) / pageSize))
-const pagedStudents = (key: string) => {
-  const page = sectionPage[key] || 1
-  const start = (page - 1) * pageSize
-  return (sectionStudentsMap.value[key] || []).slice(start, start + pageSize)
-}
-const goToPage = (key: string, page: number) => {
-  const tp = totalPagesFor(key)
-  if (page < 1 || page > tp) return
-  sectionPage[key] = page
-}
-
-const detailsForm = reactive<Pick<Course, 'title' | 'status' | 'subjectCode' | 'units' | 'description'>>({
-  title: props.course.title,
-  status: props.course.status,
-  subjectCode: props.course.subjectCode,
-  units: props.course.units,
-  description: props.course.description || ''
-})
-
+// WATCHERS
 watch(() => props.course, (c) => {
   detailsForm.title = c.title
   detailsForm.status = c.status
@@ -145,6 +127,35 @@ watch(() => props.course, (c) => {
   detailsForm.units = c.units
   detailsForm.description = c.description || ''
 })
+
+// METHODS
+const goToTeacherPage = (page: number) => {
+  if (page >= 1 && page <= totalTeacherPages.value) {
+    currentTeacherPage.value = page
+  }
+}
+
+const toggleSection = (key: string) => {
+  const idx = expandedSections.value.indexOf(key)
+  if (idx > -1) expandedSections.value.splice(idx, 1)
+  else expandedSections.value.push(key)
+}
+
+const makeKey = (teacherId: number, sIdx: number) => `${teacherId}-${sIdx}`
+
+const totalPagesFor = (key: string) => Math.max(1, Math.ceil(((sectionStudentsMap.value[key] || []).length) / pageSize))
+
+const pagedStudents = (key: string) => {
+  const page = sectionPage[key] || 1
+  const start = (page - 1) * pageSize
+  return (sectionStudentsMap.value[key] || []).slice(start, start + pageSize)
+}
+
+const goToPage = (key: string, page: number) => {
+  const tp = totalPagesFor(key)
+  if (page < 1 || page > tp) return
+  sectionPage[key] = page
+}
 </script>
 
 <template>
