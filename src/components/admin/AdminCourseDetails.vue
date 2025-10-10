@@ -14,6 +14,13 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
+// REACTIVE
+const teachers = reactive([
+  { id: 1, name: 'Jovelyn Comaingking', email: 'jovelyn@gmail.com', department: 'Computer Studies', status: 'Active' },
+  { id: 2, name: 'Winslie Dada', email: 'winslie@gmail.com', department: 'HM', status: 'Active' },
+  { id: 3, name: 'Jeniffer Lopez', email: 'jeniffer@gmail.com', department: 'Accounting', status: 'Active' },
+])
+
 // REFS
 const showAddTeacherModal = ref(false)
 const teacherSearchQuery = ref('')
@@ -23,12 +30,7 @@ const activeTab = ref<'instructors' | 'quizzes' | 'settings'>('instructors')
 const expandedSections = ref<string[]>([])
 const pageSize = 5
 
-// REACTIVE
-const teachers = reactive([
-  { id: 1, name: 'Jovelyn Comaingking', email: 'jovelyn@gmail.com', department: 'Computer Studies', status: 'Active' },
-  { id: 2, name: 'Winslie Dada', email: 'winslie@gmail.com', department: 'HM', status: 'Active' },
-  { id: 3, name: 'Jeniffer Lopez', email: 'jeniffer@gmail.com', department: 'Accounting', status: 'Active' },
-])
+
 
 const sectionPage = reactive<Record<string, number>>({})
 

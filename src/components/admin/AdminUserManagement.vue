@@ -6,6 +6,24 @@ import type { AdminUser } from '@/interfaces/interfaces'
 // CONSTANTS / TYPRS
 const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
+// REACTIVE
+const form = reactive<User>({
+  id: 0,
+  name: '',
+  email: '',
+  role: 'Student',
+  status: 'Active',
+  lastActive: '',
+  avatar: defaultAvatar,
+  username: '',
+  password: '',
+  course: '',
+  year: '',
+  section: '',
+  department: ''
+})
+
+const errors = reactive<Record<string, string>>({})
 
 // REFS
 const searchQuery = ref('')
@@ -54,24 +72,6 @@ const currentPage = ref(1)
 const showModal = ref(false)
 const isEditing = ref(false)
 
-// REACTIVE
-const form = reactive<User>({
-  id: 0,
-  name: '',
-  email: '',
-  role: 'Student',
-  status: 'Active',
-  lastActive: '',
-  avatar: defaultAvatar,
-  username: '',
-  password: '',
-  course: '',
-  year: '',
-  section: '',
-  department: ''
-})
-
-const errors = reactive<Record<string, string>>({})
 
 // COMPUTED
 const filteredUsers = computed(() => {

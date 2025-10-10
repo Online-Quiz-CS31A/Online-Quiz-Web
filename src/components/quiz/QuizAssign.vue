@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 
+// REFS
 const saving = ref(false)
 const currentTab = ref<'class' | 'individual'>('class')
+const searchClass = ref('')
+const searchStudent = ref('')
 
+
+// REACTIVE
 const quizDetails = reactive({
   title: 'Mathematics Midterm Exam',
   createdAt: 'May 15, 2023',
@@ -49,9 +54,6 @@ const individuals = reactive([
   },
 ])
 
-const searchClass = ref('')
-const searchStudent = ref('')
-
 const deadline = reactive({
   date: '',
   time: '',
@@ -64,6 +66,7 @@ const options = reactive({
   showResults: true,
 })
 
+// COMPUTED
 const selectedClasses = computed(() => classes.filter(c => c.selected))
 const selectedIndividuals = computed(() => individuals.filter(i => i.selected))
 
@@ -76,18 +79,6 @@ const summaryRecipients = computed(() => {
   return `${selectedIndividuals.value.length} students`
 })
 
-function selectAllClasses() {
-  const filtered = filteredClasses.value
-  const allSelected = filtered.every(c => c.selected)
-  filtered.forEach(c => (c.selected = !allSelected))
-}
-
-function selectAllIndividuals() {
-  const filtered = filteredIndividuals.value
-  const allSelected = filtered.every(s => s.selected)
-  filtered.forEach(s => (s.selected = !allSelected))
-}
-
 const filteredClasses = computed(() => {
   const term = searchClass.value.toLowerCase().trim()
   if (!term) return classes
@@ -99,6 +90,19 @@ const filteredIndividuals = computed(() => {
   if (!term) return individuals
   return individuals.filter(s => s.name.toLowerCase().includes(term) || s.section.toLowerCase().includes(term))
 })
+
+// METHODS
+function selectAllClasses() {
+  const filtered = filteredClasses.value
+  const allSelected = filtered.every(c => c.selected)
+  filtered.forEach(c => (c.selected = !allSelected))
+}
+
+function selectAllIndividuals() {
+  const filtered = filteredIndividuals.value
+  const allSelected = filtered.every(s => s.selected)
+  filtered.forEach(s => (s.selected = !allSelected))
+}
 
 function quickAddDays(days: number) {
   const d = new Date()

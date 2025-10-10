@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+// REFS
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
-
 const showCurrent = ref(false)
 const showNew = ref(false)
 const showConfirm = ref(false)
-
 const sms2FA = ref(false)
 
+// METHODS
 function onSubmit(e: Event) {
   e.preventDefault()
   if (newPassword.value !== confirmPassword.value) {

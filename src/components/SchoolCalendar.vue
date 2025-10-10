@@ -3,14 +3,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '@/stores/calendarStore'
 import type { CalendarEventType, CalendarEventItem } from '../interfaces/interfaces'
 
+// REFS
 const now = ref(new Date())
 const currentMonth = ref(now.value.getMonth())
 const currentYear = ref(now.value.getFullYear())
 const currentTimeString = ref('')
-
-const calendarStore = useCalendarStore()
-const events = computed<CalendarEventItem[]>(() => calendarStore.myCalendarEvents)
-
 const showModal = ref(false)
 const formTitle = ref('')
 const formDate = ref<string>('')
@@ -19,6 +16,11 @@ const formType = ref<CalendarEventType>('quiz')
 const formIsDeadline = ref(false)
 const editingEventId = ref<number | null>(null)
 
+// REACTIVE
+const calendarStore = useCalendarStore()
+const events = computed<CalendarEventItem[]>(() => calendarStore.myCalendarEvents)
+
+// COMPUTED
 const selectedDateEvents = computed(() =>
   formDate.value ? events.value.filter(e => e.date === formDate.value) : []
 )
@@ -74,6 +76,7 @@ const calendarCells = computed(() => {
   return cells
 })
 
+// METHODS
 function eventsForDate(dateStr: string) {
   return events.value.filter(e => e.date === dateStr)
 }
@@ -168,6 +171,7 @@ function updateClock() {
   currentTimeString.value = `${dateString} | ${timeString}`
 }
 
+// LIFECYCLE
 onMounted(() => {
   updateClock()
   setInterval(updateClock, 1000)

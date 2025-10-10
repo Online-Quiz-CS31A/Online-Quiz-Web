@@ -6,11 +6,15 @@ import { useCoursesStore } from '@/stores/coursesStore'
 const TeacherCourses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
 
+// REACTIVE
 const auth = useAuthStore()
 const classesStore = useCoursesStore()
-const isTeacher = computed(() => auth.userRole === 'teacher')
 
+// REFS
 const query = ref('')
+
+// COMPUTED
+const isTeacher = computed(() => auth.userRole === 'teacher')
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const list = classesStore.myClasses

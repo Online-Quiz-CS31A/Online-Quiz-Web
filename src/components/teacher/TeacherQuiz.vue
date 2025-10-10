@@ -5,6 +5,8 @@ import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
 import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.png'
 import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
+
+// TYPES
 interface Quiz {
   id: number
   subject: string
@@ -22,13 +24,21 @@ interface Props {
   hideHeader?: boolean
 }
 
+// CONSTANTS
+const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
+
+// PROPS
 const props = defineProps<Props>()
+
+// EMITS
 const emit = defineEmits<{
   'view-all': []
 }>()
- 
-const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 
+// REFS
+const openMenuId = ref<number | null>(null)
+ 
+// METHODS
 const getDeterministicIndex = (key: string) => {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -46,7 +56,6 @@ const getCoverStyle = (quiz: Quiz) => {
   }
 }
 
-
 const getCardColorClasses = (color: string) => {
   const colorMap: Record<string, string> = {
     blue: 'bg-blue-200 text-blue-900',
@@ -63,8 +72,6 @@ const getCardColorClasses = (color: string) => {
   return colorMap[color] || colorMap.blue
 }
 
-const openMenuId = ref<number | null>(null)
-
 const toggleMenu = (quizId: number) => {
   openMenuId.value = openMenuId.value === quizId ? null : quizId
 }
@@ -72,7 +79,6 @@ const toggleMenu = (quizId: number) => {
 const closeMenu = () => {
   openMenuId.value = null
 }
-
 
 const handleEditQuiz = (quiz: Quiz) => {
   console.log(`Editing quiz: ${quiz.title}`)

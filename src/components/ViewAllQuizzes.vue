@@ -6,13 +6,18 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 const StudentQuizList = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
 const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 
+// REACTIVE
 const auth = useAuthStore()
 const quizzesStore = useQuizzesStore()
 
+// REFS
+const query = ref('')
+
+// COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
+
 const quizzes = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes : quizzesStore.myStudentQuizzes))
 
-const query = ref('')
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const list = quizzes.value || []

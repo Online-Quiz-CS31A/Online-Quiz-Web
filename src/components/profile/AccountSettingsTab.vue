@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+// REFS
 const language = ref('English')
 const timezone = ref('(GMT-08:00) Pacific Time (Philippines)')
 const dateFormat = ref('MM/DD/YYYY')
 const weeklySummary = ref(true)
 const showOnline = ref(false)
 
+
+// METHODS
 function onCancel() {
   language.value = 'English'
   timezone.value = '(GMT-08:00) Pacific Time (Philippines)'

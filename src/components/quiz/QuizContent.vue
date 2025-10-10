@@ -3,14 +3,14 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { QuestionOption, MatchingPair, QuizQuestion } from '@/interfaces/interfaces'
 
+// REFS
+const showAddQuestionModal = ref(false)
+const showMediaUpload = ref(false)
+const openMenuIndex = ref<number | null>(null)
+
+// REACTIVE
 const route = useRoute()
 const router = useRouter()
-const classId = computed(() => String(route.params.id || ''))
-
-function getOptionLetter(index: number) {
-  const base = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  return base[index] || String(index + 1)
-}
 
 const quiz = reactive({
   title: '',
@@ -21,10 +21,6 @@ const quiz = reactive({
   currentQuestionIndex: -1
 })
 
-const showAddQuestionModal = ref(false)
-const showMediaUpload = ref(false)
-const openMenuIndex = ref<number | null>(null)
-
 const questionSettings = reactive({
   type: 'multiple-choice',
   points: 1,
@@ -32,12 +28,40 @@ const questionSettings = reactive({
   required: false
 })
 
+// COMPUTED
+const classId = computed(() => String(route.params.id || ''))
+
 const currentQuestion = computed(() => {
   if (quiz.currentQuestionIndex === -1) return null
   return quiz.questions[quiz.currentQuestionIndex]
 })
 
 const hasQuestions = computed(() => quiz.questions.length > 0)
+
+// WATCHERS
+watch(() => questionSettings.type, updateQuestionType)
+watch(() => questionSettings.points, (newPoints) => {
+  if (currentQuestion.value) {
+    currentQuestion.value.points = newPoints
+  }
+})
+watch(() => questionSettings.mediaType, (newMediaType) => {
+  if (currentQuestion.value) {
+    currentQuestion.value.mediaType = newMediaType
+  }
+  showMediaUpload.value = newMediaType !== 'none'
+})
+watch(() => questionSettings.required, (newRequired) => {
+  if (currentQuestion.value) {
+    currentQuestion.value.required = newRequired
+  }
+})
+
+// METHODS
+function getOptionLetter(index: number) {
+  const base = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  return base[index] || String(index + 1)
+}
 
 const questionTypes = [
   { value: 'multiple-choice', label: 'Multiple Choice', icon: 'fas fa-list-ul' },
@@ -316,24 +340,6 @@ function getQuestionTypeDescription(type: string) {
   }
   return descriptions[type] || ''
 }
-
-watch(() => questionSettings.type, updateQuestionType)
-watch(() => questionSettings.points, (newPoints) => {
-  if (currentQuestion.value) {
-    currentQuestion.value.points = newPoints
-  }
-})
-watch(() => questionSettings.mediaType, (newMediaType) => {
-  if (currentQuestion.value) {
-    currentQuestion.value.mediaType = newMediaType
-  }
-  showMediaUpload.value = newMediaType !== 'none'
-})
-watch(() => questionSettings.required, (newRequired) => {
-  if (currentQuestion.value) {
-    currentQuestion.value.required = newRequired
-  }
-})
 
 function getQuestionIcon(type: string) {
   const map: Record<string, string> = {

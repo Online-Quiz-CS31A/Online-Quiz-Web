@@ -1,11 +1,28 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import type { QuizResultChoice, QuizResultQuestion } from '@/interfaces/interfaces'
+import type { QuizResultChoice, QuizResultQuestion, } from '@/interfaces/interfaces'
 
-const activeTab = ref<'questions' | 'participants'>('questions')
-const totalStudents = ref(142)
-const totalSubmissions = ref(128)
+// TYPES
+interface Participant {
+  name: string
+  email: string
+  avatar: string
+  section: string
+  score: number
+  percentage: number
+  time: string
+}
 
+
+// CONSTANTS
+const TOTAL_SEGMENTS = 5
+const sections = ['IT11A', 'IT11B', 'CS22A', 'CS22B', 'CS23A']
+const names = [
+  'Neil Vallecer', 'Jose Betonio', 'James Maguinda', 'Jan Rosalijos', 'John Cez Casupanan',
+  'Nicole Inot', 'Uzziah Lanz', 'Weah Jacionto', 'Elian Inot', 'Chitoge Kirisaki'
+]
+
+// REACTIVE
 const questions = reactive<QuizResultQuestion[]>([
   {
     id: 1,
@@ -89,43 +106,32 @@ const questions = reactive<QuizResultQuestion[]>([
   },
 ])
 
+const participants = reactive<Participant[]>(names.map((name, index) => ({
+  name,
+  email: `${name.split(' ')[0].toLowerCase()}.${name.split(' ')[1].toLowerCase()}@gmail.com`,
+  avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+  section: sections[Math.floor(Math.random() * sections.length)],
+  score: Math.floor(Math.random() * 21), // Random score between 0-20
+  percentage: Math.floor(Math.random() * 101), // Random percentage between 0-100
+  time: Math.random() > 0.3 ? `${Math.floor(Math.random() * 24).toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}` : '--:--'
+})))
+
+// REFS
+const activeTab = ref<'questions' | 'participants'>('questions')
+const totalStudents = ref(142)
+const totalSubmissions = ref(128)
 const selectedQuestionId = ref<number>(questions[0]?.id ?? 1)
+const selectedSection = ref('All Sections')
+const search = ref('')
+
+
+// COMPUTED
 const currentQuestion = computed(() => questions.find((q) => q.id === selectedQuestionId.value))
-
-function selectQuestion(id: number) {
-  selectedQuestionId.value = id
-}
-
-function letter(index: number) {
-  return String.fromCharCode(65 + index)
-}
-
-const correctWidth = computed(() => {
-  if (!currentQuestion.value) return '0%'
-  return `${(currentQuestion.value.correctResponses / totalSubmissions.value) * 100}%`
-})
 
 const incorrectResponses = computed(() => {
   if (!currentQuestion.value) return 0
   return currentQuestion.value.incorrectResponses
 })
-
-const incorrectWidth = computed(() => {
-  if (!currentQuestion.value) return '0%'
-  return `${(currentQuestion.value.incorrectResponses / totalSubmissions.value) * 100}%`
-})
-
-const TOTAL_SEGMENTS = 5
-function segmentize(ratio: number): number[] {
-  const clamped = Math.max(0, Math.min(1, ratio))
-  const filled = clamped * TOTAL_SEGMENTS
-  const arr: number[] = []
-  for (let i = 0; i < TOTAL_SEGMENTS; i++) {
-    const fill = Math.max(0, Math.min(1, filled - i))
-    arr.push(fill)
-  }
-  return arr
-}
 
 const correctSegments = computed(() => {
   const ratio = currentQuestion.value ? currentQuestion.value.correctResponses / totalSubmissions.value : 0
@@ -137,34 +143,6 @@ const incorrectSegments = computed(() => {
   return segmentize(ratio)
 })
 
-interface Participant {
-  name: string
-  email: string
-  avatar: string
-  section: string
-  score: number
-  percentage: number
-  time: string
-}
-
-const sections = ['IT11A', 'IT11B', 'CS22A', 'CS22B', 'CS23A']
-const names = [
-  'Neil Vallecer', 'Jose Betonio', 'James Maguinda', 'Jan Rosalijos', 'John Cez Casupanan',
-  'Nicole Inot', 'Uzziah Lanz', 'Weah Jacionto', 'Elian Inot', 'Chitoge Kirisaki'
-]
-
-const participants = reactive<Participant[]>(names.map((name, index) => ({
-  name,
-  email: `${name.split(' ')[0].toLowerCase()}.${name.split(' ')[1].toLowerCase()}@gmail.com`,
-  avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
-  section: sections[Math.floor(Math.random() * sections.length)],
-  score: Math.floor(Math.random() * 21), // Random score between 0-20
-  percentage: Math.floor(Math.random() * 101), // Random percentage between 0-100
-  time: Math.random() > 0.3 ? `${Math.floor(Math.random() * 24).toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}` : '--:--'
-})))
-
-const selectedSection = ref('All Sections')
-const search = ref('')
 
 const filteredParticipants = computed(() => {
   return participants
@@ -176,6 +154,27 @@ const filteredParticipants = computed(() => {
         .includes(search.value.toLowerCase())
     )
 })
+
+
+// METHODS
+function selectQuestion(id: number) {
+  selectedQuestionId.value = id
+}
+
+function letter(index: number) {
+  return String.fromCharCode(65 + index)
+}
+
+function segmentize(ratio: number): number[] {
+  const clamped = Math.max(0, Math.min(1, ratio))
+  const filled = clamped * TOTAL_SEGMENTS
+  const arr: number[] = []
+  for (let i = 0; i < TOTAL_SEGMENTS; i++) {
+    const fill = Math.max(0, Math.min(1, filled - i))
+    arr.push(fill)
+  }
+  return arr
+}
 </script>
 
 <template>

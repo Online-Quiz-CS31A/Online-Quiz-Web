@@ -7,6 +7,10 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
+//CONSTANTS
+const placeholderPhoto = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+
+// REACTIVE
 const auth = useAuthStore()
 const teachers = useTeachersStore()
 const students = useStudentsStore()
@@ -14,6 +18,7 @@ const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const quizzesStore = useQuizzesStore()
 
+// COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
 const profile = computed(() => (isTeacher.value ? teachers.currentProfile : students.currentProfile))
 const fullName = computed(() => {
@@ -21,6 +26,34 @@ const fullName = computed(() => {
   return auth.currentUser?.name || 'Guest'
 })
 
+const subtitle = computed(() => {
+  if (!profile.value) return isTeacher.value ? 'Department' : 'Year • Course'
+  return isTeacher.value
+    ? (department.value || (profile.value as any).department || 'Department')
+    : `${yearLevel.value || (profile.value as any).yearLevel || 'Year'}${program.value || (profile.value as any).program ? ' • ' : ''}${program.value || (profile.value as any).program || ''}`
+})
+
+const coursesCount = computed(() => classesStore.myClasses.length)
+
+const studentsCount = computed(() => {
+  if (!isTeacher.value) return 0
+  
+  const teacherCourses = classesStore.myClasses
+  let totalStudents = 0
+  
+  for (const course of teacherCourses) {
+    const sections = sectionsStore.getSectionsByCourse(course.id)
+    for (const section of sections) {
+      totalStudents += section.studentUsernames.length
+    }
+  }
+  
+  return totalStudents
+})
+
+const quizzesCount = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes.length : quizzesStore.myStudentQuizzes.length))
+
+// REFS
 const firstName = ref(profile.value?.firstName || '')
 const lastName = ref(profile.value?.lastName || '')
 const email = ref(profile.value?.email || '')
@@ -29,10 +62,9 @@ const department = ref((profile.value as any)?.department || '')
 const yearLevel = ref((profile.value as any)?.yearLevel || '')
 const program = ref((profile.value as any)?.program || '')
 const bio = ref(profile.value?.bio || '')
-
-const placeholderPhoto = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 const imageUrl = ref(profile.value?.photoUrl || placeholderPhoto)
 
+// METHODS
 const onFileChange: (e: Event) => void = (e) => {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -86,32 +118,7 @@ function onSubmit(e: Event) {
   alert('Profile changes saved successfully!')
 }
 
-const subtitle = computed(() => {
-  if (!profile.value) return isTeacher.value ? 'Department' : 'Year • Course'
-  return isTeacher.value
-    ? (department.value || (profile.value as any).department || 'Department')
-    : `${yearLevel.value || (profile.value as any).yearLevel || 'Year'}${program.value || (profile.value as any).program ? ' • ' : ''}${program.value || (profile.value as any).program || ''}`
-})
 
-const coursesCount = computed(() => classesStore.myClasses.length)
-
-const studentsCount = computed(() => {
-  if (!isTeacher.value) return 0
-  
-  const teacherCourses = classesStore.myClasses
-  let totalStudents = 0
-  
-  for (const course of teacherCourses) {
-    const sections = sectionsStore.getSectionsByCourse(course.id)
-    for (const section of sections) {
-      totalStudents += section.studentUsernames.length
-    }
-  }
-  
-  return totalStudents
-})
-
-const quizzesCount = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes.length : quizzesStore.myStudentQuizzes.length))
 </script>
 
 <template>

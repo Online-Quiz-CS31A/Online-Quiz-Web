@@ -4,8 +4,13 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import type { HeaderProps } from '@/interfaces/interfaces'
 
+// TYPES
 interface Props extends HeaderProps {}
 
+// CONSTANTS
+const router = useRouter()
+
+// PROPS
 const props = withDefaults(defineProps<Props>(), {
   breadcrumb: '',
   showNotification: true,
@@ -14,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   published: false,
 })
 
+// EMITS
 const emit = defineEmits<{
   save: []
   publish: []
@@ -24,10 +30,14 @@ const emit = defineEmits<{
   segmentClick: [segment: string]
 }>()
 
+// REFS
 const showProfileDropdown = ref(false)
 const showPublishModal = ref(false)
 
+// REACTIVE
 const store = useAuthStore()
+
+// COMPUTED
 const displayName = computed(() => store.currentUser?.name || 'Guest')
 const initials = computed(() => {
   const name = displayName.value.trim()
@@ -37,8 +47,16 @@ const initials = computed(() => {
   const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
   return (first + last).toUpperCase() || first.toUpperCase() || 'U'
 })
-const router = useRouter()
 
+const breadcrumbSegments = computed(() => {
+  if (!props.breadcrumb) return [] as string[]
+  return props.breadcrumb
+    .split('>')
+    .map(s => s.trim())
+    .filter(Boolean)
+})
+
+// METHODS
 function toggleProfileDropdown() {
   showProfileDropdown.value = !showProfileDropdown.value
 }
@@ -75,14 +93,6 @@ function confirmPublish() {
   emit('publish')
   closePublishModal()
 }
-
-const breadcrumbSegments = computed(() => {
-  if (!props.breadcrumb) return [] as string[]
-  return props.breadcrumb
-    .split('>')
-    .map(s => s.trim())
-    .filter(Boolean)
-})
 
 function handleBreadcrumbClick(segment: string) {
   const key = segment.toLowerCase()

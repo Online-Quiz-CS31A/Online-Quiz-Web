@@ -6,6 +6,20 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import type { Course, CourseInstructor, Person } from '@/interfaces/interfaces'
 const AdminCourseDetails = defineAsyncComponent(() => import('@/components/admin/AdminCourseDetails.vue'))
 
+// REACTIVE
+const form = reactive<Course>({
+  id: 0,
+  title: '',
+  code: '',
+  status: 'Active',
+  subjectCode: '',
+  instructors: [],
+  description: '',
+  units: undefined
+})
+const errors = reactive<Record<string, string>>({})
+const classesStore = useCoursesStore()
+
 // REFs
 const searchQuery = ref('')
 const filterStatus = ref<'All Courses' | 'Active' | 'Archived'>('All Courses')
@@ -27,20 +41,6 @@ const selectedCourseForDetails = ref<Course | null>(null)
 const selectedCourseInline = ref<Course | null>(null)
 // IMPORT COURSES
 const importInput = ref<HTMLInputElement | null>(null)
-
-// REACTIVE
-const form = reactive<Course>({
-  id: 0,
-  title: '',
-  code: '',
-  status: 'Active',
-  subjectCode: '',
-  instructors: [],
-  description: '',
-  units: undefined
-})
-const errors = reactive<Record<string, string>>({})
-const classesStore = useCoursesStore()
 
 // COMPUTED
 const teachers = computed(() => people.value.filter(p => p.role === 'Teacher'))

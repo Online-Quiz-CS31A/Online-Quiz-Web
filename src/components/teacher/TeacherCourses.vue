@@ -10,25 +10,34 @@ import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
 
-const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
-const showViewAll = computed(() => props.showViewAll !== false)
-const showHeader = computed(() => props.showHeader !== false)
+// CONSTANTS
+const coverImages = [bg1, bg2, bg3, bg4, bg5]
+const router = useRouter()
 
+// PROPS
+const props = defineProps<{ classes?: ClassItem[];  maxItems?: number }>()
+
+// EMITS
+const emit = defineEmits<{
+  (e: 'leave-class', classItem: ClassItem): void
+  (e: 'view-all'): void
+}>()
+
+// REACTIVE
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
+
+// REFS
+const menuOpenForId = ref<number | null>(null)
+
+// COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
   const list = classes.value
   return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
 })
 
-const menuOpenForId = ref<number | null>(null)
-
-const emit = defineEmits<{
-  (e: 'leave-class', classItem: ClassItem): void
-  (e: 'view-all'): void
-}>()
-
+// METHODS
 const toggleMenu = (id: number) => {
   menuOpenForId.value = menuOpenForId.value === id ? null : id
 }
@@ -39,18 +48,6 @@ const onDocClick = (e: MouseEvent) => {
     menuOpenForId.value = null
   }
 }
-
-onMounted(() => {
-  document.addEventListener('click', onDocClick)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClick)
-})
-
-const coverImages = [bg1, bg2, bg3, bg4, bg5]
-
-const router = useRouter()
 
 const handleEnterClass = (classItem: ClassItem) => {
   router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
@@ -99,6 +96,15 @@ const getStudentCount = (courseId: number) => {
   const sections = sectionsStore.getSectionsByCourse(courseId)
   return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
 }
+
+// LIFECYCLE
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick)
+})
 </script>
 
 <template>

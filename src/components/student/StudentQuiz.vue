@@ -9,23 +9,32 @@ import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
 import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.png'
 import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
 
+// TYPES
 interface Props {
   quizzes?: StudentQuiz[]
   hideHeader?: boolean
 }
 
+// CONSTANTS
+const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
+const router = useRouter()
+
+// PROPS
 const props = defineProps<Props>()
+
+// EMITS
 const emit = defineEmits<{
   'view-all': []
 }>()
 
-const router = useRouter()
-
-const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
-
+// REACTIVE
 const quizzesStore = useQuizzesStore()
+
+// COMPUTED
 const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
 
+
+// METHODS
 const getDeterministicIndex = (key: string) => {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
