@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import Header from '@/components/Header.vue'
-import ProfileTab from '@/components/profile/ProfileTab.vue'
-import AccountSettingsTab from '@/components/profile/AccountSettingsTab.vue'
-import NotificationsTab from '@/components/profile/NotificationsTab.vue'
-import SecurityTab from '@/components/profile/SecurityTab.vue'
+import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const ProfileTab = defineAsyncComponent(() => import('@/components/profile/ProfileTab.vue'))
+const AccountSettingsTab = defineAsyncComponent(() => import('@/components/profile/AccountSettingsTab.vue'))
+const NotificationsTab = defineAsyncComponent(() => import('@/components/profile/NotificationsTab.vue'))
+const SecurityTab = defineAsyncComponent(() => import('@/components/profile/SecurityTab.vue'))
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: 'fas fa-user' },

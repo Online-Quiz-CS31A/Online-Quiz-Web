@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import Sidebar from '@/components/Sidebar.vue'
-import Header from '@/components/Header.vue'
-import StudentClasses from '@/components/student/StudentClasses.vue'
-import StudentUpcomingQuizzes from '@/components/student/StudentQuiz.vue'
-import SchoolCalendar from '@/components/SchoolCalendar.vue'
-import ViewAllCourses from '@/components/ViewAllCourses.vue'
-import ViewAllQuizzes from '@/components/ViewAllQuizzes.vue'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
+const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
+const StudentUpcomingQuizzes = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
+const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCalendar.vue'))
+const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
+const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
+
 
 const sidebarActive = ref(false)
 const showJoinClass = ref(false)

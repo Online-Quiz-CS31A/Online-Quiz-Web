@@ -1,13 +1,8 @@
   <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import type { QuizViewQuestion } from '@/interfaces/interfaces'
   
-  interface Question {
-    question: string
-    options: string[]
-    correctAnswer: number
-  }
-  
-  const questions: Question[] = [
+  const questions: QuizViewQuestion[] = [
     {
       question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
       options: ["6.75", "8", "11.25", "720"],

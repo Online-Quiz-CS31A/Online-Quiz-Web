@@ -2,15 +2,15 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import type { HeaderProps } from '@/interfaces/interfaces'
 
-interface Props {
-  breadcrumb?: string
-  showNotification?: boolean
-  actionButtons?: boolean
-  showQuizCreatorControls?: boolean
-  published?: boolean
-}
+// TYPES
+interface Props extends HeaderProps {}
 
+// CONSTANTS
+const router = useRouter()
+
+// PROPS
 const props = withDefaults(defineProps<Props>(), {
   breadcrumb: '',
   showNotification: true,
@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   published: false,
 })
 
+// EMITS
 const emit = defineEmits<{
   save: []
   publish: []
@@ -26,12 +27,17 @@ const emit = defineEmits<{
   assign: []
   results: []
   preview: []
+  segmentClick: [segment: string]
 }>()
 
+// REFS
 const showProfileDropdown = ref(false)
 const showPublishModal = ref(false)
 
+// REACTIVE
 const store = useAuthStore()
+
+// COMPUTED
 const displayName = computed(() => store.currentUser?.name || 'Guest')
 const initials = computed(() => {
   const name = displayName.value.trim()
@@ -41,8 +47,16 @@ const initials = computed(() => {
   const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
   return (first + last).toUpperCase() || first.toUpperCase() || 'U'
 })
-const router = useRouter()
 
+const breadcrumbSegments = computed(() => {
+  if (!props.breadcrumb) return [] as string[]
+  return props.breadcrumb
+    .split('>')
+    .map(s => s.trim())
+    .filter(Boolean)
+})
+
+// METHODS
 function toggleProfileDropdown() {
   showProfileDropdown.value = !showProfileDropdown.value
 }
@@ -80,20 +94,14 @@ function confirmPublish() {
   closePublishModal()
 }
 
-const breadcrumbSegments = computed(() => {
-  if (!props.breadcrumb) return [] as string[]
-  return props.breadcrumb
-    .split('>')
-    .map(s => s.trim())
-    .filter(Boolean)
-})
-
 function handleBreadcrumbClick(segment: string) {
   const key = segment.toLowerCase()
   if (key === 'dashboard') {
     router.push({ name: 'teacher' })
   } else if (key === 'courses') {
     router.push({ name: 'teacher', query: { section: 'courses' } })
+  } else {
+    emit('segmentClick', segment)
   }
 }
 </script>
@@ -107,7 +115,7 @@ function handleBreadcrumbClick(segment: string) {
           <template v-if="breadcrumbSegments.length">
             <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
               <span
-                v-if="['dashboard','courses'].includes(seg.toLowerCase()) && idx < breadcrumbSegments.length - 1"
+                v-if="idx < breadcrumbSegments.length - 1"
                 @click="handleBreadcrumbClick(seg)"
                 class="cursor-pointer"
               >
@@ -130,7 +138,7 @@ function handleBreadcrumbClick(segment: string) {
           @click="emit('content')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
-            'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-builder',
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-builder',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-builder'
           }"
         >
@@ -141,7 +149,7 @@ function handleBreadcrumbClick(segment: string) {
           @click="emit('assign')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
-            'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-assign',
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-assign',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-assign'
           }"
         >
@@ -152,7 +160,7 @@ function handleBreadcrumbClick(segment: string) {
           @click="emit('results')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
-            'bg-indigo-100 text-indigo-700 border border-indigo-300': $route.name === 'quiz-results',
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-results',
             'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-results'
           }"
         >

@@ -1,91 +1,113 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
+import { defineAsyncComponent } from 'vue'
+import { useStudentsStore } from '@/stores/studentsStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import { useCoursesStore } from '@/stores/coursesStore'
+import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 const route = useRoute()
 const router = useRouter()
 const classId = computed(() => String(route.params.id || '1'))
 
+const studentsStore = useStudentsStore()
+const sectionsStore = useSectionsStore()
+const classesStore = useCoursesStore()
+
+const teacherCourses = computed(() => classesStore.myClasses)
+
+const currentCourse = computed(() => {
+  const cid = Number(classId.value)
+  return teacherCourses.value.find(c => c.id === cid) || teacherCourses.value[0]
+})
+
 const form = reactive({
   className: '',
-  subject: 'Information Assurance',
+  subject: currentCourse.value?.name || 'Information Assurance',
   scheduleDay: 'Monday',
   scheduleTime: '',
   classroom: '',
-  description: '',
 })
 
-interface Student {
-  id: number
-  name: string
-  email: string
-  year: '1st Year' | '2nd Year' | '3rd Year' | '4th Year' | 'TESDA'
-  major: string
-  avatar: string
-}
+watch(currentCourse, (newCourse) => {
+  if (newCourse) {
+    form.subject = newCourse.name
+  }
+}, { immediate: true })
 
-const STUDENT_AVATAR = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-const students = ref<Student[]>([
-  { id: 1,  name: 'Neil Vallecer',        email: 'neil.vallecer@gmail.com',        year: '3rd Year', major: 'Computer Science',         avatar: STUDENT_AVATAR },
-  { id: 2,  name: 'Jose Betonio',         email: 'jose.betonio@gmail.com',         year: '2nd Year', major: 'Information Technology',   avatar: STUDENT_AVATAR },
-  { id: 3,  name: 'James Maguinda',       email: 'james.maguinda@gmail.com',       year: '4th Year', major: 'Accountancy',               avatar: STUDENT_AVATAR },
-  { id: 4,  name: 'Jan Rosalijos',        email: 'jan.rosalijos@gmail.com',        year: '1st Year', major: 'Business Administration',  avatar: STUDENT_AVATAR },
-  { id: 5,  name: 'John Cez Casupanan',   email: 'johncez.casupanan@gmail.com',    year: '3rd Year', major: 'Computer Science',         avatar: STUDENT_AVATAR },
-  { id: 6,  name: 'Nicole Inot',          email: 'nicole.inot@gmail.com',          year: '2nd Year', major: 'Information Technology',   avatar: STUDENT_AVATAR },
-  { id: 7,  name: 'Uzziah Lanz',          email: 'uzziah.lanz@gmail.com',          year: '4th Year', major: 'Accountancy',               avatar: STUDENT_AVATAR },
-  { id: 8,  name: 'Weah Jacionto',        email: 'weah.jacionto@gmail.com',        year: '3rd Year', major: 'Business Administration',  avatar: STUDENT_AVATAR },
-  { id: 9,  name: 'Elian Inot',           email: 'elian.inot@gmail.com',           year: '1st Year', major: 'Computer Science',         avatar: STUDENT_AVATAR },
-  { id: 10, name: 'Chitoge Kirisaki',     email: 'chitoge.kirisaki@gmail.com',     year: '2nd Year', major: 'Information Technology',   avatar: STUDENT_AVATAR },
-])
+const students = computed<StudentViewModel[]>(() => {
+  return Object.entries(studentsStore.profiles).map(([username, profile]: [string, StudentProfile]) => ({
+    username,
+    name: `${profile.firstName} ${profile.lastName}`.trim(),
+    email: profile.email,
+    year: profile.yearLevel,
+    major: profile.program ?? '',
+    avatar: profile.photoUrl ?? '/assets/default-avatar.png'
+  }))
+})
 
-const selectedStudents = ref<Student[]>([])
+const selectedStudents = ref<StudentViewModel[]>([])
 
 const search = ref('')
-const filters = ref<'All' | '1st Year' | '2nd Year' | '3rd Year' | '4th Year' | 'TESDA'>('All')
+const filters = ref<'All' | YearLevel>('All')
 const filteredStudents = computed(() => {
   const q = search.value.trim().toLowerCase()
   return students.value.filter(s => {
-    const matchQuery = !q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q) || s.major.toLowerCase().includes(q)
+    const matchQuery = !q || 
+      s.name.toLowerCase().includes(q) || 
+      s.email.toLowerCase().includes(q) || 
+      s.major.toLowerCase().includes(q)
     const matchFilter = filters.value === 'All' || s.year === filters.value
     return matchQuery && matchFilter
   })
 })
 
-function toggleStudent(s: Student) {
-  const idx = selectedStudents.value.findIndex(x => x.id === s.id)
+function toggleStudent(s: StudentViewModel) {
+  const idx = selectedStudents.value.findIndex(x => x.username === s.username)
   if (idx >= 0) selectedStudents.value.splice(idx, 1)
   else selectedStudents.value.push(s)
 }
-function isSelected(id: number) {
-  return selectedStudents.value.some(s => s.id === id)
+
+function isSelected(username: string) {
+  return selectedStudents.value.some(s => s.username === username)
 }
-function removeStudent(id: number) {
-  selectedStudents.value = selectedStudents.value.filter(s => s.id !== id)
+
+function removeStudent(username: string) {
+  selectedStudents.value = selectedStudents.value.filter(s => s.username !== username)
 }
+
 function clearSelection() {
   selectedStudents.value = []
 }
 
 const dragOver = ref(false)
-function onDragStart(evt: DragEvent, s: Student) {
-  evt.dataTransfer?.setData('text/plain', String(s.id))
+
+function showAlert(message: string) {
+  alert(message)
+}
+
+function onDragStart(evt: DragEvent, s: StudentViewModel) {
+  evt.dataTransfer?.setData('text/plain', s.username)
   evt.dataTransfer!.effectAllowed = 'copy'
 }
+
 function onDragOver(evt: DragEvent) {
   evt.preventDefault()
   dragOver.value = true
 }
+
 function onDragLeave() {
   dragOver.value = false
 }
+
 function onDrop(evt: DragEvent) {
   evt.preventDefault()
   dragOver.value = false
-  const idStr = evt.dataTransfer?.getData('text/plain')
-  const id = idStr ? Number(idStr) : NaN
-  const s = students.value.find(x => x.id === id)
-  if (s && !isSelected(s.id)) selectedStudents.value.push(s)
+  const username = evt.dataTransfer?.getData('text/plain')
+  const s = students.value.find(x => x.username === username)
+  if (s && !isSelected(s.username)) selectedStudents.value.push(s)
 }
 
 function onImportMasterList(e: Event) {
@@ -97,15 +119,34 @@ function onImportMasterList(e: Event) {
 
 function saveClass() {
   if (!form.className) return alert('Please enter a class name')
-  alert('Class saved!')
+  
+  const studentUsernames = selectedStudents.value.map(s => s.username)
+  
+  const selectedCourse = teacherCourses.value.find(c => c.name === form.subject)
+  const courseId = selectedCourse ? selectedCourse.id : Number(classId.value)
+  
+  const newSectionId = sectionsStore.addSection({
+    name: form.className,
+    students: studentUsernames.length,
+    studentUsernames: studentUsernames
+  }, courseId)
+  
+  sectionsStore.setSchedule(courseId, newSectionId, {
+    scheduleDay: form.scheduleDay,
+    scheduleTime: form.scheduleTime,
+    classroom: form.classroom
+  })
+  
+  alert('Class saved successfully!')
+  router.back()
 }
 
 function goBack() {
   router.back()
 }
 
-function yearPillClass(year: Student['year']) {
-  const map: Record<Student['year'], string> = {
+function yearPillClass(year: YearLevel) {
+  const map: Record<YearLevel, string> = {
     '1st Year': 'bg-purple-100 text-purple-800',
     '2nd Year': 'bg-green-100 text-green-800',
     '3rd Year': 'bg-yellow-100 text-yellow-800',
@@ -138,11 +179,9 @@ function yearPillClass(year: Student['year']) {
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                 <select v-model="form.subject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option>Information Assurance</option>
-                  <option>Computer Architecture</option>
-                  <option>Social and Profession</option>
-                  <option>Automata</option>
-                  <option>Physical Education</option>
+                  <option v-for="course in teacherCourses" :key="course.id" :value="course.name">
+                    {{ course.name }}
+                  </option>
                 </select>
               </div>
               <div>
@@ -161,10 +200,6 @@ function yearPillClass(year: Student['year']) {
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Classroom</label>
                 <input v-model="form.classroom" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Room 205" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea v-model="form.description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="Optional class description"></textarea>
               </div>
               <button @click="saveClass" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
@@ -187,7 +222,7 @@ function yearPillClass(year: Student['year']) {
               @drop="onDrop"
             >
               <p v-if="selectedStudents.length === 0" class="text-sm text-gray-500 text-center py-8">Drag students here or click to add</p>
-              <div v-else v-for="s in selectedStudents" :key="s.id" class="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+              <div v-else v-for="s in selectedStudents" :key="s.username" class="flex items-center justify-between p-2 bg-blue-50 rounded-md">
                 <div class="flex items-center space-x-2">
                   <img :src="s.avatar" :alt="s.name" class="w-8 h-8 rounded-full object-cover" />
                   <div>
@@ -195,7 +230,7 @@ function yearPillClass(year: Student['year']) {
                     <p class="text-xs text-gray-500">{{ s.email }}</p>
                   </div>
                 </div>
-                <button class="p-1 rounded-full hover:bg-blue-100 text-gray-400 hover:text-red-500 transition" @click="removeStudent(s.id)">
+                <button class="p-1 rounded-full hover:bg-blue-100 text-gray-400 hover:text-red-500 transition" @click="removeStudent(s.username)">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
@@ -205,7 +240,7 @@ function yearPillClass(year: Student['year']) {
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
                 <span>Clear All</span>
               </button>
-              <button @click="() => alert(`Roster with ${selectedStudents.length} students generated successfully!`)" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1">
+              <button @click="() => showAlert(`Roster with ${selectedStudents.length} students generated successfully!`)" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 <span>Export Roster</span>
               </button>
@@ -245,8 +280,8 @@ function yearPillClass(year: Student['year']) {
 
             <!-- Student Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-              <div v-for="s in filteredStudents" :key="s.id" class="student-card bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all"
-                   :class="{ 'ring-2 ring-blue-500': isSelected(s.id) }"
+              <div v-for="s in filteredStudents" :key="s.username" class="student-card bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all"
+                   :class="{ 'ring-2 ring-blue-500': isSelected(s.username) }"
                    draggable="true"
                    @dragstart="(e) => onDragStart(e, s)">
                 <div class="p-4 flex items-start space-x-3">
@@ -260,7 +295,7 @@ function yearPillClass(year: Student['year']) {
                     </div>
                   </div>
                   <button class="p-1 rounded-full hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition cursor-pointer" @click="toggleStudent(s)">
-                    <svg v-if="!isSelected(s.id)" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <svg v-if="!isSelected(s.username)" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                     <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                   </button>
                 </div>

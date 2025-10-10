@@ -1,48 +1,60 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
+import { useCoursesStore } from '@/stores/coursesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 interface Props { id: string }
 const props = defineProps<Props>()
 
-type QS = 'pending' | 'completed' | 'overdue'
-interface Quiz { id: number; title: string; description: string; dueDate: string; points: number; status: QS }
-interface ClassItem { id: string; name: string; courseName: string; description: string; students: number }
+const classesStore = useCoursesStore()
+const sectionsStore = useSectionsStore()
 
-const classes = ref<ClassItem[]>([
-  {
-    id: '1',
-    name: 'CS31A',
-    courseName: 'Information Assurance',
-    description: 'This course covers the principles of information security, risk management, cryptography, and security policies to protect information systems against threats and vulnerabilities.',
-    students: 45
-  },
-  {
-    id: '2',
-    name: 'IT11B',
-    courseName: 'Automata',
-    description: 'Deep dive into automata theory.',
-    students: 32,
-  },
-  {
-    id: '3',
-    name: 'CS22A',
-    courseName: 'Computer Architecture',
-    description: 'Pipelines, caches, and performance optimization.',
-    students: 38,
-  }
-])
+const sections = computed(() => {
+  const cid = Number(props.id)
+  return sectionsStore.getSectionsByCourse(cid)
+})
 
-const current = computed(() => classes.value.find(c => c.id === props.id) ?? { id: props.id, name: `Class ${props.id}`, courseName: `Course ${props.id}`, description: '—', students: 0 })
-const professorName = 'Donald Francisco' 
-const totalClasses = computed(() => classes.value.length)
-const totalStudents = computed(() => classes.value.reduce((sum, c) => sum + c.students, 0))
+function formatTime(time24: string): string {
+  if (!time24 || time24 === '—') return '—'
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+}
+
+const sectionsWithSchedule = computed(() => {
+  const cid = Number(props.id)
+  return sections.value.map(section => {
+    const schedule = sectionsStore.getSchedule(cid, section.id)
+    return {
+      ...section,
+      scheduleDay: schedule?.scheduleDay || 'TBA',
+      scheduleTime: schedule?.scheduleTime ? formatTime(schedule.scheduleTime) : '—',
+      classroom: schedule?.classroom || 'TBA'
+    }
+  })
+})
+
+const current = computed<ClassItem>(() => {
+  const cid = Number(props.id)
+  const found = classesStore.allCourses.find((c: ClassItem) => c.id === cid)
+  return (
+    found || { id: cid, code: '', name: `Class ${props.id}`, teacher: '', description: '—', students: 0, color: 'gray' }
+  )
+})
+
+const professorName = computed(() => current.value.teacher || '—') 
+const totalClasses = computed(() => sections.value.length)
+const totalStudents = computed(() => sections.value.reduce((sum, s) => sum + s.students, 0))
 
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
 function getDeterministicIndex(key: string) {
@@ -65,11 +77,11 @@ const showDetails = ref(false)
 const newClass = reactive({ name: '', description: '', students: 1 })
 
 const selectedClassId = ref<string | null>(null)
-const openMenuId = ref<string | null>(null)
+const openMenuId = ref<number | null>(null)
 const isEditing = ref(false)
-const editingId = ref<string | null>(null)
+const editingId = ref<number | null>(null)
 
-function toggleMenu(id: string) { openMenuId.value = openMenuId.value === id ? null : id }
+function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
 
 function openCreateClass() {
   router.push({ name: 'class-management', params: { id: props.id } })
@@ -81,41 +93,32 @@ function closeCreateClass() {
   editingId.value = null
 }
 
-function openEditClass(id: string) {
-  const cls = classes.value.find(c => c.id === id)
-  if (!cls) return
+function openEditClass(id: number) {
+  const section = sectionsStore.allSections.find((s: ClassSection) => s.id === id)
+  if (!section) return
   isEditing.value = true
   editingId.value = id
-  newClass.name = cls.name
-  newClass.description = cls.description
-  newClass.students = cls.students
+  newClass.name = section.name
+  newClass.description = '' 
+  newClass.students = section.students
   showCreateClass.value = true
   openMenuId.value = null
 }
 
 function createClass() {
-  if (!newClass.name || !newClass.description || !newClass.students) return
+  if (!newClass.name || !newClass.students) return
   
   if (isEditing.value && editingId.value) {
-    const idx = classes.value.findIndex(c => c.id === editingId.value)
-    if (idx !== -1) {
-      classes.value[idx] = {
-        ...classes.value[idx],
-        name: newClass.name,
-        description: newClass.description,
-        students: Number(newClass.students)
-      }
-    }
-  } else {
-    const id = (classes.value.reduce((m, c) => Math.max(m, parseInt(c.id, 10)), 0) + 1).toString()
-    classes.value.push({
-      id,
+    sectionsStore.updateSection(editingId.value, {
       name: newClass.name,
-      courseName: newClass.name,
-      description: newClass.description,
       students: Number(newClass.students),
-
     })
+  } else {
+    sectionsStore.addSection({
+      name: newClass.name,
+      students: Number(newClass.students),
+      studentUsernames: [],
+    }, Number(props.id))
   }
   
   showCreateClass.value = false
@@ -123,9 +126,9 @@ function createClass() {
   editingId.value = null
 }
 
-function deleteClass(id: string) {
-  classes.value = classes.value.filter(c => c.id !== id)
-  if (selectedClassId.value === id) {
+function deleteClass(id: number) {
+  sectionsStore.removeSectionFromCourse(id, Number(props.id))
+  if (selectedClassId.value === String(id)) {
     closeDetails()
   }
 }
@@ -135,16 +138,18 @@ function closeDetails() {
   selectedClassId.value = null
 }
 
+const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
+
 const router = useRouter()
-function openDashboard(id: string) {
-  router.push({ name: 'teacher-class-dashboard', params: { id } })
+function openDashboard(id: number) {
+  router.push({ name: 'teacher-class-dashboard', params: { id: String(id) } })
 }
 </script>
 
 
 <template>
   <div class="bg-gray-50 min-h-screen">
-    <Header breadcrumb="Dashboard > Courses" />
+    <Header :breadcrumb="breadcrumbText" />
     
     <!-- Hero section -->
     <div class="relative">
@@ -154,7 +159,8 @@ function openDashboard(id: string) {
       </div>
       <div class="relative container mx-auto px-4 py-12 md:py-20">
         <div class="max-w-3xl">
-          <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">{{ current.courseName }}</h1>
+          <p class="text-white/80 text-sm font-medium mb-2">{{ current.code }}</p>
+          <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">{{ current.name }}</h1>
           <p class="text-lg text-white text-opacity-90 mb-6">{{ current.description }}</p>
           <div class="flex flex-wrap gap-3">
             <div class="bg-white/10 rounded-lg px-4 py-2 flex items-center border border-white/20">
@@ -186,38 +192,48 @@ function openDashboard(id: string) {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="cls in classes" :key="cls.id"
+          <div v-for="section in sectionsWithSchedule" :key="section.id"
             class="rounded-xl shadow-md overflow-hidden class-card transition-all duration-300 text-white"
-            @click="openDashboard(cls.id)">
+            @click="openDashboard(section.id)">
             <div class="p-6 relative cursor-pointer">
               <div class="relative z-10">
-                <div class="flex justify-end items-start">
+                <div class="flex justify-between items-start">
+                  <h3 class="text-lg font-bold text-white">{{ section.name }}</h3>
                   <div class="relative">
-                    <button @click.stop="toggleMenu(cls.id)" 
+                    <button @click.stop="toggleMenu(section.id)" 
                       class="text-white hover:text-gray-200 text-lg" 
                       aria-label="More options" 
-                      :aria-expanded="openMenuId === cls.id">
+                      :aria-expanded="openMenuId === section.id">
                       <i class="fas fa-ellipsis-vertical cursor-pointer"></i>
                     </button>
                     <!-- Dropdown menu -->
-                    <div v-if="openMenuId === cls.id" @click.stop 
+                    <div v-if="openMenuId === section.id" @click.stop 
                       class="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10">
                       <!-- Edit button -->
-                      <button @click="openEditClass(cls.id)" 
+                      <button @click="openEditClass(section.id)" 
                         class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                         <span>Edit</span>
                       </button>
                       <!-- Delete button -->
-                      <button @click="deleteClass(cls.id); openMenuId = null" 
+                      <button @click="deleteClass(section.id); openMenuId = null" 
                         class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                         <span>Delete</span>
                       </button>
                     </div>
                   </div>
                 </div>
-                <h3 class="text-lg font-bold text-white mt-2">{{ cls.name }}</h3>
-                <span class="inline-block mt-2 bg-white/20 text-white text-xs px-2 py-1 rounded-full">
-                  {{ cls.students }} students
+                <div class="mt-3 space-y-1">
+                  <div class="flex items-center text-white/90 text-sm">
+                    <i class="fas fa-calendar-day w-5 mr-2"></i>
+                    <span>{{ section.scheduleDay }} {{ section.scheduleTime }}</span>
+                  </div>
+                  <div class="flex items-center text-white/90 text-sm">
+                    <i class="fas fa-door-open w-5 mr-2"></i>
+                    <span>{{ section.classroom }}</span>
+                  </div>
+                </div>
+                <span class="inline-block mt-3 bg-white/20 text-white text-xs px-2 py-1 rounded-full">
+                  {{ section.students }} students
                 </span>
               </div>
             </div>

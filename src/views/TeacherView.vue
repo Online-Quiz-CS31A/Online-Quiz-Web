@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import Sidebar from '@/components/Sidebar.vue'
-import Header from '@/components/Header.vue'
-import ActiveQuizzes from '@/components/teacher/TeacherQuiz.vue'
-import SchoolCalendar from '@/components/SchoolCalendar.vue'
-import StudentClasses from '@/components/teacher/TeacherClasses.vue'
-import ViewAllCourses from '@/components/ViewAllCourses.vue'
-import ViewAllQuizzes from '@/components/ViewAllQuizzes.vue'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
+const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
+const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCalendar.vue'))
+const TeacherClasses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
+const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
+const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
 
 const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
@@ -119,7 +120,7 @@ watch(
       <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <!-- Home Section: show Classes cards, then Quizzes under them -->
         <div v-if="currentSection === 'home'" class="space-y-8">
-          <StudentClasses :max-items="3" @view-all="handleViewAllClasses" />
+          <TeacherClasses :max-items="3" @view-all="handleViewAllClasses" />
           <div>
             <ActiveQuizzes :quizzes="activeQuizzes.slice(0, 3)" @view-all="navigateToQuizzes" />
           </div>

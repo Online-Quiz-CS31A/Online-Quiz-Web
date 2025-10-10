@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+//REFS
 const assignmentSubmissionsEmail = ref(true)
 const gradeAppealsEmail = ref(true)
 const courseAnnouncementsEmail = ref(false)
-
 const privateMessagesInApp = ref(true)
 const discussionRepliesInApp = ref(true)
 
+// METHODS
 function onCancel() {
   assignmentSubmissionsEmail.value = true
   gradeAppealsEmail.value = true
