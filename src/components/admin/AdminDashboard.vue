@@ -49,153 +49,102 @@ const recentActivity = ref<Activity[]>([
 
 
 <template>
-  <div class="animate-fade-in">
+  <div class="p-6 space-y-6">
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 gap-5 mt-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Active Users -->
-      <div class="dashboard-card overflow-hidden bg-white rounded-lg shadow transition-all duration-300">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="p-3 bg-indigo-100 rounded-md">
-                <Users class="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-            <div class="flex-1 w-0 ml-5">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Active Users</dt>
-                <dd>
-                  <div class="text-lg font-semibold text-gray-900">{{ stats.activeUsers }}</div>
-                </dd>
-              </dl>
-            </div>
+      <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="$emit('navigate', 'users')">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-blue-600">Active Users</p>
+            <p class="text-3xl font-bold text-blue-900 mt-2">{{ stats.activeUsers }}</p>
+            <p class="text-xs font-medium text-blue-700 mt-2">Click to manage</p>
           </div>
-        </div>
-        <div class="px-5 py-3 bg-gray-50">
-          <div class="text-sm">
-            <a @click.prevent="$emit('navigate', 'users')" href="#" class="font-medium text-blue-600 hover:text-blue-500 cursor-pointer">View all</a>
+          <div class="p-3 bg-blue-200 rounded-xl">
+            <Users class="w-7 h-7 text-blue-700" />
           </div>
         </div>
       </div>
       
       <!-- Courses -->
-      <div class="dashboard-card overflow-hidden bg-white rounded-lg shadow transition-all duration-300">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="p-3 bg-blue-100 rounded-md">
-                <BookOpen class="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-            <div class="flex-1 w-0 ml-5">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Active Courses</dt>
-                <dd>
-                  <div class="text-lg font-semibold text-gray-900">{{ stats.activeCourses }}</div>
-                </dd>
-              </dl>
-            </div>
+      <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 border border-green-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="$emit('navigate', 'courses')">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-green-600">Active Courses</p>
+            <p class="text-3xl font-bold text-green-900 mt-2">{{ stats.activeCourses }}</p>
+            <p class="text-xs font-medium text-green-700 mt-2">Click to view all</p>
           </div>
-        </div>
-        <div class="px-5 py-3 bg-gray-50">
-          <div class="text-sm">
-            <a @click.prevent="$emit('navigate', 'courses')" href="#" class="font-medium text-blue-600 hover:text-blue-500 cursor-pointer">View all</a>
+          <div class="p-3 bg-green-200 rounded-xl">
+            <BookOpen class="w-7 h-7 text-green-700" />
           </div>
         </div>
       </div>
       
       <!-- Quizzes -->
-      <div class="dashboard-card overflow-hidden bg-white rounded-lg shadow transition-all duration-300">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="p-3 bg-green-100 rounded-md">
-                <Clipboard class="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-            <div class="flex-1 w-0 ml-5">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Quizzes Taken</dt>
-                <dd>
-                  <div class="text-lg font-semibold text-gray-900">{{ stats.quizzesTaken }}</div>
-                </dd>
-              </dl>
-            </div>
+      <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="$emit('navigate', 'quiz-settings')">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-purple-600">Quizzes Taken</p>
+            <p class="text-3xl font-bold text-purple-900 mt-2">{{ stats.quizzesTaken }}</p>
+            <p class="text-xs font-medium text-purple-700 mt-2">View statistics</p>
           </div>
-        </div>
-        <div class="px-5 py-3 bg-gray-50">
-          <div class="text-sm">
-            <a @click.prevent="$emit('navigate', 'quiz-settings')" href="#" class="font-medium text-green-600 hover:text-green-500 cursor-pointer">View stats</a>
+          <div class="p-3 bg-purple-200 rounded-xl">
+            <Clipboard class="w-7 h-7 text-purple-700" />
           </div>
         </div>
       </div>
       
       <!-- System Health -->
-      <div class="dashboard-card overflow-hidden bg-white rounded-lg shadow transition-all duration-300">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="p-3 bg-purple-100 rounded-md">
-                <ActivityIcon class="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-            <div class="flex-1 w-0 ml-5">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">System Health</dt>
-                <dd>
-                  <div class="text-lg font-semibold text-gray-900">{{ stats.systemHealth }}</div>
-                </dd>
-              </dl>
-            </div>
+      <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-5 border border-orange-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="$emit('navigate', 'analytics')">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-orange-600">System Health</p>
+            <p class="text-3xl font-bold text-orange-900 mt-2">{{ stats.systemHealth }}</p>
+            <p class="text-xs font-medium text-orange-700 mt-2">View analytics</p>
           </div>
-        </div>
-        <div class="px-5 py-3 bg-gray-50">
-          <div class="text-sm">
-            <a @click.prevent="$emit('navigate', 'analytics')" href="#" class="font-medium text-purple-600 hover:text-purple-500 cursor-pointer">View details</a>
+          <div class="p-3 bg-orange-200 rounded-xl">
+            <ActivityIcon class="w-7 h-7 text-orange-700" />
           </div>
         </div>
       </div>
     </div>
     
     <!-- Recent Activity -->
-    <div class="mt-8">
-      <h3 class="text-lg font-medium text-gray-900">Recent Activity</h3>
-      <div class="mt-4 overflow-hidden bg-white shadow sm:rounded-md">
-        <ul class="divide-y divide-gray-200">
-          <li v-for="activity in recentActivity" :key="activity.id">
-            <div class="block hover:bg-gray-50 transition-colors">
-              <div class="px-4 py-4 sm:px-6">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-medium text-blue-600 truncate">{{ activity.title }}</p>
-                  <div class="flex flex-shrink-0 ml-2">
-                    <p :class="[
-                      'inline-flex px-2 text-xs font-semibold leading-5 rounded-full',
-                      activity.status === 'Completed' ? 'text-green-800 bg-green-100' : 'text-blue-800 bg-blue-100'
-                    ]">
-                      {{ activity.status }}
-                    </p>
-                  </div>
-                </div>
-                <div class="mt-2 sm:flex sm:justify-between">
-                  <div class="sm:flex">
-                    <p class="flex items-center text-sm text-gray-500">
-                      <component :is="activity.icon" class="mr-1.5 w-4 h-4 text-gray-400" />
-                      {{ activity.user }}
-                    </p>
-                    <p class="flex items-center mt-2 text-sm text-gray-500 sm:mt-0 sm:ml-6">
-                      <Calendar class="mr-1.5 w-4 h-4 text-gray-400" />
-                      <time :datetime="activity.date">{{ activity.date }}</time>
-                    </p>
-                  </div>
-                  <div class="flex items-center mt-2 text-sm text-gray-500 sm:mt-0">
-                    <Clock class="mr-1.5 w-4 h-4 text-gray-400" />
-                    {{ activity.timeAgo }}
-                  </div>
-                </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+      <div class="space-y-3">
+        <div v-for="activity in recentActivity" :key="activity.id" class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-white rounded-lg border border-gray-200">
+                <component :is="activity.icon" class="w-4 h-4 text-gray-600" />
               </div>
+              <p class="text-sm font-medium text-gray-900">{{ activity.title }}</p>
             </div>
-          </li>
-        </ul>
+            <span :class="[
+              'inline-flex px-3 py-1 text-xs font-semibold rounded-full border',
+              activity.status === 'Completed' 
+                ? 'bg-green-50 text-green-700 border-green-200' 
+                : 'bg-blue-50 text-blue-700 border-blue-200'
+            ]">
+              {{ activity.status }}
+            </span>
+          </div>
+          <div class="flex items-center gap-4 ml-11 text-xs text-gray-500">
+            <span class="flex items-center gap-1">
+              <User :size="12" />
+              {{ activity.user }}
+            </span>
+            <span class="flex items-center gap-1">
+              <Calendar :size="12" />
+              {{ activity.date }}
+            </span>
+            <span class="flex items-center gap-1">
+              <Clock :size="12" />
+              {{ activity.timeAgo }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -360,56 +360,58 @@ const getStatusBadgeClass = (status: string) => {
 
 
 <template>
-  <div class="animate-fade-in">
+  <div class="p-6 space-y-6">
     <!-- User controls -->
-    <div class="flex flex-col mt-5 sm:flex-row sm:items-center sm:justify-between">
-      <div class="flex items-center space-x-4">
-        <div class="relative rounded-md shadow-sm">
-          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search class="w-4 h-4 text-gray-400" />
+    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex items-center space-x-3 flex-1">
+          <div class="relative rounded-lg shadow-sm flex-1 max-w-md">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search class="w-4 h-4 text-gray-400" />
+            </div>
+            <input 
+              v-model="searchQuery"
+              type="text" 
+              name="search" 
+              id="search" 
+              class="block w-full py-2.5 pl-10 pr-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all" 
+              placeholder="Search users..."
+            >
           </div>
-          <input 
-            v-model="searchQuery"
-            type="text" 
-            name="search" 
-            id="search" 
-            class="block w-full py-2 pl-10 pr-3 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-            placeholder="Search users..."
-          >
+          <div class="relative">
+            <select 
+              v-model="filterRole"
+              id="filter" 
+              name="filter" 
+              class="block w-full py-2.5 pl-3 pr-10 text-base bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+            >
+              <option>All Users</option>
+              <option>Students</option>
+              <option>Teachers</option>
+              <option>Administrators</option>
+              <option>Inactive</option>
+            </select>
+          </div>
         </div>
-        <div class="relative">
-          <select 
-            v-model="filterRole"
-            id="filter" 
-            name="filter" 
-            class="block w-full py-2 pl-3 pr-10 text-base bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        <div class="flex items-center gap-3">
+          <button 
+            type="button" 
+            class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            @click="openAdd"
           >
-            <option>All Users</option>
-            <option>Students</option>
-            <option>Teachers</option>
-            <option>Administrators</option>
-            <option>Inactive</option>
-          </select>
+            <Plus class="w-5 h-5 mr-2 -ml-1" />
+            Add User
+          </button>
+          <label for="import-users" class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 cursor-pointer transition-colors">
+            Import Users
+          </label>
+          <input id="import-users" ref="importInput" type="file" accept=".csv,.json" class="hidden" @change="onImport" />
         </div>
-      </div>
-      <div class="mt-4 sm:mt-0 flex items-center gap-3">
-        <button 
-          type="button" 
-          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          @click="openAdd"
-        >
-          <Plus class="w-5 h-5 mr-2 -ml-1" />
-          Add User
-        </button>
-        <label for="import-users" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 cursor-pointer">
-          Import Users
-        </label>
-        <input id="import-users" ref="importInput" type="file" accept=".csv,.json" class="hidden" @change="onImport" />
       </div>
     </div>
     
     <!-- User table -->
-    <div class="mt-6 overflow-hidden bg-white shadow sm:rounded-lg">
+    <div class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-gray-200">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 data-table">
           <thead class="bg-gray-50">
