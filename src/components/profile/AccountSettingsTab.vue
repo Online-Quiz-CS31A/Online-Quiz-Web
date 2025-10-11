@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useToast } from '@/composables/useToast'
 
 // REFS
 const language = ref('English')
@@ -18,9 +19,11 @@ function onCancel() {
   showOnline.value = false
 }
 
+const { success } = useToast()
+
 function onSubmit(e: Event) {
   e.preventDefault()
-  alert('Account preferences saved successfully!')
+  success('Account preferences saved successfully!')
 }
 </script>
 

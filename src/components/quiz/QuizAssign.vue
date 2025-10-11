@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { useToast } from '@/composables/useToast'
 
 // REFS
 const saving = ref(false)
@@ -111,11 +112,13 @@ function quickAddDays(days: number) {
   deadline.time = '23:59'
 }
 
+const { success } = useToast()
+
 async function saveAssignment() {
   saving.value = true
   await new Promise(r => setTimeout(r, 800))
   saving.value = false
-  alert('Assignment saved!')
+  success('Assignment saved!')
 }
 </script>
 

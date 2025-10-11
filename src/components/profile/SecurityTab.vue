@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useToast } from '@/composables/useToast's
 
 // REFS
 const currentPassword = ref('')
@@ -11,21 +12,23 @@ const showConfirm = ref(false)
 const sms2FA = ref(false)
 
 // METHODS
+const { success, error } = useToast()
+
 function onSubmit(e: Event) {
   e.preventDefault()
   if (newPassword.value !== confirmPassword.value) {
-    alert('New passwords do not match!')
+    error('New passwords do not match!')
     return
   }
   if (newPassword.value.length < 8) {
-    alert('Password must be at least 8 characters long')
+    error('Password must be at least 8 characters long')
     return
   }
-  alert('Password changed successfully!')
+  success('Password changed successfully!')
 }
 
 function onLogoutSession(kind: 'desktop' | 'mobile') {
-  alert(`Logged out ${kind} session`)
+  success(`Logged out ${kind} session`)
 }
 </script>
 

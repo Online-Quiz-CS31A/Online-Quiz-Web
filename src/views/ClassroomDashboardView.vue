@@ -7,6 +7,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
 import type { Student } from '@/interfaces/interfaces'
+import { useToast } from '@/composables/useToast'
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
@@ -277,8 +278,11 @@ function sortBy(col: GradeCol) {
   if (sortCol.value === col) sortAsc.value = !sortAsc.value
   else { sortCol.value = col; sortAsc.value = true }
 }
+
+const { success } = useToast()
+
 function exportGrades() {
-  alert('Grades exported')
+  success('Grades exported')
 }
 
 function openGrades(row: GradeRow) {

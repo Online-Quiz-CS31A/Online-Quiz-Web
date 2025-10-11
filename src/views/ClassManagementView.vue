@@ -6,6 +6,7 @@ import { useStudentsStore } from '@/stores/studentsStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
+import { useToast } from '@/composables/useToast'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 // CONSTANTS
@@ -88,8 +89,10 @@ function clearSelection() {
   selectedStudents.value = []
 }
 
+const { success, error } = useToast()
+
 function showAlert(message: string) {
-  alert(message)
+  success(message)
 }
 
 function onDragStart(evt: DragEvent, s: StudentViewModel) {
@@ -118,11 +121,14 @@ function onImportMasterList(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
   selectedStudents.value = [...students.value]
-  alert('Master list imported successfully! All students have been added to the class.')
+  success('Master list imported successfully! All students have been added to the class.')
 }
 
 function saveClass() {
-  if (!form.className) return alert('Please enter a class name')
+  if (!form.className) {
+    error('Please enter a class name')
+    return
+  }
   
   const studentUsernames = selectedStudents.value.map(s => s.username)
   
@@ -141,7 +147,7 @@ function saveClass() {
     classroom: form.classroom
   })
   
-  alert('Class saved successfully!')
+  success('Class saved successfully!')
   router.back()
 }
 

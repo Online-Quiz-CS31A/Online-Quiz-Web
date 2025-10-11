@@ -6,6 +6,7 @@ import { useStudentsStore } from '@/stores/studentsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useToast } from '@/composables/useToast'
 
 //CONSTANTS
 const placeholderPhoto = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
@@ -99,6 +100,8 @@ function onCancel() {
   resetFromStore()
 }
 
+const { success } = useToast()
+
 function onSubmit(e: Event) {
   e.preventDefault()
   if (isTeacher.value) {
@@ -115,7 +118,7 @@ function onSubmit(e: Event) {
       photoUrl: imageUrl.value,
     })
   }
-  alert('Profile changes saved successfully!')
+  success('Profile changes saved successfully!')
 }
 
 

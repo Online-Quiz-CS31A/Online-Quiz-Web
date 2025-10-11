@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { QuestionOption, MatchingPair, QuizQuestion } from '@/interfaces/interfaces'
+import { useToast } from '@/composables/useToast'
 
 // REFS
 const showAddQuestionModal = ref(false)
@@ -319,8 +320,10 @@ function goToContent() {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+const { info } = useToast()
+
 function openAssign() {
-  alert('Open assign flow (to be implemented)')
+  info('Open assign flow (to be implemented)')
 }
 
 function viewResults() {
