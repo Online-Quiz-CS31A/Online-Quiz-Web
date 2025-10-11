@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useToast } from '@/composables/useToast's
+import { useToast } from '@/composables/useToast'
 
 // REFS
 const currentPassword = ref('')
