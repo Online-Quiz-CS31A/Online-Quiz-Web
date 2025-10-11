@@ -2,6 +2,7 @@
   import { ref, computed, onMounted, onUnmounted } from 'vue'
   import type { QuizViewQuestion } from '@/interfaces/interfaces'
   
+// CONSTANT
   const questions: QuizViewQuestion[] = [
     {
       question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
@@ -105,16 +106,19 @@
     }
   ]
   
+  // REFS
   const currentQuestion = ref(0)
   const selectedOption = ref<number | null>(null)
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const answeredQuestions = ref<Set<number>>(new Set())
   
+  // COMPUTED
   const progress = computed(() => {
     return ((currentQuestion.value + 1) / questions.length) * 100
   })
   
+  // METHODS
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -152,6 +156,7 @@
     }, 1000)
   }
   
+  // LIFECYCLE
   onMounted(() => {
     startTimer()
   })

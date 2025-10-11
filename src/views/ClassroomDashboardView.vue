@@ -10,14 +10,59 @@ import type { Student } from '@/interfaces/interfaces'
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
-const route = useRoute()
+// TYPE
+type TabKey = 'dashboard' | 'people' | 'grades'
+interface GradeRow { 
+  id: number; 
+  name: string; 
+  email: string; 
+  assignments: number; 
+  quizzes: number; 
+  exams: number; 
+  final: number 
+}
+
+type GradeCol = keyof Omit<GradeRow, 'id' | 'email'>
+
+interface QuizBreakdown { 
+  title: string; 
+  score: number; 
+  total: number; 
+  percent: number; 
+  due: string; 
+  status: 'Submitted' | 'Missing' 
+}
+
+interface ActiveQuiz {
+  id: number
+  subject: string
+  title: string
+  description: string
+  dueDate: string
+  class: string
+  submitted: number
+  total: number
+  color: string
+}
+
+// CONSTANT
 const router = useRouter()
+const pageSize = 3
+const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+
+// REFS
+const activeTab = ref<TabKey>('dashboard')
+const searchTerm = ref('')
+const currentPage = ref(1)
+const sortCol = ref<GradeCol>('final')
+const sortAsc = ref(false)
+const showGradesModal = ref(false)
+const selectedStudent = ref<GradeRow | null>(null)
+const breakdown = ref<QuizBreakdown[]>([])
+
+// COMPUTED
 const sectionId = computed(() => Number(route.params.id || 0))
 
-const sectionsStore = useSectionsStore()
-const classesStore = useCoursesStore()
-const studentsStore = useStudentsStore()
-const authStore = useAuthStore()
 
 const currentSection = computed(() => {
   return sectionsStore.allSections.find(s => s.id === sectionId.value)
@@ -38,35 +83,11 @@ const schedule = computed(() => {
   return sectionsStore.getSchedule(currentCourseId.value, sectionId.value)
 })
 
-const classMeta = reactive({
-  title: currentSection.value?.name || 'Section',
-  professor: currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown',
-  term: 'Academic Year 2024-2025',
-  code: currentCourse.value?.code || '',
-})
-
-watch([currentSection, currentCourse], () => {
-  classMeta.title = currentSection.value?.name || 'Section'
-  classMeta.professor = currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown'
-  classMeta.code = currentCourse.value?.code || ''
-}, { immediate: true })
-
 const professorInitials = computed(() => {
   const parts = classMeta.professor.trim().split(/\s+/)
   const initials = parts.slice(0, 2).map(p => p[0]?.toUpperCase() || '')
   return initials.join('')
 })
-
-function navigateToQuizCreator() {
-  router.push(`/teacher/create-quiz`)
-}
-
-function handleBreadcrumbSegment(segment: string) {
-  const courseName = currentCourse.value?.name
-  if (segment === courseName && currentCourseId.value) {
-    router.push({ name: 'teacher-class', params: { id: String(currentCourseId.value) } })
-  }
-}
 
 const breadcrumbText = computed(() => {
   const courseName = currentCourse.value?.name || 'Course'
@@ -74,14 +95,6 @@ const breadcrumbText = computed(() => {
   return `Dashboard > Courses > ${courseName} > ${sectionName}`
 })
 
-type TabKey = 'dashboard' | 'people' | 'grades'
-const activeTab = ref<TabKey>('dashboard')
-
-const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-
-function initialsOf(name: string) {
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-}
 
 const students = computed<Student[]>(() => {
   if (!currentSection.value) return []
@@ -115,15 +128,6 @@ const students = computed<Student[]>(() => {
   })
 })
 
-function getAvatarByEmail(email: string): string {
-  const s = students.value.find(st => st.email === email)
-  return s?.avatar || AVATAR_URL
-}
-
-const searchTerm = ref('')
-const currentPage = ref(1)
-const pageSize = 3
-
 const filteredStudents = computed(() => {
   const q = searchTerm.value.trim().toLowerCase()
   if (!q) return students.value
@@ -136,16 +140,6 @@ const paginatedStudents = computed(() => {
   return filteredStudents.value.slice(start, start + pageSize)
 })
 
-function goToPage(p: number) {
-  if (p < 1 || p > totalPages.value) return
-  currentPage.value = p
-}
-
-function prevPage() { goToPage(currentPage.value - 1) }
-function nextPage() { goToPage(currentPage.value + 1) }
-
-interface GradeRow { id: number; name: string; email: string; assignments: number; quizzes: number; exams: number; final: number }
-
 const gradeRows = computed<GradeRow[]>(() => {
   return students.value.slice(0, 10).map((s, idx) => ({
     id: s.id,
@@ -157,9 +151,7 @@ const gradeRows = computed<GradeRow[]>(() => {
     final: 78 + ((idx * 8) % 20),
   }))
 })
-type GradeCol = keyof Omit<GradeRow, 'id' | 'email'>
-const sortCol = ref<GradeCol>('final')
-const sortAsc = ref(false)
+
 const sortedGrades = computed(() => {
   const rows = [...gradeRows.value]
   rows.sort((a, b) => {
@@ -170,56 +162,8 @@ const sortedGrades = computed(() => {
   })
   return rows
 })
-function sortBy(col: GradeCol) {
-  if (sortCol.value === col) sortAsc.value = !sortAsc.value
-  else { sortCol.value = col; sortAsc.value = true }
-}
-function exportGrades() {
-  alert('Grades exported')
-}
-
-interface QuizBreakdown { title: string; score: number; total: number; percent: number; due: string; status: 'Submitted' | 'Missing' }
-const showGradesModal = ref(false)
-const selectedStudent = ref<GradeRow | null>(null)
-const breakdown = ref<QuizBreakdown[]>([])
-function openGrades(row: GradeRow) {
-  selectedStudent.value = row
-  const base = row.id % 5
-  const quizzes = Array.from({ length: 5 }).map((_, i) => {
-    const total = 20
-    const score = Math.max(0, Math.min(total, 12 + ((base + i) * 2) % 9))
-    const percent = Math.round((score / total) * 100)
-    return {
-      title: `Quiz ${i + 1}`,
-      score,
-      total,
-      percent,
-      due: `May ${10 + i}`,
-      status: percent > 0 ? 'Submitted' as const : 'Missing' as const,
-    }
-  })
-  breakdown.value = quizzes
-  showGradesModal.value = true
-}
-function closeGrades() {
-  showGradesModal.value = false
-}
-
-interface ActiveQuiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  submitted: number
-  total: number
-  color: string
-}
 
 const totalStudents = computed(() => students.value.length)
-
-const courseDescription = computed(() => currentCourse.value?.description || 'No description available')
 
 const scheduleInfo = computed(() => {
   if (!schedule.value) return 'Schedule not set'
@@ -276,6 +220,89 @@ const activeQuizzes = computed<ActiveQuiz[]>(() => {
     },
   ]
 })
+
+// REACTIVE
+const route = useRoute()
+const sectionsStore = useSectionsStore()
+const classesStore = useCoursesStore()
+const studentsStore = useStudentsStore()
+const authStore = useAuthStore()
+
+const classMeta = reactive({
+  title: currentSection.value?.name || 'Section',
+  professor: currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown',
+  term: 'Academic Year 2024-2025',
+  code: currentCourse.value?.code || '',
+})
+
+// WATCHERS
+watch([currentSection, currentCourse], () => {
+  classMeta.title = currentSection.value?.name || 'Section'
+  classMeta.professor = currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown'
+  classMeta.code = currentCourse.value?.code || ''
+}, { immediate: true })
+
+
+// METHODS
+function navigateToQuizCreator() {
+  router.push(`/teacher/create-quiz`)
+}
+
+function handleBreadcrumbSegment(segment: string) {
+  const courseName = currentCourse.value?.name
+  if (segment === courseName && currentCourseId.value) {
+    router.push({ name: 'teacher-class', params: { id: String(currentCourseId.value) } })
+  }
+}
+
+function initialsOf(name: string) {
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+}
+
+function getAvatarByEmail(email: string): string {
+  const s = students.value.find(st => st.email === email)
+  return s?.avatar || AVATAR_URL
+}
+
+function goToPage(p: number) {
+  if (p < 1 || p > totalPages.value) return
+  currentPage.value = p
+}
+
+function prevPage() { goToPage(currentPage.value - 1) }
+function nextPage() { goToPage(currentPage.value + 1) }
+
+
+function sortBy(col: GradeCol) {
+  if (sortCol.value === col) sortAsc.value = !sortAsc.value
+  else { sortCol.value = col; sortAsc.value = true }
+}
+function exportGrades() {
+  alert('Grades exported')
+}
+
+function openGrades(row: GradeRow) {
+  selectedStudent.value = row
+  const base = row.id % 5
+  const quizzes = Array.from({ length: 5 }).map((_, i) => {
+    const total = 20
+    const score = Math.max(0, Math.min(total, 12 + ((base + i) * 2) % 9))
+    const percent = Math.round((score / total) * 100)
+    return {
+      title: `Quiz ${i + 1}`,
+      score,
+      total,
+      percent,
+      due: `May ${10 + i}`,
+      status: percent > 0 ? 'Submitted' as const : 'Missing' as const,
+    }
+  })
+  breakdown.value = quizzes
+  showGradesModal.value = true
+}
+function closeGrades() {
+  showGradesModal.value = false
+}
 </script>
 
 <template>

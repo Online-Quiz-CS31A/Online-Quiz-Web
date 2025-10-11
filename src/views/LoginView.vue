@@ -3,10 +3,15 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 
+// CONSTANTS
 const router = useRouter()
+
+// REFS
 const showPassword = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// REACTIVE
 const store = useAuthStore()
 
 const form = reactive({
@@ -15,6 +20,7 @@ const form = reactive({
   rememberMe: false
 })
 
+// METHODS
 const handleLogin = async () => {
   isLoading.value = true
   errorMessage.value = ''

@@ -8,34 +8,22 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
-const route = useRoute()
+// CONSTANTS
 const router = useRouter()
+
+// REFS
+const selectedStudents = ref<StudentViewModel[]>([])
+const search = ref('')
+const filters = ref<'All' | YearLevel>('All')
+const dragOver = ref(false)
+
+// COMPUTED
 const classId = computed(() => String(route.params.id || '1'))
-
-const studentsStore = useStudentsStore()
-const sectionsStore = useSectionsStore()
-const classesStore = useCoursesStore()
-
 const teacherCourses = computed(() => classesStore.myClasses)
-
 const currentCourse = computed(() => {
   const cid = Number(classId.value)
   return teacherCourses.value.find(c => c.id === cid) || teacherCourses.value[0]
 })
-
-const form = reactive({
-  className: '',
-  subject: currentCourse.value?.name || 'Information Assurance',
-  scheduleDay: 'Monday',
-  scheduleTime: '',
-  classroom: '',
-})
-
-watch(currentCourse, (newCourse) => {
-  if (newCourse) {
-    form.subject = newCourse.name
-  }
-}, { immediate: true })
 
 const students = computed<StudentViewModel[]>(() => {
   return Object.entries(studentsStore.profiles).map(([username, profile]: [string, StudentProfile]) => ({
@@ -48,10 +36,7 @@ const students = computed<StudentViewModel[]>(() => {
   }))
 })
 
-const selectedStudents = ref<StudentViewModel[]>([])
 
-const search = ref('')
-const filters = ref<'All' | YearLevel>('All')
 const filteredStudents = computed(() => {
   const q = search.value.trim().toLowerCase()
   return students.value.filter(s => {
@@ -64,6 +49,27 @@ const filteredStudents = computed(() => {
   })
 })
 
+// REACTIVE
+const route = useRoute()
+const studentsStore = useStudentsStore()
+const sectionsStore = useSectionsStore()
+const classesStore = useCoursesStore()
+const form = reactive({
+  className: '',
+  subject: currentCourse.value?.name || 'Information Assurance',
+  scheduleDay: 'Monday',
+  scheduleTime: '',
+  classroom: '',
+})
+
+// WATCHERS
+watch(currentCourse, (newCourse) => {
+  if (newCourse) {
+    form.subject = newCourse.name
+  }
+}, { immediate: true })
+
+// METHODS
 function toggleStudent(s: StudentViewModel) {
   const idx = selectedStudents.value.findIndex(x => x.username === s.username)
   if (idx >= 0) selectedStudents.value.splice(idx, 1)
@@ -81,8 +87,6 @@ function removeStudent(username: string) {
 function clearSelection() {
   selectedStudents.value = []
 }
-
-const dragOver = ref(false)
 
 function showAlert(message: string) {
   alert(message)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
@@ -8,6 +8,7 @@ const AccountSettingsTab = defineAsyncComponent(() => import('@/components/profi
 const NotificationsTab = defineAsyncComponent(() => import('@/components/profile/NotificationsTab.vue'))
 const SecurityTab = defineAsyncComponent(() => import('@/components/profile/SecurityTab.vue'))
 
+// CONSTANTS
 const tabs = [
   { id: 'profile', label: 'Profile', icon: 'fas fa-user' },
   { id: 'account', label: 'Account Settings', icon: 'fas fa-cog' },
@@ -15,10 +16,16 @@ const tabs = [
   { id: 'security', label: 'Security', icon: 'fas fa-shield-alt' },
 ] as const
 
+// TYPE
 type TabId = typeof tabs[number]['id']
+
+// REACTIVE
+const route = useRoute()
+
+// REFS
 const activeTab = ref<TabId>('profile')
 
-const route = useRoute()
+// METHODS
 const setTabFromQuery = () => {
   const q = String(route.query.tab || '')
   if (q === 'profile' || q === 'account' || q === 'notifications' || q === 'security') {
@@ -26,8 +33,11 @@ const setTabFromQuery = () => {
   }
 }
 
-onMounted(setTabFromQuery)
+//WATCHERS
 watch(() => route.query.tab, setTabFromQuery)
+
+// lIFECYCLE
+onMounted(setTabFromQuery)
 </script>
 
 <template>

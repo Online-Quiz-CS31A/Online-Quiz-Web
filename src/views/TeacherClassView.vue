@@ -12,24 +12,32 @@ import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
+// CONSTANTS
+const coverImages = [bg1, bg2, bg3, bg4, bg5]
+const router = useRouter()
+
+// PROPS
 interface Props { id: string }
 const props = defineProps<Props>()
 
+// REACTIVE
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
+const newClass = reactive({ name: '', description: '', students: 1 })
 
+// REFS
+const showCreateClass = ref(false)
+const showDetails = ref(false)
+const selectedClassId = ref<string | null>(null)
+const openMenuId = ref<number | null>(null)
+const isEditing = ref(false)
+const editingId = ref<number | null>(null)
+
+// COMPUTED
 const sections = computed(() => {
   const cid = Number(props.id)
   return sectionsStore.getSectionsByCourse(cid)
 })
-
-function formatTime(time24: string): string {
-  if (!time24 || time24 === '—') return '—'
-  const [hours, minutes] = time24.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hours12 = hours % 12 || 12
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
-}
 
 const sectionsWithSchedule = computed(() => {
   const cid = Number(props.id)
@@ -56,7 +64,23 @@ const professorName = computed(() => current.value.teacher || '—')
 const totalClasses = computed(() => sections.value.length)
 const totalStudents = computed(() => sections.value.reduce((sum, s) => sum + s.students, 0))
 
-const coverImages = [bg1, bg2, bg3, bg4, bg5]
+const coverUrl = computed(() => {
+  const key = `${current.value.id}-${current.value.name}`
+  const idx = getDeterministicIndex(key)
+  return coverImages[idx % coverImages.length]
+})
+
+const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
+
+// METHODS
+function formatTime(time24: string): string {
+  if (!time24 || time24 === '—') return '—'
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+}
+
 function getDeterministicIndex(key: string) {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -65,32 +89,11 @@ function getDeterministicIndex(key: string) {
   }
   return Math.abs(hash)
 }
-const coverUrl = computed(() => {
-  const key = `${current.value.id}-${current.value.name}`
-  const idx = getDeterministicIndex(key)
-  return coverImages[idx % coverImages.length]
-})
-
-const showCreateClass = ref(false)
-const showDetails = ref(false)
-
-const newClass = reactive({ name: '', description: '', students: 1 })
-
-const selectedClassId = ref<string | null>(null)
-const openMenuId = ref<number | null>(null)
-const isEditing = ref(false)
-const editingId = ref<number | null>(null)
 
 function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
 
 function openCreateClass() {
   router.push({ name: 'class-management', params: { id: props.id } })
-}
-
-function closeCreateClass() {
-  showCreateClass.value = false
-  isEditing.value = false
-  editingId.value = null
 }
 
 function openEditClass(id: number) {
@@ -105,27 +108,6 @@ function openEditClass(id: number) {
   openMenuId.value = null
 }
 
-function createClass() {
-  if (!newClass.name || !newClass.students) return
-  
-  if (isEditing.value && editingId.value) {
-    sectionsStore.updateSection(editingId.value, {
-      name: newClass.name,
-      students: Number(newClass.students),
-    })
-  } else {
-    sectionsStore.addSection({
-      name: newClass.name,
-      students: Number(newClass.students),
-      studentUsernames: [],
-    }, Number(props.id))
-  }
-  
-  showCreateClass.value = false
-  isEditing.value = false
-  editingId.value = null
-}
-
 function deleteClass(id: number) {
   sectionsStore.removeSectionFromCourse(id, Number(props.id))
   if (selectedClassId.value === String(id)) {
@@ -138,9 +120,7 @@ function closeDetails() {
   selectedClassId.value = null
 }
 
-const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
 
-const router = useRouter()
 function openDashboard(id: number) {
   router.push({ name: 'teacher-class-dashboard', params: { id: String(id) } })
 }

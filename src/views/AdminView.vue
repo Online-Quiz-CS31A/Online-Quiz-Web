@@ -7,9 +7,7 @@ const AdminDashboard = defineAsyncComponent(() => import('@/components/admin/Adm
 const AdminUserManagement = defineAsyncComponent(() => import('@/components/admin/AdminUserManagement.vue'))
 const AdminCourseCatalog = defineAsyncComponent(() => import('@/components/admin/AdminCourseCatalog.vue'))
 
-
-const activeSection = ref('dashboard')
-
+// CONSTANTS
 const componentMap: Record<string, any> = {
   dashboard: AdminDashboard,
   users: AdminUserManagement,
@@ -28,6 +26,10 @@ const titleMap: Record<string, string> = {
   analytics: 'Analytics'
 }
 
+// REFS
+const activeSection = ref('dashboard')
+
+// COMPUTED
 const currentComponent = computed(() => {
   return componentMap[activeSection.value] || AdminDashboard
 })
@@ -36,6 +38,7 @@ const pageTitle = computed(() => {
   return titleMap[activeSection.value] || 'Dashboard'
 })
 
+// METHODSs
 const navigateToSection = (section: string) => {
   activeSection.value = section
 }

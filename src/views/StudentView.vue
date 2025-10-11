@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
@@ -11,16 +10,16 @@ const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCal
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
 
-
+// REFS
 const sidebarActive = ref(false)
 const showJoinClass = ref(false)
 const showFindQuizzes = ref(false)
-
-const router = useRouter()
-
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
 
+// REACTIVE
 const quizzesStore = useQuizzesStore()
+
+// METHODS
 const upcomingQuizzes = quizzesStore.myStudentQuizzes
 
 const toggleSidebar = () => {
@@ -33,11 +32,6 @@ const closeSidebar = () => {
 
 const showJoinClassModal = () => {
   showJoinClass.value = true
-  closeSidebar()
-}
-
-const showFindQuizzesModal = () => {
-  showFindQuizzes.value = true
   closeSidebar()
 }
 
@@ -69,6 +63,7 @@ const handleClickOutside = (e: Event) => {
   }
 }
 
+// LIFECYCLE
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
