@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
-import { Search, Plus, ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, X, Book } from 'lucide-vue-next'
+import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
 import { useCoursesStore } from '@/stores/coursesStore'
 import type { Course, CourseInstructor, Person } from '@/interfaces/interfaces'
 const AdminCourseDetails = defineAsyncComponent(() => import('@/components/admin/AdminCourseDetails.vue'))
@@ -40,7 +41,6 @@ const showCourseDetails = ref(false)
 const selectedCourseForDetails = ref<Course | null>(null)
 const selectedCourseInline = ref<Course | null>(null)
 // IMPORT COURSES
-const importInput = ref<HTMLInputElement | null>(null)
 
 // COMPUTED
 const teachers = computed(() => people.value.filter(p => p.role === 'Teacher'))
@@ -142,7 +142,7 @@ const onImport = async (e: Event) => {
     courses.value.push(newCourse)
   }
 
-  if (importInput.value) importInput.value.value = ''
+  if (input) input.value = ''
 }
 
 const goToPage = (n: number) => { if (n >= 1 && n <= totalPages.value) currentPage.value = n }
@@ -239,35 +239,18 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Search and Filters -->
-    <div v-if="!selectedCourseInline" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div class="flex items-center space-x-3 flex-1">
-          <div class="relative rounded-lg shadow-sm flex-1 max-w-md">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search class="w-4 h-4 text-gray-400" />
-            </div>
-            <input v-model="searchQuery" type="text" class="block w-full py-2.5 pl-10 pr-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all" placeholder="Search courses..." />
-          </div>
-          <div class="relative">
-            <select v-model="filterStatus" class="block w-full py-2.5 pl-3 pr-10 text-base bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all">
-              <option>All Courses</option>
-              <option>Active</option>
-              <option>Archived</option>
-            </select>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <button type="button" class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" @click="openAdd">
-            <Plus class="w-5 h-5 mr-2 -ml-1" />
-            New Course
-          </button>
-          <label for="import-courses" class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 cursor-pointer transition-colors">
-            Import
-          </label>
-          <input id="import-courses" ref="importInput" type="file" accept=".csv,.json" class="hidden" @change="onImport" />
-        </div>
-      </div>
-    </div>
+    <AdminSearchFilterBar
+      v-if="!selectedCourseInline"
+      v-model="searchQuery"
+      v-model:filter="filterStatus"
+      :options="['All Courses', 'Active', 'Archived']"
+      placeholder="Search courses..."
+      action-label="New Course"
+      import-label="Import"
+      import-accept=".csv,.json"
+      @action="openAdd"
+      @import="onImport"
+    />
 
     <!-- Course Details -->
     <AdminCourseDetails
