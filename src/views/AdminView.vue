@@ -6,15 +6,18 @@ const AdminSidebar = defineAsyncComponent(() => import('@/components/admin/Admin
 const AdminDashboard = defineAsyncComponent(() => import('@/components/admin/AdminDashboard.vue'))
 const AdminUserManagement = defineAsyncComponent(() => import('@/components/admin/AdminUserManagement.vue'))
 const AdminCourseCatalog = defineAsyncComponent(() => import('@/components/admin/AdminCourseCatalog.vue'))
+const QuizSettings = defineAsyncComponent(() => import('@/components/admin/QuizSettings.vue'))
+const DataManagement = defineAsyncComponent(() => import('@/components/admin/DataManagement.vue'))
+const Analytics = defineAsyncComponent(() => import('@/components/admin/Analytics.vue'))
 
 // CONSTANTS
 const componentMap: Record<string, any> = {
   dashboard: AdminDashboard,
   users: AdminUserManagement,
   courses: AdminCourseCatalog,
-  'quiz-settings': AdminDashboard,
-  data: AdminDashboard,
-  analytics: AdminDashboard
+  'quiz-settings': QuizSettings,
+  data: DataManagement,
+  analytics: Analytics
 }
 
 const titleMap: Record<string, string> = {

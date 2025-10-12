@@ -266,3 +266,37 @@ export interface QuizViewQuestion {
   options: string[]
   correctAnswer: number
 }
+
+// ANALYTICS INTERFACES
+export interface LogEntry {
+  id: string
+  timestamp: string
+  type: 'login' | 'quiz_created' | 'quiz_submitted' | 'warning' | 'user_created' | 'data_export'
+  user: string
+  action: string
+  details: string
+  severity: 'info' | 'warning' | 'error' | 'success'
+}
+
+export interface AnalyticsSummary {
+  totalLogins: number
+  quizzesCreated: number
+  warningsIssued: number
+  activeUsers: number
+}
+
+// QUIZ SETTINGS INTERFACES
+export interface QuizSettings {
+  defaultTimeLimit: number
+  allowRetakes: boolean
+  maxRetakes: number
+  retakeCooldown: number
+  tabSwitchWarningThreshold: number
+  tabSwitchAutoSubmit: boolean
+  showCorrectAnswers: boolean
+  showScoreImmediately: boolean
+  passingScore: number
+  randomizeQuestions: boolean
+  randomizeOptions: boolean
+  allowReview: boolean
+}
