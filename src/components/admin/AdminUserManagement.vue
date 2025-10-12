@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watchEffect } from 'vue'
-import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
+import { X } from 'lucide-vue-next'
 import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import type { AdminUser } from '@/interfaces/interfaces'
 
 // CONSTANTS / TYPRS
@@ -90,25 +91,9 @@ const filteredUsers = computed(() => {
 })
 
 const totalItems = computed(() => filteredUsers.value.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
-const displayStart = computed(() => (totalItems.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1))
-const displayEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
 const paginatedUsers = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   return filteredUsers.value.slice(start, start + pageSize.value)
-})
-
-const pageNumbers = computed(() => {
-  const pages: (number | string)[] = []
-  const tp = totalPages.value
-  if (tp <= 6) {
-    for (let i = 1; i <= tp; i++) pages.push(i)
-    return pages
-  }
-  pages.push(1, 2, 3)
-  pages.push('...')
-  pages.push(tp - 2, tp - 1, tp)
-  return pages
 })
 
 
@@ -180,13 +165,6 @@ const onImport = async (e: Event) => {
   }
   if (input) input.value = ''
 }
-
-const goToPage = (n: number) => {
-  if (n < 1 || n > totalPages.value) return
-  currentPage.value = n
-}
-const prevPage = () => goToPage(currentPage.value - 1)
-const nextPage = () => goToPage(currentPage.value + 1)
 
 const randomAlnum = (len: number) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
@@ -438,51 +416,11 @@ const getStatusBadgeClass = (status: string) => {
     </div>
     
     <!-- Pagination -->
-    <div class="flex items-center justify-between px-4 py-3 mt-6 bg-white border-t border-gray-200 sm:px-6">
-      <div class="flex justify-between flex-1 sm:hidden">
-        <a href="#" @click.prevent="prevPage" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-          Previous
-        </a>
-        <a href="#" @click.prevent="nextPage" class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-          Next
-        </a>
-      </div>
-      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p class="text-sm text-gray-700">
-            Showing
-            <span class="font-medium">{{ displayStart }}</span>
-            to
-            <span class="font-medium">{{ displayEnd }}</span>
-            of
-            <span class="font-medium">{{ totalItems }}</span>
-            results
-          </p>
-        </div>
-        <div>
-          <nav class="relative z-0 inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-            <a href="#" @click.prevent="prevPage" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50">
-              <span class="sr-only">Previous</span>
-              <ChevronLeft class="w-5 h-5" />
-            </a>
-            <template v-for="p in pageNumbers" :key="p + '-' + currentPage">
-              <a v-if="typeof p === 'number'" href="#" @click.prevent="goToPage(p)"
-                 :class="[
-                   'relative inline-flex items-center px-4 py-2 text-sm font-medium border',
-                   p === currentPage ? 'text-blue-600 border-blue-500 bg-blue-50 z-10' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                 ]">
-                {{ p }}
-              </a>
-              <span v-else class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300">...</span>
-            </template>
-            <a href="#" @click.prevent="nextPage" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50">
-              <span class="sr-only">Next</span>
-              <ChevronRight class="w-5 h-5" />
-            </a>
-          </nav>
-        </div>
-      </div>
-    </div>
+    <AdminPagination
+      v-model:current-page="currentPage"
+      :total-items="totalItems"
+      :page-size="pageSize"
+    />
     
     <!-- Modal: Add/Edit User -->
     <Teleport to="body">

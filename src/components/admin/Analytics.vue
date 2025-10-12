@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { BarChart2, TrendingUp, Users, AlertTriangle, Activity, Filter, Download, Search, Calendar } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import type { LogEntry, AnalyticsSummary } from '@/interfaces/interfaces'
 
 const { success } = useToast()
@@ -65,13 +66,13 @@ const filteredLogs = computed(() => {
   return filtered
 })
 
+const totalItems = computed(() => filteredLogs.value.length)
+
 const paginatedLogs = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
   const end = start + itemsPerPage
   return filteredLogs.value.slice(start, end)
 })
-
-const totalPages = computed(() => Math.ceil(filteredLogs.value.length / itemsPerPage))
 
 const logTypeStats = computed(() => {
   const stats: Record<string, number> = {}
@@ -432,29 +433,13 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
-
-      <!-- Pagination -->
-      <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-        <div class="text-sm text-gray-600">
-          Page {{ currentPage }} of {{ totalPages }}
-        </div>
-        <div class="flex gap-2">
-          <button
-            @click="currentPage--"
-            :disabled="currentPage === 1"
-            class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-          >
-            Previous
-          </button>
-          <button
-            @click="currentPage++"
-            :disabled="currentPage === totalPages"
-            class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-          >
-            Next
-          </button>
-        </div>
-      </div>
     </div>
+
+    <!-- Pagination -->
+    <AdminPagination
+      v-model:current-page="currentPage"
+      :total-items="totalItems"
+      :page-size="itemsPerPage"
+    />
   </div>
 </template>
