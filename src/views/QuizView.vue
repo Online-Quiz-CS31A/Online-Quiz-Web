@@ -1,5 +1,6 @@
   <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import Header from '@/components/Header.vue'
   import type { QuizViewQuestion } from '@/interfaces/interfaces'
   
 // CONSTANT
@@ -114,6 +115,7 @@
   const answeredQuestions = ref<Set<number>>(new Set())
   
   // COMPUTED
+  const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz`)
   const progress = computed(() => {
     return ((currentQuestion.value + 1) / questions.length) * 100
   })
@@ -169,13 +171,10 @@
   </script>
 
 <template>
-    <div class="max-w-6xl mx-auto p-4 min-h-screen">
-      <!-- Header Section -->
-      <header class="mb-6">
-        <h1 class="text-3xl font-bold text-[#4285f4] mb-1">Week 1 Quiz</h1>
-        <p class="text-lg text-gray-700">Business Math</p>
-      </header>
-  
+    <div class="min-h-screen">
+      <Header :breadcrumb="breadcrumb" />
+      <div class="max-w-6xl mx-auto p-4 mt-8">
+      
       <!-- Main Content -->
       <main class="grid grid-cols-3 gap-6">
         <!-- Left Panel-->
@@ -283,6 +282,7 @@
           </div>
         </div>
       </main>
+      </div>
     </div>
   </template>
   
