@@ -55,7 +55,7 @@ const markAsDone = () => {
     <main class="container mx-auto px-4 py-8">
       <div class="max-w-5xl mx-auto">
         <div class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
-          <div class="bg-[#4285f4] p-6 text-white">
+          <div class="bg-[white] p-6 text-[#4285f4] border-b-2 border-[#4285f4]">
             <div class="flex items-center justify-between">
               <div>
                 <h2 class="text-2xl font-bold flex items-center">
