@@ -97,7 +97,12 @@ function confirmPublish() {
 function handleBreadcrumbClick(segment: string) {
   const key = segment.toLowerCase()
   if (key === 'dashboard') {
-    router.push({ name: 'teacher' })
+    const role = store.currentUser?.role
+    if (role === 'student') {
+      router.push({ name: 'student' })
+    } else {
+      router.push({ name: 'teacher' })
+    }
   } else if (key === 'courses') {
     router.push({ name: 'teacher', query: { section: 'courses' } })
   } else {
