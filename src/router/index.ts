@@ -34,6 +34,12 @@ const router = createRouter({
       component: () => import('../views/StudentView.vue'),
     },
     {
+      path: '/student/quizzes/:quizId/info',
+      name: 'student-prequiz',
+      component: () => import('../views/PreQuizInfoView.vue'),
+      props: true,
+    },
+    {
       path: '/admin',
       component: () => import('../views/AdminView.vue'),
       redirect: '/admin/dashboard',
