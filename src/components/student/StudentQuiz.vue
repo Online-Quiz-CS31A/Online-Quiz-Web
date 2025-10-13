@@ -66,7 +66,7 @@ const getCoverStyle = (quiz: StudentQuiz) => {
         :key="quiz.id"
         class="quiz-card rounded-xl shadow-md overflow-hidden cursor-pointer"
         :style="{ ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"
-        @click="router.push({ name: 'quiz' })"
+        @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
       >
         <div class="p-5 text-white">
           <div class="flex justify-end items-start mb-3">
@@ -81,7 +81,7 @@ const getCoverStyle = (quiz: StudentQuiz) => {
               <span class="text-xs font-medium ml-1">{{ quiz.class }}</span>
             </div>
             <button 
-              @click="router.push({ name: 'quiz' })"
+              @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
               class="text-white hover:opacity-90 text-sm font-medium transition-colors"
             >
               Start Quiz
