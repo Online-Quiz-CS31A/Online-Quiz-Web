@@ -1,21 +1,8 @@
 <script setup lang="ts">
 import { BookOpen, Home, Users, BookOpenCheck, Settings, Database, BarChart2 } from 'lucide-vue-next'
+import { useRoute } from 'vue-router'
 
-// PROPS
-defineProps<{
-  activeSection: string
-}>()
-
-// EMITS
-const emit = defineEmits<{
-  'update:activeSection': [value: string]
-}>()
-
-
-// METHODS
-const setActiveSection = (section: string) => {
-  emit('update:activeSection', section)
-}
+const route = useRoute()
 </script>
 
 
@@ -32,11 +19,11 @@ const setActiveSection = (section: string) => {
     <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
       <div class="space-y-1">
         <!-- Dashboard -->
-        <a 
-          @click.prevent="setActiveSection('dashboard')"
+        <router-link
+          to="/admin/dashboard"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
-            activeSection === 'dashboard' 
+            route.name === 'admin-dashboard'
               ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
@@ -44,18 +31,18 @@ const setActiveSection = (section: string) => {
           <Home
             :class="[
               'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
-              activeSection === 'dashboard' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              route.name === 'admin-dashboard' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
             ]"
           />
           Dashboard
-        </a>
+        </router-link>
         
         <!-- User Management -->
-        <a 
-          @click.prevent="setActiveSection('users')"
+        <router-link
+          to="/admin/users"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
-            activeSection === 'users' 
+            route.name === 'admin-users'
               ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
@@ -63,18 +50,18 @@ const setActiveSection = (section: string) => {
           <Users
             :class="[
               'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
-              activeSection === 'users' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              route.name === 'admin-users' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
             ]"
           />
           User Management
-        </a>
+        </router-link>
         
         <!-- Course Catalog -->
-        <a 
-          @click.prevent="setActiveSection('courses')"
+        <router-link
+          to="/admin/courses"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
-            activeSection === 'courses' 
+            route.name === 'admin-courses'
               ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
@@ -82,18 +69,18 @@ const setActiveSection = (section: string) => {
           <BookOpenCheck
             :class="[
               'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
-              activeSection === 'courses' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              route.name === 'admin-courses' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
             ]"
           />
           Course Catalog
-        </a>
+        </router-link>
         
         <!-- Quiz Settings -->
-        <a 
-          @click.prevent="setActiveSection('quiz-settings')"
+        <router-link
+          to="/admin/quiz-settings"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
-            activeSection === 'quiz-settings' 
+            route.name === 'admin-quiz-settings'
               ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
@@ -101,18 +88,18 @@ const setActiveSection = (section: string) => {
           <Settings
             :class="[
               'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
-              activeSection === 'quiz-settings' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              route.name === 'admin-quiz-settings' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
             ]"
           />
           Quiz Settings
-        </a>
+        </router-link>
         
         <!-- Data Management -->
-        <a 
-          @click.prevent="setActiveSection('data')"
+        <router-link
+          to="/admin/data"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
-            activeSection === 'data' 
+            route.name === 'admin-data'
               ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
@@ -120,18 +107,18 @@ const setActiveSection = (section: string) => {
           <Database
             :class="[
               'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
-              activeSection === 'data' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              route.name === 'admin-data' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
             ]"
           />
           Data Management
-        </a>
+        </router-link>
         
         <!-- Analytics -->
-        <a 
-          @click.prevent="setActiveSection('analytics')"
+        <router-link
+          to="/admin/analytics"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
-            activeSection === 'analytics' 
+            route.name === 'admin-analytics'
               ? 'text-blue-600 bg-blue-50' 
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
@@ -139,11 +126,11 @@ const setActiveSection = (section: string) => {
           <BarChart2
             :class="[
               'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
-              activeSection === 'analytics' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              route.name === 'admin-analytics' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
             ]"
           />
           Analytics
-        </a>
+        </router-link>
       </div>
     </div>
     

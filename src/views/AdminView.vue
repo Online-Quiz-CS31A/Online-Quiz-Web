@@ -1,60 +1,33 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
+import { useRoute } from 'vue-router'
 import { Bell } from 'lucide-vue-next'
 const AdminSidebar = defineAsyncComponent(() => import('@/components/admin/AdminSidebar.vue'))
-const AdminDashboard = defineAsyncComponent(() => import('@/components/admin/AdminDashboard.vue'))
-const AdminUserManagement = defineAsyncComponent(() => import('@/components/admin/AdminUserManagement.vue'))
-const AdminCourseCatalog = defineAsyncComponent(() => import('@/components/admin/AdminCourseCatalog.vue'))
-const QuizSettings = defineAsyncComponent(() => import('@/components/admin/QuizSettings.vue'))
-const DataManagement = defineAsyncComponent(() => import('@/components/admin/DataManagement.vue'))
-const Analytics = defineAsyncComponent(() => import('@/components/admin/Analytics.vue'))
+
+const route = useRoute()
 
 // CONSTANTS
-const componentMap: Record<string, any> = {
-  dashboard: AdminDashboard,
-  users: AdminUserManagement,
-  courses: AdminCourseCatalog,
-  'quiz-settings': QuizSettings,
-  data: DataManagement,
-  analytics: Analytics
-}
-
 const titleMap: Record<string, string> = {
-  dashboard: 'Dashboard',
-  users: 'User Management',
-  courses: 'Course Catalog',
-  'quiz-settings': 'Quiz Settings',
-  data: 'Data Management',
-  analytics: 'Analytics'
+  'admin-dashboard': 'Dashboard',
+  'admin-users': 'User Management',
+  'admin-courses': 'Course Catalog',
+  'admin-quiz-settings': 'Quiz Settings',
+  'admin-data': 'Data Management',
+  'admin-analytics': 'Analytics'
 }
-
-// REFS
-const activeSection = ref('dashboard')
 
 // COMPUTED
-const currentComponent = computed(() => {
-  return componentMap[activeSection.value] || AdminDashboard
-})
-
 const pageTitle = computed(() => {
-  return titleMap[activeSection.value] || 'Dashboard'
+  return titleMap[route.name as string] || 'Dashboard'
 })
-
-// METHODSs
-const navigateToSection = (section: string) => {
-  activeSection.value = section
-}
 </script>
 
 
 <template>
   <div class="flex h-screen overflow-hidden bg-gray-100">
     <!-- Sidebar -->
-    <AdminSidebar 
-      :active-section="activeSection" 
-      @update:active-section="activeSection = $event"
-    />
+    <AdminSidebar />
     
     <!-- Main content -->
     <div class="flex flex-col flex-1 overflow-hidden">
@@ -92,10 +65,7 @@ const navigateToSection = (section: string) => {
         <div class="py-6">
           <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             <Transition name="fade" mode="out-in">
-              <component 
-                :is="currentComponent" 
-                @navigate="navigateToSection"
-              />
+              <router-view />
             </Transition>
           </div>
         </div>
