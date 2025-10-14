@@ -1,17 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import type { QuizResultChoice, QuizResultQuestion, } from '@/interfaces/interfaces'
-
-// TYPES
-interface Participant {
-  name: string
-  email: string
-  avatar: string
-  section: string
-  score: number
-  percentage: number
-  time: string
-}
+import type { QuizResultQuestion, Participant } from '@/interfaces/interfaces'
 
 
 // CONSTANTS
