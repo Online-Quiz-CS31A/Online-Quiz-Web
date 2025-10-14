@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useToast } from '@/composables/useToast'
 
+//REFS
 const assignmentSubmissionsEmail = ref(true)
 const gradeAppealsEmail = ref(true)
 const courseAnnouncementsEmail = ref(false)
-
 const privateMessagesInApp = ref(true)
 const discussionRepliesInApp = ref(true)
 
+// METHODS
 function onCancel() {
   assignmentSubmissionsEmail.value = true
   gradeAppealsEmail.value = true
@@ -16,9 +18,11 @@ function onCancel() {
   discussionRepliesInApp.value = true
 }
 
+const { success } = useToast()
+
 function onSubmit(e: Event) {
   e.preventDefault()
-  alert('Notification preferences saved successfully!')
+  success('Notification preferences saved successfully!')
 }
 </script>
 

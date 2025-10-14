@@ -2,12 +2,26 @@
 import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { useClassesStore } from '@/stores/classesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
+
+// TYPES
 interface Props {
   isActive: boolean
   activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses'
 }
 
+// CONSTANTS
+const router = useRouter()
+
+// REFS
+const classesOpen = ref(false)
+
+// REACTIVE
+const route = useRoute()
+const auth = useAuthStore()
+const classesStore = useCoursesStore()
+
+// PROPS
 const props = defineProps<Props>()
 defineEmits<{
   close: []
@@ -19,9 +33,7 @@ defineEmits<{
   'nav-calendar': []
 }>()
 
-const classesOpen = ref(false)
-const route = useRoute()
-const router = useRouter()
+// COMPUTED
 const isCoursesActive = computed(() => {
   return (
     activeSection.value === 'courses' ||
@@ -34,13 +46,11 @@ const isHomeActive = computed(() => route.name === 'home')
 const activeSection = computed(() => props.activeSection)
 const isQuizzesActive = computed(() => activeSection.value === 'quizzes')
 const isCalendarActive = computed(() => activeSection.value === 'calendar')
-
-const auth = useAuthStore()
-const classesStore = useClassesStore()
 const isTeacher = computed(() => auth.userRole === 'teacher')
 const isStudent = computed(() => auth.userRole === 'student')
 const myClasses = computed(() => classesStore.myClasses)
 
+// METHODS
 const colorMap: Record<string, string> = {
   red: 'bg-red-500',
   blue: 'bg-blue-500',

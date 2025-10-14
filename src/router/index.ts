@@ -29,14 +29,62 @@ const router = createRouter({
       component: () => import('../views/QuizView.vue'),
     },
     {
+      path: '/quiz/review',
+      name: 'quiz-review',
+      component: () => import('../views/ReviewQuizView.vue'),
+    },
+    {
+      path: '/quiz/score',
+      name: 'quiz-score',
+      component: () => import('../views/QuizScoreView.vue'),
+    },
+    {
       path: '/student',
       name: 'student',
       component: () => import('../views/StudentView.vue'),
     },
     {
+      path: '/student/quizzes/:quizId/info',
+      name: 'student-prequiz',
+      component: () => import('../views/PreQuizInfoView.vue'),
+      props: true,
+    },
+    {
       path: '/admin',
-      name: 'admin',
       component: () => import('../views/AdminView.vue'),
+      redirect: '/admin/dashboard',
+      children: [
+        {
+          path: 'dashboard',
+          name: 'admin-dashboard',
+          component: () => import('../components/admin/AdminDashboard.vue'),
+        },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: () => import('../components/admin/AdminUserManagement.vue'),
+        },
+        {
+          path: 'courses',
+          name: 'admin-courses',
+          component: () => import('../components/admin/AdminCourseCatalog.vue'),
+        },
+        {
+          path: 'quiz-settings',
+          name: 'admin-quiz-settings',
+          component: () => import('../components/admin/QuizSettings.vue'),
+        },
+        {
+          path: 'data',
+          name: 'admin-data',
+          component: () => import('../components/admin/DataManagement.vue'),
+        },
+        {
+          path: 'analytics',
+          name: 'admin-analytics',
+          component: () => import('../components/admin/Analytics.vue'),
+        },
+      ],
     },
     {
       path: '/teacher/classes/:id',

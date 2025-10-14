@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { TeacherQuizItem, StudentQuizItem } from './types'
+import type { TeacherQuizItem, StudentQuizItem } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 
 export const useQuizzesStore = defineStore('quizzes', () => {

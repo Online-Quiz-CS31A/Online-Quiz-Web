@@ -1,13 +1,11 @@
   <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import Header from '@/components/Header.vue'
+  import type { QuizViewQuestion } from '@/interfaces/interfaces'
   
-  interface Question {
-    question: string
-    options: string[]
-    correctAnswer: number
-  }
-  
-  const questions: Question[] = [
+// CONSTANT
+  const questions: QuizViewQuestion[] = [
     {
       question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
       options: ["6.75", "8", "11.25", "720"],
@@ -110,16 +108,21 @@
     }
   ]
   
+  // REFS
   const currentQuestion = ref(0)
   const selectedOption = ref<number | null>(null)
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const answeredQuestions = ref<Set<number>>(new Set())
+  const router = useRouter()
   
+  // COMPUTED
+  const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz`)
   const progress = computed(() => {
     return ((currentQuestion.value + 1) / questions.length) * 100
   })
   
+  // METHODS
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -151,12 +154,17 @@
     selectedOption.value = null
   }
   
+  const finishQuiz = () => {
+    router.push({ name: 'quiz-review' })
+  }
+  
   const startTimer = () => {
     timerInterval.value = setInterval(() => {
       timer.value++
     }, 1000)
   }
   
+  // LIFECYCLE
   onMounted(() => {
     startTimer()
   })
@@ -169,13 +177,10 @@
   </script>
 
 <template>
-    <div class="max-w-6xl mx-auto p-4 min-h-screen">
-      <!-- Header Section -->
-      <header class="mb-6">
-        <h1 class="text-3xl font-bold text-[#4285f4] mb-1">Week 1 Quiz</h1>
-        <p class="text-lg text-gray-700">Business Math</p>
-      </header>
-  
+    <div class="min-h-screen">
+      <Header :breadcrumb="breadcrumb" />
+      <div class="max-w-6xl mx-auto p-4 mt-8">
+      
       <!-- Main Content -->
       <main class="grid grid-cols-3 gap-6">
         <!-- Left Panel-->
@@ -241,11 +246,19 @@
               Previous
             </button>
             <button 
+              v-if="currentQuestion < questions.length - 1"
               class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
               @click="nextQuestion"
-              :disabled="currentQuestion === questions.length - 1"
             >
               Next
+            </button>
+            
+            <button 
+              v-else
+              class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
+              @click="finishQuiz"
+            >
+              Finish
             </button>
           </div>
         </div>
@@ -283,6 +296,7 @@
           </div>
         </div>
       </main>
+      </div>
     </div>
   </template>
   

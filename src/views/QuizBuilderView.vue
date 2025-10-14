@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
-import QuizContent from '@/components/quiz/QuizContent.vue'
-import QuizResults from '@/components/quiz/QuizResults.vue'
-import QuizAssign from '@/components/quiz/QuizAssign.vue'
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
-const route = useRoute()
+
+// CONSTANTS
 const router = useRouter()
 
+
+// REACTIVE
+const route = useRoute()
+
+// REFS
 const showResults = ref(route.name === 'quiz-results')
 const showAssign = ref(route.name === 'quiz-assign')
 const published = ref(false)
-
-watch(() => route.name, (newRouteName) => {
-  showResults.value = newRouteName === 'quiz-results'
-  showAssign.value = newRouteName === 'quiz-assign'
-})
-
 const creatorRef = ref<InstanceType<typeof QuizContent> | null>(null)
 
 const quiz = ref({
@@ -27,6 +26,14 @@ const quiz = ref({
   questions: []
 })
 
+// WATCHERS
+watch(() => route.name, (newRouteName) => {
+  showResults.value = newRouteName === 'quiz-results'
+  showAssign.value = newRouteName === 'quiz-assign'
+})
+
+
+// METHODS
 function onContent() {
   showResults.value = false
   showAssign.value = false

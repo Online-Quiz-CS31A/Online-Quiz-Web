@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import StudentQuizList from '@/components/student/StudentQuiz.vue'
-import TeacherQuizList from '@/components/teacher/TeacherQuiz.vue'
+const StudentQuizList = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
+const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 
+// REACTIVE
 const auth = useAuthStore()
 const quizzesStore = useQuizzesStore()
 
+// REFS
+const query = ref('')
+
+// COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
+
 const quizzes = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes : quizzesStore.myStudentQuizzes))
 
-const query = ref('')
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const list = quizzes.value || []
@@ -43,7 +49,6 @@ const filtered = computed(() => {
       </div>
     </div>
 
-    <!-- Reuse existing list components without their headers -->
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as any" :hide-header="true" />
     <StudentQuizList v-else :quizzes="filtered as any" :hide-header="true" />
 

@@ -1,34 +1,33 @@
 <script setup lang="ts">
  import { ref } from 'vue'
+import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
 import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.png'
 import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
-interface Quiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  submitted: number
-  total: number
-  color: string
-}
 
+// TYPES
 interface Props {
-  quizzes: Quiz[]
+  quizzes: TeacherQuizItem[]
   hideHeader?: boolean
 }
 
+// CONSTANTS
+const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
+
+// PROPS
 const props = defineProps<Props>()
+
+// EMITS
 const emit = defineEmits<{
   'view-all': []
 }>()
- 
-const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 
+// REFS
+const openMenuId = ref<number | null>(null)
+ 
+// METHODS
 const getDeterministicIndex = (key: string) => {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -38,14 +37,13 @@ const getDeterministicIndex = (key: string) => {
   return Math.abs(hash)
 }
 
-const getCoverStyle = (quiz: Quiz) => {
+const getCoverStyle = (quiz: TeacherQuizItem) => {
   const index = getDeterministicIndex(`${quiz.id}-${quiz.title}`)
   const url = coverImages[index % coverImages.length]
   return {
     backgroundImage: `url(${url})`
   }
 }
-
 
 const getCardColorClasses = (color: string) => {
   const colorMap: Record<string, string> = {
@@ -63,8 +61,6 @@ const getCardColorClasses = (color: string) => {
   return colorMap[color] || colorMap.blue
 }
 
-const openMenuId = ref<number | null>(null)
-
 const toggleMenu = (quizId: number) => {
   openMenuId.value = openMenuId.value === quizId ? null : quizId
 }
@@ -73,13 +69,12 @@ const closeMenu = () => {
   openMenuId.value = null
 }
 
-
-const handleEditQuiz = (quiz: Quiz) => {
+const handleEditQuiz = (quiz: TeacherQuizItem) => {
   console.log(`Editing quiz: ${quiz.title}`)
   closeMenu()
 }
 
-const handleDeleteQuiz = (quiz: Quiz) => {
+const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
   if (confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
     console.log(`Deleting quiz: ${quiz.title}`)
   }

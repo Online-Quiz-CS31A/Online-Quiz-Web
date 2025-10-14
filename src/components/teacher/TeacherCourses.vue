@@ -1,32 +1,43 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useClassesStore } from '@/stores/classesStore'
-import type { ClassItem } from '@/stores/types'
+import { useCoursesStore } from '@/stores/coursesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import type { ClassItem } from '@/interfaces/interfaces'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
 import bg4 from '@/assets/image/bg4.jpg'
 import bg5 from '@/assets/image/bg5.jpg'
 
-const props = defineProps<{ showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
-const showViewAll = computed(() => props.showViewAll !== false)
-const showHeader = computed(() => props.showHeader !== false)
+// CONSTANTS
+const coverImages = [bg1, bg2, bg3, bg4, bg5]
+const router = useRouter()
 
-const classesStore = useClassesStore()
-const classes = computed<ClassItem[]>(() => classesStore.myClasses)
-const displayedClasses = computed<ClassItem[]>(() => {
-  const list = classes.value
-  return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
-})
+// PROPS
+const props = defineProps<{ classes?: ClassItem[];  maxItems?: number }>()
 
-const menuOpenForId = ref<number | null>(null)
-
+// EMITS
 const emit = defineEmits<{
   (e: 'leave-class', classItem: ClassItem): void
   (e: 'view-all'): void
 }>()
 
+// REACTIVE
+const classesStore = useCoursesStore()
+const sectionsStore = useSectionsStore()
+
+// REFS
+const menuOpenForId = ref<number | null>(null)
+
+// COMPUTED
+const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
+const displayedClasses = computed<ClassItem[]>(() => {
+  const list = classes.value
+  return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
+})
+
+// METHODS
 const toggleMenu = (id: number) => {
   menuOpenForId.value = menuOpenForId.value === id ? null : id
 }
@@ -37,18 +48,6 @@ const onDocClick = (e: MouseEvent) => {
     menuOpenForId.value = null
   }
 }
-
-onMounted(() => {
-  document.addEventListener('click', onDocClick)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClick)
-})
-
-const coverImages = [bg1, bg2, bg3, bg4, bg5]
-
-const router = useRouter()
 
 const handleEnterClass = (classItem: ClassItem) => {
   router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
@@ -92,6 +91,20 @@ const getInitials = (name: string) => {
   const last = parts[parts.length - 1]?.[0] || ''
   return (first + last).toUpperCase()
 }
+
+const getStudentCount = (courseId: number) => {
+  const sections = sectionsStore.getSectionsByCourse(courseId)
+  return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+}
+
+// LIFECYCLE
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick)
+})
 </script>
 
 <template>
@@ -115,6 +128,7 @@ const getInitials = (name: string) => {
           <div class="absolute inset-0 bg-gradient-to-br from-black/30 via-black/15 to-black/10"></div>
 
           <div class="absolute inset-0 p-4 text-white select-none">
+            <p class="text-xs opacity-90">{{ classItem.code }}</p>
             <h3 class="mt-1 text-xl font-bold leading-snug line-clamp-2">{{ classItem.name }}</h3>
           </div>
           <div class="absolute right-2 top-2 actions-menu">
@@ -156,7 +170,7 @@ const getInitials = (name: string) => {
               </div>
               <div class="min-w-0 leading-tight">
                 <div class="text-xs truncate max-w-[180px]">{{ classItem.teacher }}</div>
-                <div class="text-[11px] opacity-90">{{ classItem.students }} students</div>
+                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem.id) }} students</div>
               </div>
             </div>
           </div>

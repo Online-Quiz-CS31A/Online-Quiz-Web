@@ -1,31 +1,88 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import ActiveQuizzes from '@/components/teacher/TeacherQuiz.vue'
-import Header from '@/components/Header.vue'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import { useCoursesStore } from '@/stores/coursesStore'
+import { useStudentsStore } from '@/stores/studentsStore'
+import { useAuthStore } from '@/stores/authStore'
+import type { Student } from '@/interfaces/interfaces'
+import { useToast } from '@/composables/useToast'
+const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
+const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
-const route = useRoute()
-const router = useRouter()
-const classId = computed(() => String(route.params.id || ''))
-
-const classMeta = reactive({
-  title: 'Automata',
-  professor: 'Donald Francisco',
-  term: 'Spring Semester 2023',
-  code: 'MTH101-23',
-})
-
-const classNameMap: Record<string, string> = {
-  '1': 'CS31A',
-  '2': 'IT11B',
-  '3': 'CS22A',
+// TYPE
+type TabKey = 'dashboard' | 'people' | 'grades'
+interface GradeRow { 
+  id: number; 
+  name: string; 
+  email: string; 
+  assignments: number; 
+  quizzes: number; 
+  exams: number; 
+  final: number 
 }
 
-watch(classId, (id) => {
-  const clsName = classNameMap[id] || `Class ${id}`
-  classMeta.title = clsName
-  classMeta.code = clsName
-}, { immediate: true })
+type GradeCol = keyof Omit<GradeRow, 'id' | 'email'>
+
+interface QuizBreakdown { 
+  title: string; 
+  score: number; 
+  total: number; 
+  percent: number; 
+  due: string; 
+  status: 'Submitted' | 'Missing' 
+}
+
+interface ActiveQuiz {
+  id: number
+  subject: string
+  title: string
+  description: string
+  dueDate: string
+  class: string
+  submitted: number
+  total: number
+  color: string
+}
+
+// CONSTANT
+const router = useRouter()
+const pageSize = 3
+const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+
+// REFS
+const activeTab = ref<TabKey>('dashboard')
+const searchTerm = ref('')
+const currentPage = ref(1)
+const sortCol = ref<GradeCol>('final')
+const sortAsc = ref(false)
+const showGradesModal = ref(false)
+const selectedStudent = ref<GradeRow | null>(null)
+const breakdown = ref<QuizBreakdown[]>([])
+
+// COMPUTED
+const sectionId = computed(() => Number(route.params.id || 0))
+
+
+const currentSection = computed(() => {
+  return sectionsStore.allSections.find(s => s.id === sectionId.value)
+})
+
+const currentCourseId = computed(() => {
+  const mapping = sectionsStore.courseSectionMappings.find(m => m.sectionId === sectionId.value)
+  return mapping?.courseId
+})
+
+const currentCourse = computed(() => {
+  if (!currentCourseId.value) return null
+  return classesStore.allCourses.find(c => c.id === currentCourseId.value)
+})
+
+const schedule = computed(() => {
+  if (!currentCourseId.value || !sectionId.value) return null
+  return sectionsStore.getSchedule(currentCourseId.value, sectionId.value)
+})
 
 const professorInitials = computed(() => {
   const parts = classMeta.professor.trim().split(/\s+/)
@@ -33,47 +90,49 @@ const professorInitials = computed(() => {
   return initials.join('')
 })
 
-function navigateToQuizCreator() {
-  router.push(`/teacher/create-quiz`)
-}
+const breadcrumbText = computed(() => {
+  const courseName = currentCourse.value?.name || 'Course'
+  const sectionName = currentSection.value?.name || 'Section'
+  return `Dashboard > Courses > ${courseName} > ${sectionName}`
+})
 
-const breadcrumbText = computed(() => `Dashboard > Courses > ${classMeta.title}`)
 
-type TabKey = 'dashboard' | 'people' | 'grades'
-const activeTab = ref<TabKey>('dashboard')
-
-interface Student { id: number; name: string; email: string; grade: string; progress: number; initials: string; avatar: string }
-const PARTICIPANT_NAMES = [
-  'Neil Vallecer', 'Jose Betonio', 'James Maguinda', 'Jan Rosalijos', 'John Cez Casupanan',
-  'Nicole Inot', 'Uzziah Lanz', 'Weah Jacionto', 'Elian Inot', 'Chitoge Kirisaki'
-]
-const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-function initialsOf(name: string) {
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-}
-const students = ref<Student[]>(PARTICIPANT_NAMES.map((name, i) => ({
-  id: 1001 + i,
-  name,
-  email: `${name.split(' ')[0].toLowerCase()}.${(name.split(' ')[1] || '').toLowerCase()}@gmail.com`,
-  grade: ['A', 'A-', 'B+'][i % 3],
-  progress: 75 + ((i * 7) % 25),
-  initials: initialsOf(name),
-  avatar: AVATAR_URL,
-})))
-
-function getAvatarByEmail(email: string): string {
-  const s = students.value.find(st => st.email === email)
-  return s?.avatar || AVATAR_URL
-}
-
-const searchTerm = ref('')
-const currentPage = ref(1)
-const pageSize = 3
+const students = computed<Student[]>(() => {
+  if (!currentSection.value) return []
+  
+  const studentUsernames = currentSection.value.studentUsernames || []
+  
+  return studentUsernames.map((username, i) => {
+    const profile = studentsStore.profiles[username]
+    if (!profile) {
+      return {
+        id: i + 1,
+        name: username,
+        email: `${username}@unknown.com`,
+        grade: 'N/A',
+        progress: 0,
+        initials: username.substring(0, 2).toUpperCase(),
+        avatar: AVATAR_URL,
+      }
+    }
+    
+    const fullName = `${profile.firstName} ${profile.lastName}`.trim()
+    return {
+      id: i + 1,
+      name: fullName,
+      email: profile.email,
+      grade: ['A', 'A-', 'B+'][i % 3],
+      progress: 75 + ((i * 7) % 25),
+      initials: initialsOf(fullName),
+      avatar: profile.photoUrl || AVATAR_URL,
+    }
+  })
+})
 
 const filteredStudents = computed(() => {
   const q = searchTerm.value.trim().toLowerCase()
   if (!q) return students.value
-  return students.value.filter(s => s.name.toLowerCase().includes(q))
+  return students.value.filter(s => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredStudents.value.length / pageSize)))
@@ -81,6 +140,130 @@ const paginatedStudents = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   return filteredStudents.value.slice(start, start + pageSize)
 })
+
+const gradeRows = computed<GradeRow[]>(() => {
+  return students.value.slice(0, 10).map((s, idx) => ({
+    id: s.id,
+    name: s.name,
+    email: s.email,
+    assignments: 80 + ((idx * 5) % 20),
+    quizzes: 75 + ((idx * 9) % 20),
+    exams: 70 + ((idx * 11) % 25),
+    final: 78 + ((idx * 8) % 20),
+  }))
+})
+
+const sortedGrades = computed(() => {
+  const rows = [...gradeRows.value]
+  rows.sort((a, b) => {
+    const va = a[sortCol.value] as number | string
+    const vb = b[sortCol.value] as number | string
+    if (typeof va === 'string' && typeof vb === 'string') return sortAsc.value ? va.localeCompare(vb) : vb.localeCompare(va)
+    return sortAsc.value ? Number(va) - Number(vb) : Number(vb) - Number(va)
+  })
+  return rows
+})
+
+const totalStudents = computed(() => students.value.length)
+
+const scheduleInfo = computed(() => {
+  if (!schedule.value) return 'Schedule not set'
+  const day = schedule.value.scheduleDay
+  const time = schedule.value.scheduleTime
+  const room = schedule.value.classroom
+  
+  const [hours, minutes] = time.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  const formattedTime = `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+  
+  return `${day}, ${formattedTime} - ${room}`
+})
+
+const activeQuizzes = computed<ActiveQuiz[]>(() => {
+  const courseName = currentCourse.value?.name || 'Course'
+  const sectionName = currentSection.value?.name || 'Section'
+  const total = totalStudents.value
+  
+  return [
+    {
+      id: 1,
+      subject: courseName,
+      title: 'Quiz 2',
+      description: 'Basic algebraic equations and expressions quiz covering chapters 1-3.',
+      dueDate: 'May 15',
+      class: sectionName,
+      submitted: Math.floor(total * 0.75),
+      total: total,
+      color: 'blue',
+    },
+    {
+      id: 2,
+      subject: courseName,
+      title: 'Quiz 3',
+      description: 'Comprehensive geometry midterm covering all concepts from the first half.',
+      dueDate: 'May 22',
+      class: sectionName,
+      submitted: Math.floor(total * 0.5),
+      total: total,
+      color: 'indigo',
+    },
+    {
+      id: 3,
+      subject: courseName,
+      title: 'Quiz 4',
+      description: 'Basic trigonometric functions and identities quiz.',
+      dueDate: 'May 30',
+      class: sectionName,
+      submitted: Math.floor(total * 0.125),
+      total: total,
+      color: 'purple',
+    },
+  ]
+})
+
+// REACTIVE
+const route = useRoute()
+const sectionsStore = useSectionsStore()
+const classesStore = useCoursesStore()
+const studentsStore = useStudentsStore()
+const authStore = useAuthStore()
+
+const classMeta = reactive({
+  title: currentSection.value?.name || 'Section',
+  professor: currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown',
+  term: 'Academic Year 2024-2025',
+  code: currentCourse.value?.code || '',
+})
+
+// WATCHERS
+watch([currentSection, currentCourse], () => {
+  classMeta.title = currentSection.value?.name || 'Section'
+  classMeta.professor = currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown'
+  classMeta.code = currentCourse.value?.code || ''
+}, { immediate: true })
+
+
+// METHODS
+function navigateToQuizCreator() {
+  router.push(`/teacher/create-quiz`)
+}
+
+function handleBreadcrumbSegment(segment: string) {
+  const courseName = currentCourse.value?.name
+  if (segment === courseName && currentCourseId.value) {
+    router.push({ name: 'teacher-class', params: { id: String(currentCourseId.value) } })
+  }
+}
+
+function initialsOf(name: string) {
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+}
+
+function getAvatarByEmail(email: string): string {
+  const s = students.value.find(st => st.email === email)
+  return s?.avatar || AVATAR_URL
+}
 
 function goToPage(p: number) {
   if (p < 1 || p > totalPages.value) return
@@ -90,41 +273,18 @@ function goToPage(p: number) {
 function prevPage() { goToPage(currentPage.value - 1) }
 function nextPage() { goToPage(currentPage.value + 1) }
 
-interface GradeRow { id: number; name: string; email: string; assignments: number; quizzes: number; exams: number; final: number }
-const gradeRows = ref<GradeRow[]>(students.value.slice(0, 10).map((s, idx) => ({
-  id: s.id,
-  name: s.name,
-  email: s.email,
-  assignments: 80 + ((idx * 5) % 20),
-  quizzes: 75 + ((idx * 9) % 20),
-  exams: 70 + ((idx * 11) % 25),
-  final: 78 + ((idx * 8) % 20),
-})))
-type GradeCol = keyof Omit<GradeRow, 'id' | 'email'>
-const sortCol = ref<GradeCol>('final')
-const sortAsc = ref(false)
-const sortedGrades = computed(() => {
-  const rows = [...gradeRows.value]
-  rows.sort((a,b) => {
-    const va = a[sortCol.value] as number | string
-    const vb = b[sortCol.value] as number | string
-    if (typeof va === 'string' && typeof vb === 'string') return sortAsc.value ? va.localeCompare(vb) : vb.localeCompare(va)
-    return sortAsc.value ? Number(va) - Number(vb) : Number(vb) - Number(va)
-  })
-  return rows
-})
+
 function sortBy(col: GradeCol) {
   if (sortCol.value === col) sortAsc.value = !sortAsc.value
   else { sortCol.value = col; sortAsc.value = true }
 }
+
+const { success } = useToast()
+
 function exportGrades() {
-  alert('Grades exported')
+  success('Grades exported')
 }
 
-interface QuizBreakdown { title: string; score: number; total: number; percent: number; due: string; status: 'Submitted' | 'Missing' }
-const showGradesModal = ref(false)
-const selectedStudent = ref<GradeRow | null>(null)
-const breakdown = ref<QuizBreakdown[]>([])
 function openGrades(row: GradeRow) {
   selectedStudent.value = row
   const base = row.id % 5
@@ -147,64 +307,20 @@ function openGrades(row: GradeRow) {
 function closeGrades() {
   showGradesModal.value = false
 }
-
-interface ActiveQuiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  submitted: number
-  total: number
-  color: string
-}
-
-const activeQuizzes = ref<ActiveQuiz[]>([
-  {
-    id: 1,
-    subject: 'Automata',
-    title: 'Quiz 2',
-    description: 'Basic algebraic equations and expressions quiz covering chapters 1-3.',
-    dueDate: 'May 15',
-    class: classMeta.code,
-    submitted: 18,
-    total: 24,
-    color: 'blue',
-  },
-  {
-    id: 2,
-    subject: 'Automata',
-    title: 'Quiz 3',
-    description: 'Comprehensive geometry midterm covering all concepts from the first half.',
-    dueDate: 'May 22',
-    class: classMeta.code,
-    submitted: 12,
-    total: 24,
-    color: 'indigo',
-  },
-  {
-    id: 3,
-    subject: 'Automata',
-    title: 'Quiz 4',
-    description: 'Basic trigonometric functions and identities quiz.',
-    dueDate: 'May 30',
-    class: classMeta.code,
-    submitted: 3,
-    total: 24,
-    color: 'purple',
-  },
-])
 </script>
 
 <template>
   <div class="bg-white min-h-screen">
-    <Header :breadcrumb="breadcrumbText" />
+    <Header :breadcrumb="breadcrumbText" @segment-click="handleBreadcrumbSegment" />
     <div class="classroom-banner w-full flex items-end text-white">
       <div class="container mx-auto px-4 py-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end">
           <div>
-            <h1 class="text-3xl md:text-4xl font-bold mb-3">{{ classMeta.title }}</h1>
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ classMeta.title }}</h1>
+            <div class="mt-3 text-blue-100 text-sm flex items-center gap-2 mb-4">
+              <i class="fas fa-clock"></i>
+              <span>{{ scheduleInfo }}</span>
+            </div>
             <div class="flex items-center space-x-3">
               <div class="relative">
                 <div class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold ring-2 ring-white/20">
