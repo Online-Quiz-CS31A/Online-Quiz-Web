@@ -300,3 +300,18 @@ export interface QuizSettings {
   randomizeOptions: boolean
   allowReview: boolean
 }
+
+export interface Participant {
+  name: string
+  email: string
+  avatar: string
+  section: string
+  score: number
+  percentage: number
+  time: string
+}
+
+export interface ReviewQuestion {
+  id: number
+  answered: boolean
+}
