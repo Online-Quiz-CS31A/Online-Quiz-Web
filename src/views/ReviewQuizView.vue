@@ -63,6 +63,10 @@ const backToQuiz = () => {
   router.push({ name: 'quiz' })
 }
 
+const submitQuiz = () => {
+  router.push({ name: 'quiz-score' })
+}
+
 // LIFECYCLE
 onMounted(() => {
   updateDateTime()
@@ -153,6 +157,7 @@ onUnmounted(() => {
           Back to Quiz
         </button>
         <button 
+          @click="submitQuiz"
           class="px-6 py-3 bg-[#4285f4] hover:bg-[#4866DA] text-white rounded-xl font-semibold flex items-center justify-center transition-all shadow-md"
         >
           Submit Quiz
