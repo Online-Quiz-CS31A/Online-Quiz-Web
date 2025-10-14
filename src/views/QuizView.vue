@@ -1,5 +1,6 @@
   <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import { useRouter } from 'vue-router'
   import Header from '@/components/Header.vue'
   import type { QuizViewQuestion } from '@/interfaces/interfaces'
   
@@ -113,6 +114,7 @@
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const answeredQuestions = ref<Set<number>>(new Set())
+  const router = useRouter()
   
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz`)
@@ -150,6 +152,10 @@
   const goToQuestion = (questionIndex: number) => {
     currentQuestion.value = questionIndex
     selectedOption.value = null
+  }
+  
+  const finishQuiz = () => {
+    router.push({ name: 'quiz-review' })
   }
   
   const startTimer = () => {
@@ -240,11 +246,19 @@
               Previous
             </button>
             <button 
+              v-if="currentQuestion < questions.length - 1"
               class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
               @click="nextQuestion"
-              :disabled="currentQuestion === questions.length - 1"
             >
               Next
+            </button>
+            
+            <button 
+              v-else
+              class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
+              @click="finishQuiz"
+            >
+              Finish
             </button>
           </div>
         </div>
