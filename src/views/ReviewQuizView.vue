@@ -3,11 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
-
-interface Question {
-  id: number
-  answered: boolean
-}
+import type { ReviewQuestion } from '@/interfaces/interfaces'
 
 // CONSTANTS
 const router = useRouter()
@@ -21,7 +17,7 @@ const timeInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz > Review`)
 
 
-const questions = ref<Question[]>([
+const questions = ref<ReviewQuestion[]>([
   { id: 1, answered: true },
   { id: 2, answered: true },
   { id: 3, answered: false },
