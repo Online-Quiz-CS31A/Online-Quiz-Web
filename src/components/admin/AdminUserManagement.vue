@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watchEffect } from 'vue'
-import AdminUserModal from '@/components/modals/AdminUserModal.vue'
+import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
+import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
 import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import type { AdminUser } from '@/interfaces/interfaces'
@@ -422,9 +423,19 @@ const getStatusBadgeClass = (status: string) => {
       :page-size="pageSize"
     />
     
-    <AdminUserModal
-      :open="showModal"
-      :is-editing="isEditing"
+    <AdminUserAddModal
+      v-if="showModal && !isEditing"
+      :open="true"
+      :model-value="form"
+      :errors="errors"
+      @close="closeModal"
+      @save="saveUser"
+      @role-change="onRoleChange"
+      @update:modelValue="val => Object.assign(form, val)"
+    />
+    <AdminUserEditModal
+      v-if="showModal && isEditing"
+      :open="true"
       :model-value="form"
       :errors="errors"
       @close="closeModal"
