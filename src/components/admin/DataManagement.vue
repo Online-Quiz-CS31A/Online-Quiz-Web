@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Download, Upload, Database, FileJson, FileSpreadsheet, AlertCircle, Check, Trash2, Archive } from 'lucide-vue-next'
+import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
@@ -17,6 +18,7 @@ const uploadedFile = ref<File | null>(null)
 const showImportPreview = ref(false)
 const importPreviewData = ref<any>(null)
 const exportHistory = ref<Array<{ id: string; timestamp: string; type: string; size: string }>>([])
+const showClearDataModal = ref(false)
 
 // COMPUTED
 const databaseStats = computed(() => ({
@@ -179,20 +181,25 @@ const cancelImport = () => {
 }
 
 const clearAllData = () => {
-  if (confirm('WARNING: This will delete ALL data from the system. This action cannot be undone. Are you sure?')) {
-    if (confirm('This is your last chance. Type "DELETE" in your mind and click OK to proceed.')) {
-      coursesStore.allCourses.length = 0
-      sectionsStore.allSections.length = 0
-      sectionsStore.courseSectionMappings.length = 0
-      sectionsStore.courseSectionSchedules.length = 0
-      Object.keys(studentsStore.profiles).forEach(key => delete studentsStore.profiles[key])
-      
-      localStorage.removeItem('adminQuizSettings')
-      localStorage.removeItem('lastBackupDate')
-      
-      info('All data has been cleared')
-    }
-  }
+  showClearDataModal.value = true
+}
+
+const confirmClearAllData = () => {
+  coursesStore.allCourses.length = 0
+  sectionsStore.allSections.length = 0
+  sectionsStore.courseSectionMappings.length = 0
+  sectionsStore.courseSectionSchedules.length = 0
+  Object.keys(studentsStore.profiles).forEach(key => delete studentsStore.profiles[key])
+
+  localStorage.removeItem('adminQuizSettings')
+  localStorage.removeItem('lastBackupDate')
+
+  showClearDataModal.value = false
+  info('All data has been cleared')
+}
+
+const cancelClearAllData = () => {
+  showClearDataModal.value = false
 }
 </script>
 
@@ -449,4 +456,13 @@ const clearAllData = () => {
       </div>
     </div>
   </div>
+  <DangerConfirmModal
+    :open="showClearDataModal"
+    title="Delete all data from the system?"
+    message="This will permanently remove courses, sections, schedules, and student profiles. This action cannot be undone."
+    confirm-label="Delete everything"
+    cancel-label="Cancel"
+    @confirm="confirmClearAllData"
+    @cancel="cancelClearAllData"
+  />
 </template>
