@@ -141,11 +141,6 @@ function saveClass() {
     studentUsernames: studentUsernames
   }, courseId)
   
-  sectionsStore.setSchedule(courseId, newSectionId, {
-    scheduleDay: form.scheduleDay,
-    scheduleTime: form.scheduleTime,
-    classroom: form.classroom
-  })
   
   success('Class saved successfully!')
   router.back()
