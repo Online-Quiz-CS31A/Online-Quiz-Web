@@ -2,7 +2,8 @@
 import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { X, Book, Plus } from 'lucide-vue-next'
-import AdminCourseModal from '@/components/modals/AdminCourseModal.vue'
+import AdminCourseAddModal from '@/components/modals/AdminCourseAddModal.vue'
+import AdminCourseEditModal from '@/components/modals/AdminCourseEditModal.vue'
 import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import { useCoursesStore } from '@/stores/coursesStore'
@@ -315,9 +316,18 @@ onMounted(() => {
       :page-size="pageSize"
     />
 
-    <AdminCourseModal
-      :open="showModal"
-      :is-editing="isEditing"
+    <AdminCourseAddModal
+      v-if="showModal && !isEditing"
+      :open="true"
+      :model-value="form"
+      :errors="errors"
+      @close="closeModal"
+      @save="saveCourse"
+      @update:modelValue="val => Object.assign(form, val)"
+    />
+    <AdminCourseEditModal
+      v-if="showModal && isEditing"
+      :open="true"
       :model-value="form"
       :errors="errors"
       @close="closeModal"
