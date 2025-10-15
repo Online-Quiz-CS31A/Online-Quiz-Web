@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
+import ConfirmUnansweredModal from '@/components/modals/ConfirmUnansweredModal.vue'
 import type { ReviewQuestion } from '@/interfaces/interfaces'
 
 // CONSTANTS
@@ -12,6 +13,7 @@ const router = useRouter()
 const currentDate = ref('')
 const currentTime = ref('')
 const timeInterval = ref<ReturnType<typeof setInterval> | null>(null)
+const showConfirmModal = ref(false)
 
 // COMPUTED
 const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz > Review`)
@@ -29,6 +31,8 @@ const questions = ref<ReviewQuestion[]>([
   { id: 9, answered: false },
   { id: 10, answered: true },
 ])
+
+const unansweredCount = computed(() => questions.value.filter(q => !q.answered).length)
 
 // METHODS
 const updateDateTime = () => {
@@ -60,7 +64,20 @@ const backToQuiz = () => {
 }
 
 const submitQuiz = () => {
+  if (unansweredCount.value > 0) {
+    showConfirmModal.value = true
+    return
+  }
   router.push({ name: 'quiz-score' })
+}
+
+const confirmSubmit = () => {
+  showConfirmModal.value = false
+  router.push({ name: 'quiz-score' })
+}
+
+const cancelSubmit = () => {
+  showConfirmModal.value = false
 }
 
 // LIFECYCLE
@@ -162,4 +179,10 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+  <ConfirmUnansweredModal
+    :open="showConfirmModal"
+    :unanswered-count="unansweredCount"
+    @confirm="confirmSubmit"
+    @cancel="cancelSubmit"
+  />
 </template>
