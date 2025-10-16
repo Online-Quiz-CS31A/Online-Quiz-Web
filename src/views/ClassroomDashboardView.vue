@@ -60,6 +60,7 @@ const sortAsc = ref(false)
 const showGradesModal = ref(false)
 const selectedStudent = ref<GradeRow | null>(null)
 const breakdown = ref<QuizBreakdown[]>([])
+const quizViewMode = ref<'cards' | 'rows'>('cards')
 
 // COMPUTED
 const sectionId = computed(() => Number(route.params.id || 0))
@@ -361,12 +362,34 @@ function closeGrades() {
       <div v-show="activeTab === 'dashboard'" class="rounded-lg overflow-hidden">
         <div class="px-6 flex justify-between items-center">
           <h2 class="text-xl font-semibold text-blue-800">Quizzes</h2>
-          <button @click="navigateToQuizCreator" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer">
-            <i class="fas fa-plus mr-2"></i> Create Quiz
-          </button>
+          <div class="flex items-center gap-3">
+            <div class="inline-flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+              <button
+                class="relative px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ease-in-out"
+                :class="quizViewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                @click="quizViewMode = 'cards'"
+                aria-label="Cards view"
+                title="Cards view"
+              >
+                <i class="fas fa-grip"></i>
+              </button>
+              <button
+                class="relative px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ease-in-out"
+                :class="quizViewMode === 'rows' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                @click="quizViewMode = 'rows'"
+                aria-label="Rows view"
+                title="Rows view"
+              >
+                <i class="fas fa-list"></i>
+              </button>
+            </div>
+            <button @click="navigateToQuizCreator" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer transition-colors duration-200">
+              <i class="fas fa-plus mr-2"></i> Create Quiz
+            </button>
+          </div>
         </div>
         <div class="p-6">
-          <ActiveQuizzes :quizzes="activeQuizzes" :hideHeader="true" />
+          <ActiveQuizzes :quizzes="activeQuizzes" :hideHeader="true" :viewMode="quizViewMode" />
         </div>
       </div>
 
