@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem } from '@/interfaces/interfaces'
@@ -27,6 +28,7 @@ const sectionsStore = useSectionsStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
+const router = useRouter()
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -48,7 +50,7 @@ const onDocClick = (e: MouseEvent) => {
 }
 
 const handleEnterClass = (classItem: ClassItem) => {
-  console.log(`Entering class: ${classItem.name}`)
+  router.push({ name: 'student-course-dashboard', params: { id: classItem.id } })
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
@@ -168,7 +170,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="bg-white px-4 py-3 flex items-center justify-end">
-          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
+          <button @click.stop="handleEnterClass(classItem)" class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
             Enter class
           </button>
         </div>
