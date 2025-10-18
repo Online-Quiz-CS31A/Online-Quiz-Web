@@ -50,6 +50,12 @@ const router = createRouter({
       props: true,
     },
     {
+      path: '/student/courses/:id/dashboard',
+      name: 'student-course-dashboard',
+      component: () => import('../views/StudentCourseDashboardView.vue'),
+      props: true,
+    },
+    {
       path: '/admin',
       component: () => import('../views/AdminView.vue'),
       redirect: '/admin/dashboard',
