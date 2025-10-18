@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { Notification } from '@/interfaces/interfaces'
 
 // TYPES
-interface Notification {
-  id: number
-  title: string
-  message: string
-  time: string
-  read: boolean
-}
-
 interface Props {
   notifications: Notification[]
   show: boolean

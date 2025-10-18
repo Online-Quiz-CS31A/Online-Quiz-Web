@@ -315,3 +315,11 @@ export interface ReviewQuestion {
   id: number
   answered: boolean
 }
+
+export interface Notification {
+  id: number
+  title: string
+  message: string
+  time: string
+  read: boolean
+}

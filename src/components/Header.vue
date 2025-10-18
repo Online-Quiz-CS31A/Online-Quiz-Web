@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificationsStore } from '@/stores/notificationsStore'
 import type { HeaderProps } from '@/interfaces/interfaces'
 
 const NotificationDropdown = defineAsyncComponent(() => import('./NotificationDropdown.vue'))
@@ -38,15 +39,9 @@ const showProfileDropdown = ref(false)
 const showPublishModal = ref(false)
 const showNotificationDropdown = ref(false)
 
-const notifications = ref([
-  { id: 1, title: 'New quiz assigned', message: 'Math Quiz 1 has been assigned', time: '5 min ago', read: false },
-  { id: 2, title: 'Grade posted', message: 'Your Science Quiz grade is available', time: '1 hour ago', read: false },
-  { id: 3, title: 'Reminder', message: 'Quiz due tomorrow', time: '2 hours ago', read: false },
-  { id: 4, title: 'Class updated', message: 'Schedule changed for CS101', time: '1 day ago', read: true },
-])
-
 // REACTIVE
 const store = useAuthStore()
+const notificationsStore = useNotificationsStore()
 
 // COMPUTED
 const displayName = computed(() => store.currentUser?.name || 'Guest')
@@ -67,9 +62,7 @@ const breadcrumbSegments = computed(() => {
     .filter(Boolean)
 })
 
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
+const unreadCount = computed(() => notificationsStore.unreadCount)
 
 // METHODS
 function toggleProfileDropdown() {
@@ -134,14 +127,11 @@ function closeNotificationDropdown() {
 }
 
 function markAsRead(id: number) {
-  const notification = notifications.value.find(n => n.id === id)
-  if (notification) {
-    notification.read = true
-  }
+  notificationsStore.markAsRead(id)
 }
 
 function markAllAsRead() {
-  notifications.value.forEach(n => n.read = true)
+  notificationsStore.markAllAsRead()
 }
 </script>
 
@@ -245,7 +235,7 @@ function markAllAsRead() {
           
           <!-- Notification Dropdown Component -->
           <NotificationDropdown 
-            :notifications="notifications"
+            :notifications="notificationsStore.notifications"
             :show="showNotificationDropdown"
             @close="closeNotificationDropdown"
             @mark-as-read="markAsRead"
