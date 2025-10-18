@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import type { HeaderProps } from '@/interfaces/interfaces'
+
+const NotificationDropdown = defineAsyncComponent(() => import('./NotificationDropdown.vue'))
 
 // TYPES
 interface Props extends HeaderProps {}
@@ -33,6 +36,14 @@ const emit = defineEmits<{
 // REFS
 const showProfileDropdown = ref(false)
 const showPublishModal = ref(false)
+const showNotificationDropdown = ref(false)
+
+const notifications = ref([
+  { id: 1, title: 'New quiz assigned', message: 'Math Quiz 1 has been assigned', time: '5 min ago', read: false },
+  { id: 2, title: 'Grade posted', message: 'Your Science Quiz grade is available', time: '1 hour ago', read: false },
+  { id: 3, title: 'Reminder', message: 'Quiz due tomorrow', time: '2 hours ago', read: false },
+  { id: 4, title: 'Class updated', message: 'Schedule changed for CS101', time: '1 day ago', read: true },
+])
 
 // REACTIVE
 const store = useAuthStore()
@@ -54,6 +65,10 @@ const breadcrumbSegments = computed(() => {
     .split('>')
     .map(s => s.trim())
     .filter(Boolean)
+})
+
+const unreadCount = computed(() => {
+  return notifications.value.filter(n => !n.read).length
 })
 
 // METHODS
@@ -108,6 +123,25 @@ function handleBreadcrumbClick(segment: string) {
   } else {
     emit('segmentClick', segment)
   }
+}
+
+function toggleNotificationDropdown() {
+  showNotificationDropdown.value = !showNotificationDropdown.value
+}
+
+function closeNotificationDropdown() {
+  showNotificationDropdown.value = false
+}
+
+function markAsRead(id: number) {
+  const notification = notifications.value.find(n => n.id === id)
+  if (notification) {
+    notification.read = true
+  }
+}
+
+function markAllAsRead() {
+  notifications.value.forEach(n => n.read = true)
 }
 </script>
 
@@ -195,10 +229,28 @@ function handleBreadcrumbClick(segment: string) {
         
         <!-- Notification bell -->
         <div v-if="showNotification" class="relative">
-          <button class="p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer">
+          <button 
+            @click="toggleNotificationDropdown"
+            class="p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer relative"
+            :title="unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'No new notifications'"
+          >
             <i class="fas fa-bell text-gray-600"></i>
-            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+            <span 
+              v-if="unreadCount > 0" 
+              class="absolute top-0 right-0 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold"
+            >
+              {{ unreadCount > 9 ? '9+' : unreadCount }}
+            </span>
           </button>
+          
+          <!-- Notification Dropdown Component -->
+          <NotificationDropdown 
+            :notifications="notifications"
+            :show="showNotificationDropdown"
+            @close="closeNotificationDropdown"
+            @mark-as-read="markAsRead"
+            @mark-all-as-read="markAllAsRead"
+          />
         </div>
         
         <!-- Profile dropdown -->
@@ -237,8 +289,12 @@ function handleBreadcrumbClick(segment: string) {
       </div>
     </div>
     
+    <!-- Overlay for dropdowns -->
     <div v-if="showProfileDropdown" 
          @click="closeProfileDropdown"
+         class="fixed inset-0 z-40"></div>
+    <div v-if="showNotificationDropdown" 
+         @click="closeNotificationDropdown"
          class="fixed inset-0 z-40"></div>
 
     <!-- Publish confirmation modal -->
