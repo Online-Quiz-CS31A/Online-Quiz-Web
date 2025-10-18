@@ -389,7 +389,35 @@ function closeGrades() {
           </div>
         </div>
         <div class="p-6">
-          <ActiveQuizzes :quizzes="activeQuizzes" :hideHeader="true" :viewMode="quizViewMode" />
+          <!-- Empty State -->
+          <div v-if="activeQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
+            <div class="relative mb-6">
+              <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-clipboard-list text-4xl text-blue-400"></i>
+              </div>
+              <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                <i class="fas fa-plus text-white text-sm"></i>
+              </div>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">No Quizzes Created Yet</h3>
+            <p class="text-gray-500 max-w-md mb-6">
+              You haven't created any quizzes for this class yet. Click the "Create Quiz" button above to get started and engage your students.
+            </p>
+            <button 
+              @click="navigateToQuizCreator"
+              class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 cursor-pointer"
+            >
+              <i class="fas fa-plus"></i>
+              <span>Create Your First Quiz</span>
+            </button>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mt-6">
+              <i class="fas fa-info-circle"></i>
+              <span>Quizzes help you assess student understanding and track progress</span>
+            </div>
+          </div>
+          
+          <!-- Quiz List -->
+          <ActiveQuizzes v-else :quizzes="activeQuizzes" :hideHeader="true" :viewMode="quizViewMode" />
         </div>
       </div>
 
