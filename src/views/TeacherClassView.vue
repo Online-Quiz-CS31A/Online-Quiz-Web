@@ -171,7 +171,31 @@ function openDashboard(id: number) {
           </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Empty State -->
+        <div v-if="sectionsWithSchedule.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
+          <div class="relative mb-6">
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
+              <i class="fas fa-chalkboard-teacher text-4xl text-blue-400"></i>
+            </div>
+            <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+              <i class="fas fa-plus text-white text-sm"></i>
+            </div>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">No Classes Yet</h3>
+          <p class="text-gray-500 max-w-md mb-6">
+            You haven't created any classes for this course yet. Click the "New Class" button above to get started!
+          </p>
+          <button 
+            @click="openCreateClass"
+            class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 cursor-pointer"
+          >
+            <i class="fas fa-plus"></i>
+            <span>Create Your First Class</span>
+          </button>
+        </div>
+
+        <!-- Classes Grid -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div v-for="section in sectionsWithSchedule" :key="section.id"
             class="rounded-xl shadow-md overflow-hidden class-card transition-all duration-300 text-white"
             @click="openDashboard(section.id)">
