@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { StudentQuiz } from '@/interfaces/interfaces'
@@ -13,6 +13,7 @@ import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
 interface Props {
   quizzes?: StudentQuiz[]
   hideHeader?: boolean
+  viewMode?: 'cards' | 'rows'
 }
 
 // CONSTANTS
@@ -20,7 +21,10 @@ const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 const router = useRouter()
 
 // PROPS
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  hideHeader: false,
+  viewMode: 'cards',
+})
 
 // EMITS
 const emit = defineEmits<{
@@ -29,6 +33,7 @@ const emit = defineEmits<{
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
+const doneMap = reactive<Record<number, boolean>>({})
 
 // COMPUTED
 const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
@@ -60,7 +65,7 @@ const getCoverStyle = (quiz: StudentQuiz) => {
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
         v-for="quiz in displayedQuizzes" 
         :key="quiz.id"
@@ -70,21 +75,18 @@ const getCoverStyle = (quiz: StudentQuiz) => {
       >
         <div class="p-5 text-white">
           <div class="flex justify-end items-start mb-3">
-
             <span class="text-xs text-white">Due: {{ quiz.dueDate }}</span>
           </div>
-          <h3 class="text-lg font-bold text-white mb-2">{{ quiz.title }}</h3>
-          <p class="text-white text-sm mb-4">{{ quiz.subject }}</p>
+          <h3 class="text-lg font-bold text-white mb-4">{{ quiz.title }}</h3>
           <div class="flex items-center justify-between">
-            <div>
-              <span class="text-xs text-white">Class:</span>
-              <span class="text-xs font-medium ml-1">{{ quiz.class }}</span>
-            </div>
+            <div></div>
             <button 
-              @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
-              class="text-white hover:opacity-90 text-sm font-medium transition-colors"
+              @click.stop="doneMap[quiz.id] = true"
+              :disabled="doneMap[quiz.id]"
+              class="text-sm font-medium transition-colors"
+              :class="doneMap[quiz.id] ? 'text-green-200 cursor-default' : 'text-white hover:opacity-90'"
             >
-              Start Quiz
+              {{ doneMap[quiz.id] ? 'Done' : 'Mark as done' }}
             </button>
           </div>
         </div>
@@ -93,7 +95,45 @@ const getCoverStyle = (quiz: StudentQuiz) => {
             <span class="text-xs text-gray-500">Time: {{ quiz.timeLimit }}</span>
             <div class="flex items-center">
               <span class="text-xs text-gray-500 mr-2">Status:</span>
-              <span class="text-xs font-medium text-yellow-600">{{ quiz.status }}</span>
+              <span class="text-xs font-medium" :class="doneMap[quiz.id] ? 'text-green-600' : 'text-yellow-600'">{{ doneMap[quiz.id] ? 'Done' : quiz.status }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="space-y-3">
+      <div
+        v-for="quiz in displayedQuizzes"
+        :key="quiz.id"
+        class="rounded-lg border border-gray-200 bg-white overflow-hidden"
+      >
+        <div class="flex items-stretch min-h-[120px]">
+          <div class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>
+          <div class="flex-1 p-4 flex items-center">
+            <div class="flex items-start justify-between w-full">
+              <div>
+                <div class="text-xs text-gray-500 mb-1">Due: {{ quiz.dueDate }}</div>
+                <div class="text-base font-semibold text-gray-900 mb-1">{{ quiz.title }}</div>
+                
+                <div class="mt-3 flex items-center gap-4 text-xs text-gray-600">
+                  <span>Time: {{ quiz.timeLimit }}</span>
+                  <span>
+                    Status:
+                    <span class="font-medium" :class="doneMap[quiz.id] ? 'text-green-700' : 'text-yellow-700'">
+                      {{ doneMap[quiz.id] ? 'Done' : quiz.status }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div class="ml-3">
+                <button 
+                  @click.stop="doneMap[quiz.id] = true"
+                  :disabled="doneMap[quiz.id]"
+                  class="px-3 py-1.5 rounded-md text-sm"
+                  :class="doneMap[quiz.id] ? 'bg-green-100 text-green-700 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'"
+                >{{ doneMap[quiz.id] ? 'Done' : 'Mark as done' }}</button>
+              </div>
             </div>
           </div>
         </div>

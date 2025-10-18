@@ -11,13 +11,17 @@ import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
 interface Props {
   quizzes: TeacherQuizItem[]
   hideHeader?: boolean
+  viewMode?: 'cards' | 'rows'
 }
 
 // CONSTANTS
 const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 
 // PROPS
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  hideHeader: false,
+  viewMode: 'cards',
+})
 
 // EMITS
 const emit = defineEmits<{
@@ -89,7 +93,7 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View All</button>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 cursor-pointer">
+    <div v-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 cursor-pointer">
       <div 
         v-for="quiz in quizzes" 
         :key="quiz.id"
@@ -137,6 +141,50 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
                 class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
                 :style="{ width: `${(quiz.submitted / quiz.total) * 100}%` }"
               ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="space-y-3">
+      <div 
+        v-for="quiz in quizzes" 
+        :key="quiz.id"
+        class="rounded-lg border border-gray-200 bg-white overflow-hidden"
+      >
+        <div class="flex items-stretch">
+          <div class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>
+          <div class="flex-1 p-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="text-xs text-gray-500 mb-1">Due: {{ quiz.dueDate }}</div>
+                <div class="text-base font-semibold text-gray-900">{{ quiz.title }}</div>
+                <div class="text-sm text-gray-600">{{ quiz.subject }}</div>
+                <div class="mt-3 flex items-center gap-2">
+                  <span class="text-xs text-gray-500">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
+                  <div class="w-40 bg-gray-200 rounded-full h-1.5">
+                    <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: `${(quiz.submitted / quiz.total) * 100}%` }"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="relative ml-3">
+                <button
+                  @click.stop="toggleMenu(quiz.id)"
+                  class="text-gray-600 hover:text-gray-800 p-1"
+                  title="More options"
+                >
+                  <i class="fas fa-ellipsis-vertical"></i>
+                </button>
+                <div
+                  v-if="openMenuId === quiz.id"
+                  class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
+                  @click.stop
+                >
+                  <button class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="handleEditQuiz(quiz)">Edit</button>
+                  <button class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="handleDeleteQuiz(quiz)">Delete</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
