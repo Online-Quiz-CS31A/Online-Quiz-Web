@@ -249,7 +249,28 @@ const getDeterministicIndex = (key: string) => {
 
       <!-- Score tab  -->
       <div v-show="activeTab === 'score'" class="space-y-6">
-        <div class="bg-white rounded-lg shadow border border-gray-200">
+        <!-- No Scores at All -->
+        <div v-if="myScores.length === 0" class="bg-white rounded-lg shadow border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+          <div class="relative mb-6">
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
+              <i class="fas fa-chart-line text-4xl text-blue-400"></i>
+            </div>
+            <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+              <i class="fas fa-star text-white text-sm"></i>
+            </div>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">No Scores Yet</h3>
+          <p class="text-gray-500 max-w-md mb-6">
+            You haven't completed any quizzes for this course yet. Start taking quizzes to see your scores here!
+          </p>
+          <div class="flex items-center gap-2 text-sm text-gray-400">
+            <i class="fas fa-info-circle"></i>
+            <span>Your quiz scores and progress will be tracked here</span>
+          </div>
+        </div>
+
+        <!-- Scores Available -->
+        <div v-else class="bg-white rounded-lg shadow border border-gray-200">
           <!-- Filter dropdown -->
           <div class="px-6 py-4 border-b border-gray-200">
             <div class="relative w-full max-w-sm">
@@ -289,9 +310,24 @@ const getDeterministicIndex = (key: string) => {
                 </div>
               </div>
             </div>
-            <div v-if="filteredScores.length === 0" class="px-6 py-12 text-center text-gray-500">
-              <i class="fas fa-inbox text-4xl mb-3 text-gray-300"></i>
-              <p>No scores found</p>
+            
+            <!-- Empty Filtered Results -->
+            <div v-if="filteredScores.length === 0" class="px-6 py-12 flex flex-col items-center justify-center text-center">
+              <div class="relative mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-full flex items-center justify-center">
+                  <i class="fas fa-filter text-3xl text-gray-300"></i>
+                </div>
+              </div>
+              <h4 class="text-lg font-semibold text-gray-700 mb-2">No Matching Scores</h4>
+              <p class="text-gray-500 max-w-sm mb-4">
+                No scores match your current filter. Try selecting a different filter option.
+              </p>
+              <button 
+                @click="scoreFilter = 'all'" 
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <i class="fas fa-undo mr-2"></i>Clear Filter
+              </button>
             </div>
           </div>
         </div>
