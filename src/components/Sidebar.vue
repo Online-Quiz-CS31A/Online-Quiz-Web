@@ -111,14 +111,14 @@ function navigateToQuizCreator() {
                   <span class="w-4 h-4 rounded-full mr-3" :class="colorDotClass(cls.color)"></span>
                   <span>{{ cls.name }}</span>
                 </RouterLink>
-                <div
+                <RouterLink
                   v-else
+                  :to="{ name: 'student-course-dashboard', params: { id: cls.id } }"
                   class="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700"
-                  @click.prevent
                 >
                   <span class="w-4 h-4 rounded-full mr-3" :class="colorDotClass(cls.color)"></span>
                   <span>{{ cls.name }}</span>
-                </div>
+                </RouterLink>
               </li>
             </ul>
           </li>
