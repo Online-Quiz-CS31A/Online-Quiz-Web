@@ -6,6 +6,13 @@ import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 
 const AddQuestionModal = defineAsyncComponent(() => import('@/components/modals/AddQuestionModal.vue'))
+const MultipleChoiceEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/MultipleChoiceEditor.vue'))
+const TrueFalseEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/TrueFalseEditor.vue'))
+const FillBlankEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/FillBlankEditor.vue'))
+const ShortAnswerEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/ShortAnswerEditor.vue'))
+const MatchingEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/MatchingEditor.vue'))
+const EnumerationEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/EnumerationEditor.vue'))
+const EssayEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/EssayEditor.vue'))
 
 // REFS
 const showAddQuestionModal = ref(false)
@@ -116,71 +123,11 @@ function deleteCurrentQuestion() {
   }
 }
 
-function addOption() {
-  if (currentQuestion.value && currentQuestion.value.options) {
-    currentQuestion.value.options.push({
-      text: `Option ${currentQuestion.value.options.length + 1}`,
-      isCorrect: false,
-      imageUrl: ''
-    })
-  }
-}
-
-function onOptionImageChange(index: number, e: Event) {
-  if (!currentQuestion.value) return
-  const input = (e.target as HTMLInputElement)
-  const file = input.files && input.files[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    const result = reader.result as string
-    if (currentQuestion.value) {
-      currentQuestion.value.options[index].imageUrl = result
-    }
-  }
-  reader.readAsDataURL(file)
-  input.value = ''
-}
-
 function autoResizeTextarea(e: Event) {
   const target = e.target as HTMLTextAreaElement
   if (!target) return
   target.style.height = 'auto'
   target.style.height = `${target.scrollHeight}px`
-}
-
-function removeOption(index: number) {
-  if (currentQuestion.value && currentQuestion.value.options) {
-    currentQuestion.value.options.splice(index, 1)
-  }
-}
-
-function addPair() {
-  if (currentQuestion.value && currentQuestion.value.pairs) {
-    const pairCount = currentQuestion.value.pairs.length + 1
-    currentQuestion.value.pairs.push({
-      left: `Term ${pairCount}`,
-      right: `Definition ${pairCount}`
-    })
-  }
-}
-
-function removePair(index: number) {
-  if (currentQuestion.value && currentQuestion.value.pairs) {
-    currentQuestion.value.pairs.splice(index, 1)
-  }
-}
-
-function addItem() {
-  if (currentQuestion.value && currentQuestion.value.items) {
-    currentQuestion.value.items.push(`Item ${currentQuestion.value.items.length + 1}`)
-  }
-}
-
-function removeItem(index: number) {
-  if (currentQuestion.value && currentQuestion.value.items) {
-    currentQuestion.value.items.splice(index, 1)
-  }
 }
 
 function duplicateCurrentQuestion() {
@@ -522,183 +469,43 @@ onMounted(() => {
                           placeholder="Type your question here..."></textarea>
               </div>
 
-              <!-- Multiple Choice Options -->
-              <div v-if="currentQuestion.type === 'multiple-choice'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
-                <div class="space-y-3">
-                  <div v-for="(option, index) in currentQuestion.options" :key="index" class="flex items-center">
-                    <!-- Option Card -->
-                    <div class="flex-1 group">
-                      <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-2.5 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                        <input v-model="option.isCorrect" type="radio" :name="`correct-${currentQuestion.id}`"
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
-
-                        <!-- Option index chip -->
-                        <span class="min-w-6 h-6 inline-flex items-center justify-center text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
-                          {{ getOptionLetter(index) }}
-                        </span>
-
-                        <!-- Thumbnail image -->
-                        <div v-if="option.imageUrl" class="w-10 h-10 flex-shrink-0 rounded-md overflow-hidden border border-gray-200">
-                          <img :src="option.imageUrl" alt="option image" class="w-full h-full object-cover" />
-                        </div>
-
-                        <!-- Option Text -->
-                        <input v-model="option.text" type="text" :placeholder="`Option ${index + 1}`"
-                               class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400" />
-                      </div>
-                    </div>
-
-                    <div class="ml-3 flex items-center gap-2 self-stretch">
-                      <!-- Image upload -->
-                      <input :id="`opt-img-${currentQuestion.id}-${index}`" type="file" accept="image/*" class="hidden"
-                             @change="onOptionImageChange(index, $event)" />
-                      <label :for="`opt-img-${currentQuestion.id}-${index}`" title="Add image"
-                             class="inline-flex items-center justify-center w-9 h-9 text-gray-500 hover:text-blue-600 rounded-full hover:bg-blue-50 cursor-pointer transition">
-                        <i class="fas fa-image"></i>
-                      </label>
-
-                      <!-- Delete -->
-                      <button @click="removeOption(index)" title="Remove option"
-                              class="inline-flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-700 rounded-full hover:bg-red-50 transition">
-                        <i class="fas fa-times"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <button @click="addOption"
-                        class="mt-3 bg-blue-50 text-blue-600 text-sm py-2 px-3 rounded-md hover:bg-blue-100 transition-colors">
-                  <i class="fas fa-plus mr-1"></i> Add Option
-                </button>
-              </div>
-
-              <!-- True/False Options -->
-              <div v-else-if="currentQuestion.type === 'true-false'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Correct Answer</label>
-                <div class="space-y-3">
-                  <div v-for="(option, index) in currentQuestion.options" :key="index" class="flex items-center">
-                    <div class="flex-1 group">
-                      <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-2.5 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                        <input v-model="option.isCorrect" type="radio" :name="`correct-${currentQuestion.id}`"
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" />
-                        <span class="min-w-6 h-6 inline-flex items-center justify-center text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
-                          {{ getOptionLetter(index) }}
-                        </span>
-                        <input v-model="option.text" type="text"
-                               class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fill in the Blank -->
-              <div v-else-if="currentQuestion.type === 'fill-blank'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Correct Answer</label>
-                <div class="flex items-center">
-                  <div class="flex-1 group">
-                    <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-2.5 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                      <i class="fas fa-pencil-alt text-blue-500"></i>
-                      <input v-model="currentQuestion.correctAnswer" type="text"
-                             class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
-                             placeholder="Enter the correct answer for the blank" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Short Answer -->
-              <div v-else-if="currentQuestion.type === 'short-answer'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Correct Answer</label>
-                <div class="flex items-center">
-                  <div class="flex-1 group">
-                    <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-2.5 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                      <i class="fas fa-align-left text-blue-500"></i>
-                      <input v-model="currentQuestion.correctAnswer" type="text"
-                             class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
-                             placeholder="Enter the correct answer" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Matching Pairs -->
-              <div v-else-if="currentQuestion.type === 'matching'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Matching Pairs</label>
-                <div class="space-y-3">
-                  <div v-for="(pair, index) in currentQuestion.pairs" :key="index" class="flex items-center">
-                    <div class="flex-1 group">
-                      <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-2.5 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                        <input v-model="pair.left" type="text"
-                               class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
-                               placeholder="Term" />
-                        <i class="fas fa-arrows-alt-h text-gray-300"></i>
-                        <input v-model="pair.right" type="text"
-                               class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
-                               placeholder="Definition" />
-                      </div>
-                    </div>
-
-                    <div class="ml-3 flex items-center gap-2 self-stretch">
-                      <button @click="removePair(index)" title="Remove pair"
-                              class="inline-flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-700 rounded-full hover:bg-red-50 transition">
-                        <i class="fas fa-times"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <button @click="addPair" 
-                        class="mt-3 bg-blue-50 text-blue-600 text-sm py-2 px-3 rounded-md hover:bg-blue-100 transition-colors">
-                  <i class="fas fa-plus mr-1"></i> Add Pair
-                </button>
-              </div>
-
-              <!-- Enumeration Items -->
-              <div v-else-if="currentQuestion.type === 'enumeration'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Items to Enumerate</label>
-                <div class="space-y-3">
-                  <div v-for="(item, index) in currentQuestion.items" :key="index" class="flex items-center">
-                    <div class="flex-1 group">
-                      <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-2.5 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                        <span class="min-w-6 h-6 inline-flex items-center justify-center text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
-                          {{ getOptionLetter(index) }}
-                        </span>
-
-                        <input v-model="currentQuestion.items[index]" type="text"
-                               :placeholder="`Item ${index + 1}`"
-                               class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400" />
-                      </div>
-                    </div>
-
-                    <div class="ml-3 flex items-center gap-2 self-stretch">
-                      <button @click="removeItem(index)" title="Remove item"
-                              class="inline-flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-700 rounded-full hover:bg-red-50 transition">
-                        <i class="fas fa-times"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <button @click="addItem"
-                        class="mt-3 bg-blue-50 text-blue-600 text-sm py-2 px-3 rounded-md hover:bg-blue-100 transition-colors">
-                  <i class="fas fa-plus mr-1"></i> Add Item
-                </button>
-              </div>
-
-              <!-- Essay-->
-              <div v-else-if="currentQuestion.type === 'essay'" class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Sample Answer (optional)</label>
-                <div class="flex items-start">
-                  <div class="flex-1 group">
-                    <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 hover:from-white hover:to-white px-4 py-3 shadow-sm hover:shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100">
-                      <i class="fas fa-pen-fancy text-blue-500 mt-1"></i>
-                      <textarea v-model="currentQuestion.correctAnswer"
-                                class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 resize-none"
-                                rows="5"
-                                placeholder="Enter a sample answer"></textarea>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <!-- Question Type Editors -->
+              <MultipleChoiceEditor 
+                v-if="currentQuestion.type === 'multiple-choice'"
+                v-model:options="currentQuestion.options"
+                :questionId="currentQuestion.id"
+              />
+              
+              <TrueFalseEditor 
+                v-else-if="currentQuestion.type === 'true-false'"
+                v-model:options="currentQuestion.options"
+                :questionId="currentQuestion.id"
+              />
+              
+              <FillBlankEditor 
+                v-else-if="currentQuestion.type === 'fill-blank'"
+                v-model:correctAnswer="currentQuestion.correctAnswer"
+              />
+              
+              <ShortAnswerEditor 
+                v-else-if="currentQuestion.type === 'short-answer'"
+                v-model:correctAnswer="currentQuestion.correctAnswer"
+              />
+              
+              <MatchingEditor 
+                v-else-if="currentQuestion.type === 'matching'"
+                v-model:pairs="currentQuestion.pairs"
+              />
+              
+              <EnumerationEditor 
+                v-else-if="currentQuestion.type === 'enumeration'"
+                v-model:items="currentQuestion.items"
+              />
+              
+              <EssayEditor 
+                v-else-if="currentQuestion.type === 'essay'"
+                v-model:correctAnswer="currentQuestion.correctAnswer"
+              />
             </div>
           </div>
         </div>
