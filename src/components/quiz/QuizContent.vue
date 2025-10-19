@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
+
+const AddQuestionModal = defineAsyncComponent(() => import('@/components/modals/AddQuestionModal.vue'))
 
 // REFS
 const showAddQuestionModal = ref(false)
@@ -65,14 +68,14 @@ function getOptionLetter(index: number) {
 }
 
 const questionTypes = [
-  { value: 'multiple-choice', label: 'Multiple Choice', icon: 'fas fa-list-ul' },
-  { value: 'true-false', label: 'True/False', icon: 'fas fa-check' },
-  { value: 'fill-blank', label: 'Fill in the Blank', icon: 'fas fa-pencil-alt' },
-  { value: 'short-answer', label: 'Short Answer', icon: 'fas fa-align-left' },
-  { value: 'matching', label: 'Matching', icon: 'fas fa-random' },
-  { value: 'enumeration', label: 'Enumeration', icon: 'fas fa-list-ol' },
-  { value: 'image-question', label: 'Image Question', icon: 'fas fa-image' },
-  { value: 'essay', label: 'Essay', icon: 'fas fa-pen-fancy' }
+  { value: 'multiple-choice', label: 'Multiple Choice' },
+  { value: 'true-false', label: 'True/False' },
+  { value: 'fill-blank', label: 'Fill in the Blank' },
+  { value: 'short-answer', label: 'Short Answer' },
+  { value: 'matching', label: 'Matching' },
+  { value: 'enumeration', label: 'Enumeration' },
+  { value: 'image-question', label: 'Image Question' },
+  { value: 'essay', label: 'Essay' }
 ]
 
 function openAddQuestionModal() {
@@ -83,53 +86,9 @@ function closeAddQuestionModal() {
   showAddQuestionModal.value = false
 }
 
-function addQuestion(type: string) {
-  const newQuestion: QuizQuestion = {
-    id: Date.now(),
-    type: type,
-    text: '',
-    points: 1,
-    mediaType: 'none',
-    mediaUrl: '',
-    required: false,
-    options: [],
-    correctAnswer: '',
-    pairs: [],
-    items: []
-  }
-
-  switch(type) {
-    case 'multiple-choice':
-      newQuestion.options = [
-        { text: 'Option 1', isCorrect: true, imageUrl: '' },
-        { text: 'Option 2', isCorrect: false, imageUrl: '' },
-        { text: 'Option 3', isCorrect: false, imageUrl: '' },
-        { text: 'Option 4', isCorrect: false, imageUrl: '' }
-      ]
-      break
-    case 'true-false':
-      newQuestion.options = [
-        { text: 'True', isCorrect: true },
-        { text: 'False', isCorrect: false }
-      ]
-      break
-    case 'matching':
-      newQuestion.pairs = [
-        { left: 'Term 1', right: 'Definition 1' },
-        { left: 'Term 2', right: 'Definition 2' }
-      ]
-      break
-    case 'enumeration':
-      newQuestion.items = ['Item 1', 'Item 2']
-      break
-    case 'image-question':
-      newQuestion.mediaType = 'image'
-      break
-  }
-
-  quiz.questions.push(newQuestion)
+function handleAddQuestion(question: QuizQuestion) {
+  quiz.questions.push(question)
   selectQuestion(quiz.questions.length - 1)
-  closeAddQuestionModal()
 }
 
 function selectQuestion(index: number) {
@@ -307,8 +266,34 @@ function updateQuestionType() {
   currentQuestion.value.items = []
   currentQuestion.value.correctAnswer = ''
   
-  addQuestion(newType)
-  quiz.questions.pop() 
+  switch(newType) {
+    case 'multiple-choice':
+      currentQuestion.value.options = [
+        { text: 'Option 1', isCorrect: true, imageUrl: '' },
+        { text: 'Option 2', isCorrect: false, imageUrl: '' },
+        { text: 'Option 3', isCorrect: false, imageUrl: '' },
+        { text: 'Option 4', isCorrect: false, imageUrl: '' }
+      ]
+      break
+    case 'true-false':
+      currentQuestion.value.options = [
+        { text: 'True', isCorrect: true },
+        { text: 'False', isCorrect: false }
+      ]
+      break
+    case 'matching':
+      currentQuestion.value.pairs = [
+        { left: 'Term 1', right: 'Definition 1' },
+        { left: 'Term 2', right: 'Definition 2' }
+      ]
+      break
+    case 'enumeration':
+      currentQuestion.value.items = ['Item 1', 'Item 2']
+      break
+    case 'image-question':
+      currentQuestion.value.mediaType = 'image'
+      break
+  }
 }
 
 function goBack() {
@@ -330,19 +315,6 @@ function viewResults() {
   router.push({ name: 'quiz-results-dashboard', params: { id: classId.value } })
 }
 
-function getQuestionTypeDescription(type: string) {
-  const descriptions: Record<string, string> = {
-    'multiple-choice': 'Question with multiple possible answers',
-    'true-false': 'Question with true or false options',
-    'fill-blank': 'Question with blank spaces to fill',
-    'short-answer': 'Question requiring a short text answer',
-    'matching': 'Question to match items from two columns',
-    'enumeration': 'Question requiring a list of items',
-    'image-question': 'Question based on an image',
-    'essay': 'Question requiring a long-form answer'
-  }
-  return descriptions[type] || ''
-}
 
 function getQuestionIcon(type: string) {
   const map: Record<string, string> = {
@@ -824,33 +796,11 @@ onMounted(() => {
     </div>
 
     <!-- Add Question Modal -->
-    <div v-if="showAddQuestionModal" 
-         class="fixed inset-0 bg-black/40 backdrop-blur-sm backdrop-saturate-150 flex items-center justify-center z-50">
-      <div class="bg-white/90 backdrop-blur-md rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide">
-        <div class="bg-white p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-semibold text-blue-700">Add New Question</h3>
-            <button @click="closeAddQuestionModal" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div v-for="type in questionTypes" :key="type.value" 
-                 @click="addQuestion(type.value)"
-                 class="bg-blue-50 border border-blue-100 rounded-lg p-4 cursor-pointer flex flex-col items-center justify-center hover:bg-blue-100 hover:transform hover:scale-105 transition-all duration-200">
-              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                <i :class="type.icon" class="text-blue-600 text-xl"></i>
-              </div>
-              <h4 class="font-medium text-blue-800 mb-1">{{ type.label }}</h4>
-              <p class="text-xs text-gray-500 text-center">
-                {{ getQuestionTypeDescription(type.value) }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <AddQuestionModal
+      :open="showAddQuestionModal"
+      @close="closeAddQuestionModal"
+      @add="handleAddQuestion"
+    />
   </div>
 </template>
 
