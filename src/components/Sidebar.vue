@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
+const ImportQuestionsModal = defineAsyncComponent(() => import('@/components/modals/ImportQuestionsModal.vue'))
 
 // TYPES
 interface Props {
   isActive: boolean
   activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses'
+}
+type ImportedQuestion = {
+  id: number
+  type: string
+  question: string
+  points: number
+  required: boolean
+  options?: string[]
+  correctAnswer?: string
 }
 
 // CONSTANTS
@@ -15,6 +26,7 @@ const router = useRouter()
 
 // REFS
 const classesOpen = ref(false)
+const showImportModal = ref(false)
 
 // REACTIVE
 const route = useRoute()
@@ -36,7 +48,7 @@ defineEmits<{
 // COMPUTED
 const isCoursesActive = computed(() => {
   return (
-    activeSection.value === 'courses' ||
+    props.activeSection === 'courses' ||
     route.name === 'teacher-courses' ||
     route.name === 'teacher-class' ||
     route.name === 'teacher-class-dashboard'
@@ -67,6 +79,67 @@ function colorDotClass(color?: string) {
 
 function navigateToQuizCreator() {
   router.push(`/teacher/create-quiz`)
+}
+
+function openImportModal() {
+  showImportModal.value = true
+}
+
+function closeImportModal() {
+  showImportModal.value = false
+}
+
+async function handleImport(file: File) {
+  console.log('Importing file:', file.name)
+  
+  closeImportModal()
+  
+  try {
+    const text = await file.text()
+    const lines = text.split('\n').filter(line => line.trim())
+    
+    const questions: ImportedQuestion[] = []
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim())
+      if (cols.length < 2) continue
+      
+      const [type, question, points, optA, optB, optC, optD, correct, required] = cols
+      
+      const questionData: any = {
+        id: Date.now() + i,
+        type: type || 'short-answer',
+        question: question || '',
+        points: parseInt(points) || 1,
+        required: required?.toLowerCase() === 'yes'
+      }
+      
+      if (type === 'multiple-choice') {
+        questionData.options = [optA, optB, optC, optD].filter(Boolean)
+        questionData.correctAnswer = correct || 'A'
+      } else if (type === 'true-false') {
+        questionData.options = ['True', 'False']
+        questionData.correctAnswer = correct || 'A'
+      }
+      
+      questions.push(questionData)
+    }
+    
+    let classIdParam = route.params.id as string | number | undefined
+    if (!classIdParam && myClasses.value.length > 0) {
+      classIdParam = myClasses.value[0].id as unknown as string | number
+    }
+    const classId = String(classIdParam ?? '1')
+    
+    setTimeout(() => {
+      router.push({
+        name: 'quiz-builder',
+        params: { id: classId },
+        state: { importedQuestions: questions }
+      } as any)
+    }, 300)
+  } catch (error) {
+    console.error('Error parsing file:', error)
+  }
 }
 </script>
 
@@ -137,8 +210,6 @@ function navigateToQuizCreator() {
         </ul>
       </div>
       
-      
-      
       <!-- Teacher actions -->
       <div class="mb-6" v-if="isTeacher">
         <button 
@@ -148,7 +219,7 @@ function navigateToQuizCreator() {
           <i class="fas fa-plus mr-2 "></i> Create Quiz
         </button>
         <button 
-          @click="$emit('import-questions')"
+          @click="openImportModal"
           class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors cursor-pointer"
         >
           <i class="fas fa-upload mr-2"></i> Import Questions
@@ -165,6 +236,13 @@ function navigateToQuizCreator() {
         </button>
       </div>
     </div>
+    
+    <!-- Import Questions Modal -->
+    <ImportQuestionsModal 
+      :open="showImportModal"
+      @close="closeImportModal"
+      @import="handleImport"
+    />
   </div>
 </template>
 

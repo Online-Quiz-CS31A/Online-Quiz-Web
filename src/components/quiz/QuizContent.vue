@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { QuestionOption, MatchingPair, QuizQuestion } from '@/interfaces/interfaces'
+import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 
 // REFS
@@ -226,7 +226,7 @@ function removeItem(index: number) {
 
 function duplicateCurrentQuestion() {
   if (!currentQuestion.value) return
-  const clone = JSON.parse(JSON.stringify(currentQuestion.value)) as Question
+  const clone = JSON.parse(JSON.stringify(currentQuestion.value)) as QuizQuestion
   clone.id = Date.now()
   quiz.questions.splice(quiz.currentQuestionIndex + 1, 0, clone)
   selectQuestion(quiz.currentQuestionIndex + 1)
@@ -239,7 +239,7 @@ function toggleQuestionMenu(index: number) {
 function duplicateQuestion(index: number) {
   const q = quiz.questions[index]
   if (!q) return
-  const clone = JSON.parse(JSON.stringify(q)) as Question
+  const clone = JSON.parse(JSON.stringify(q)) as QuizQuestion
   clone.id = Date.now()
   quiz.questions.splice(index + 1, 0, clone)
   openMenuIndex.value = null
@@ -378,6 +378,41 @@ function getBadgeClass(type: string, index: number) {
   ]
   return palette[index % palette.length]
 }
+
+// LIFECYCLE
+onMounted(() => {
+  const importedQuestions = history.state?.importedQuestions
+  if (importedQuestions && Array.isArray(importedQuestions)) {
+    importedQuestions.forEach((q: any, index: number) => {
+      const options = q.options ? q.options.map((opt: string, idx: number) => ({
+        text: opt,
+        isCorrect: q.correctAnswer === String.fromCharCode(65 + idx),
+        imageUrl: ''
+      })) : []
+      
+      const newQuestion: QuizQuestion = {
+        id: q.id || Date.now() + index,
+        type: q.type || 'short-answer',
+        text: q.question || '',
+        points: q.points || 1,
+        required: q.required !== undefined ? q.required : true,
+        mediaType: 'none',
+        mediaUrl: '',
+        options: options,
+        correctAnswer: q.correctAnswer || '',
+        pairs: [],
+        items: []
+      }
+      quiz.questions.push(newQuestion)
+    })
+    
+    if (quiz.questions.length > 0) {
+      selectQuestion(0)
+    }
+    
+    useToast().success(`Successfully imported ${importedQuestions.length} question${importedQuestions.length > 1 ? 's' : ''}!`)
+  }
+})
 </script>
 
 <template>

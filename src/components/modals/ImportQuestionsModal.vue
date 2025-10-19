@@ -162,7 +162,7 @@ function closeModal() {
     <!-- Modal -->
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto overflow-hidden animate-slideUp">
       <!-- Header -->
-      <div class="relative px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div class="relative px-6 py-5 border-b border-gray-100">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg">
