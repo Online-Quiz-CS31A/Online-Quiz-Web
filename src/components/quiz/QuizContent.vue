@@ -1,304 +1,43 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { defineAsyncComponent } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { QuizQuestion } from '@/interfaces/interfaces'
+import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useQuizEditor } from '@/composables/useQuizEditor'
+import { useQuestionSettings } from '@/composables/useQuestionSettings'
+import { useMediaUpload } from '@/composables/useMediaUpload'
+import type { QuizQuestion } from '@/interfaces/interfaces'
 
+import SidebarQuestions from './SidebarQuestions.vue'
+import QuestionEditorPanel from './QuestionEditorPanel.vue'
+import SettingsPanel from './SettingsPanel.vue'
 const AddQuestionModal = defineAsyncComponent(() => import('@/components/modals/AddQuestionModal.vue'))
-const MultipleChoiceEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/MultipleChoiceEditor.vue'))
-const TrueFalseEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/TrueFalseEditor.vue'))
-const FillBlankEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/FillBlankEditor.vue'))
-const ShortAnswerEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/ShortAnswerEditor.vue'))
-const MatchingEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/MatchingEditor.vue'))
-const EnumerationEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/EnumerationEditor.vue'))
-const EssayEditor = defineAsyncComponent(() => import('@/components/quiz/question-types/EssayEditor.vue'))
 
-// REFS
-const showAddQuestionModal = ref(false)
-const showMediaUpload = ref(false)
-const openMenuIndex = ref<number | null>(null)
+const {
+  quiz,
+  currentQuestion,
+  showAddQuestionModal,
+  openMenuIndex,
+  openAddQuestionModal,
+  closeAddQuestionModal,
+  handleAddQuestion,
+  selectQuestion,
+  toggleQuestionMenu,
+  duplicateQuestion,
+  deleteQuestion,
+  moveQuestion,
+  shuffleOptions,
+} = useQuizEditor()
 
-// REACTIVE
-const route = useRoute()
-const router = useRouter()
+const { questionSettings, questionTypes, syncSettings } = useQuestionSettings(currentQuestion)
+const { showMediaUpload, onQuestionMediaChange, clearQuestionMedia } = useMediaUpload(
+  currentQuestion,
+  computed(() => questionSettings.mediaType)
+)
 
-const quiz = reactive({
-  title: '',
-  subject: '',
-  timeLimit: '',
-  description: '',
-  questions: [] as QuizQuestion[],
-  currentQuestionIndex: -1
-})
-
-const questionSettings = reactive({
-  type: 'multiple-choice',
-  points: 1,
-  mediaType: 'none',
-  required: false
-})
-
-// COMPUTED
-const classId = computed(() => String(route.params.id || ''))
-
-const currentQuestion = computed(() => {
-  if (quiz.currentQuestionIndex === -1) return null
-  return quiz.questions[quiz.currentQuestionIndex]
-})
-
-const hasQuestions = computed(() => quiz.questions.length > 0)
-
-// WATCHERS
-watch(() => questionSettings.type, updateQuestionType)
-watch(() => questionSettings.points, (newPoints) => {
-  if (currentQuestion.value) {
-    currentQuestion.value.points = newPoints
-  }
-})
-watch(() => questionSettings.mediaType, (newMediaType) => {
-  if (currentQuestion.value) {
-    currentQuestion.value.mediaType = newMediaType
-  }
-  showMediaUpload.value = newMediaType !== 'none'
-})
-watch(() => questionSettings.required, (newRequired) => {
-  if (currentQuestion.value) {
-    currentQuestion.value.required = newRequired
-  }
-})
-
-// METHODS
-function getOptionLetter(index: number) {
-  const base = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  return base[index] || String(index + 1)
+function handleSelectQuestion(index: number) {
+  selectQuestion(index)
+  syncSettings()
 }
 
-const questionTypes = [
-  { value: 'multiple-choice', label: 'Multiple Choice' },
-  { value: 'true-false', label: 'True/False' },
-  { value: 'fill-blank', label: 'Fill in the Blank' },
-  { value: 'short-answer', label: 'Short Answer' },
-  { value: 'matching', label: 'Matching' },
-  { value: 'enumeration', label: 'Enumeration' },
-  { value: 'image-question', label: 'Image Question' },
-  { value: 'essay', label: 'Essay' }
-]
-
-function openAddQuestionModal() {
-  showAddQuestionModal.value = true
-}
-
-function closeAddQuestionModal() {
-  showAddQuestionModal.value = false
-}
-
-function handleAddQuestion(question: QuizQuestion) {
-  quiz.questions.push(question)
-  selectQuestion(quiz.questions.length - 1)
-}
-
-function selectQuestion(index: number) {
-  quiz.currentQuestionIndex = index
-  openMenuIndex.value = null
-  if (currentQuestion.value) {
-    questionSettings.type = currentQuestion.value.type
-    questionSettings.points = currentQuestion.value.points
-    questionSettings.mediaType = currentQuestion.value.mediaType
-    questionSettings.required = currentQuestion.value.required
-  }
-}
-
-function deleteCurrentQuestion() {
-  if (quiz.currentQuestionIndex === -1) return
-  
-  if (confirm('Are you sure you want to delete this question?')) {
-    quiz.questions.splice(quiz.currentQuestionIndex, 1)
-    
-    if (quiz.questions.length === 0) {
-      quiz.currentQuestionIndex = -1
-    } else {
-      quiz.currentQuestionIndex = Math.max(0, quiz.currentQuestionIndex - 1)
-    }
-  }
-}
-
-function autoResizeTextarea(e: Event) {
-  const target = e.target as HTMLTextAreaElement
-  if (!target) return
-  target.style.height = 'auto'
-  target.style.height = `${target.scrollHeight}px`
-}
-
-function duplicateCurrentQuestion() {
-  if (!currentQuestion.value) return
-  const clone = JSON.parse(JSON.stringify(currentQuestion.value)) as QuizQuestion
-  clone.id = Date.now()
-  quiz.questions.splice(quiz.currentQuestionIndex + 1, 0, clone)
-  selectQuestion(quiz.currentQuestionIndex + 1)
-}
-
-function toggleQuestionMenu(index: number) {
-  openMenuIndex.value = openMenuIndex.value === index ? null : index
-}
-
-function duplicateQuestion(index: number) {
-  const q = quiz.questions[index]
-  if (!q) return
-  const clone = JSON.parse(JSON.stringify(q)) as QuizQuestion
-  clone.id = Date.now()
-  quiz.questions.splice(index + 1, 0, clone)
-  openMenuIndex.value = null
-  selectQuestion(index + 1)
-}
-
-function deleteQuestion(index: number) {
-  if (index < 0 || index >= quiz.questions.length) return
-  if (confirm('Are you sure you want to delete this question?')) {
-    quiz.questions.splice(index, 1)
-    if (quiz.questions.length === 0) {
-      quiz.currentQuestionIndex = -1
-    } else if (quiz.currentQuestionIndex >= index) {
-      quiz.currentQuestionIndex = Math.max(0, quiz.currentQuestionIndex - 1)
-    }
-  }
-  openMenuIndex.value = null
-}
-
-function moveQuestion(direction: 'up' | 'down') {
-  const idx = quiz.currentQuestionIndex
-  if (idx === -1) return
-  const newIndex = direction === 'up' ? idx - 1 : idx + 1
-  if (newIndex < 0 || newIndex >= quiz.questions.length) return
-  const [q] = quiz.questions.splice(idx, 1)
-  quiz.questions.splice(newIndex, 0, q)
-  selectQuestion(newIndex)
-}
-
-function shuffleOptions() {
-  if (!currentQuestion.value || !currentQuestion.value.options) return
-  currentQuestion.value.options = [...currentQuestion.value.options]
-    .map(v => ({ sort: Math.random(), value: v }))
-    .sort((a, b) => a.sort - b.sort)
-    .map(({ value }) => value)
-}
-
-function onQuestionMediaChange(e: Event) {
-  if (!currentQuestion.value) return
-  const input = e.target as HTMLInputElement
-  const file = input.files && input.files[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    if (currentQuestion.value) currentQuestion.value.mediaUrl = String(reader.result)
-  }
-  reader.readAsDataURL(file)
-  input.value = ''
-}
-
-function clearQuestionMedia() {
-  if (!currentQuestion.value) return
-  currentQuestion.value.mediaUrl = ''
-}
-
-function updateQuestionType() {
-  if (!currentQuestion.value) return
-  
-  const newType = questionSettings.type
-  if (currentQuestion.value.type === newType) return
-  
-  currentQuestion.value.type = newType
-  currentQuestion.value.options = []
-  currentQuestion.value.pairs = []
-  currentQuestion.value.items = []
-  currentQuestion.value.correctAnswer = ''
-  
-  switch(newType) {
-    case 'multiple-choice':
-      currentQuestion.value.options = [
-        { text: 'Option 1', isCorrect: true, imageUrl: '' },
-        { text: 'Option 2', isCorrect: false, imageUrl: '' },
-        { text: 'Option 3', isCorrect: false, imageUrl: '' },
-        { text: 'Option 4', isCorrect: false, imageUrl: '' }
-      ]
-      break
-    case 'true-false':
-      currentQuestion.value.options = [
-        { text: 'True', isCorrect: true },
-        { text: 'False', isCorrect: false }
-      ]
-      break
-    case 'matching':
-      currentQuestion.value.pairs = [
-        { left: 'Term 1', right: 'Definition 1' },
-        { left: 'Term 2', right: 'Definition 2' }
-      ]
-      break
-    case 'enumeration':
-      currentQuestion.value.items = ['Item 1', 'Item 2']
-      break
-    case 'image-question':
-      currentQuestion.value.mediaType = 'image'
-      break
-  }
-}
-
-function goBack() {
-  router.push(`/teacher/classes/${classId.value}/dashboard`)
-}
-
-function goToContent() {
-  const el = document.querySelector('#quiz-main-content') as HTMLElement | null
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-const { info } = useToast()
-
-function openAssign() {
-  info('Open assign flow (to be implemented)')
-}
-
-function viewResults() {
-  router.push({ name: 'quiz-results-dashboard', params: { id: classId.value } })
-}
-
-
-function getQuestionIcon(type: string) {
-  const map: Record<string, string> = {
-    'multiple-choice': 'fas fa-list-ul',
-    'true-false': 'fas fa-check',
-    'fill-blank': 'fas fa-pencil-alt',
-    'short-answer': 'fas fa-align-left',
-    'matching': 'fas fa-random',
-    'enumeration': 'fas fa-list-ol',
-    'image-question': 'fas fa-image',
-    'essay': 'fas fa-pen-fancy',
-  }
-  return map[type] || 'fas fa-question'
-}
-
-function getBadgeClass(type: string, index: number) {
-  const byType: Record<string, string> = {
-    'multiple-choice': 'bg-purple-200 text-purple-700',
-    'true-false': 'bg-yellow-200 text-yellow-800',
-    'fill-blank': 'bg-pink-200 text-pink-800',
-    'short-answer': 'bg-indigo-200 text-indigo-800',
-    'matching': 'bg-teal-200 text-teal-800',
-    'enumeration': 'bg-blue-200 text-blue-800',
-    'image-question': 'bg-rose-200 text-rose-800',
-    'essay': 'bg-amber-200 text-amber-800',
-  }
-  if (byType[type]) return byType[type]
-  const palette = [
-    'bg-purple-200 text-purple-700',
-    'bg-yellow-200 text-yellow-800',
-    'bg-pink-200 text-pink-800',
-    'bg-indigo-200 text-indigo-800',
-  ]
-  return palette[index % palette.length]
-}
-
-// LIFECYCLE
 onMounted(() => {
   const importedQuestions = history.state?.importedQuestions
   if (importedQuestions && Array.isArray(importedQuestions)) {
@@ -326,7 +65,7 @@ onMounted(() => {
     })
     
     if (quiz.questions.length > 0) {
-      selectQuestion(0)
+      handleSelectQuestion(0)
     }
     
     useToast().success(`Successfully imported ${importedQuestions.length} question${importedQuestions.length > 1 ? 's' : ''}!`)
@@ -336,78 +75,22 @@ onMounted(() => {
 
 <template>
   <div class="bg-gray-50 font-sans h-full overflow-hidden">
+    <!-- Main Layout -->
     <div class="flex h-full overflow-hidden">
-      <!-- Left Sidebar -->
-      <div class="w-70  flex flex-col p-4 pb-0">
-        <div class="flex-1 bg-white p-4 overflow-y-auto rounded-lg pretty-scroll">
-          <div v-if="!hasQuestions" class="p-4 text-gray-500 text-center">
-            No questions added yet
-          </div>
-          
-          <div
-            v-for="(question, index) in quiz.questions"
-            :key="question.id"
-            @click="selectQuestion(index)"
-            :class="[
-              'mb-2 px-3 py-2 rounded-md cursor-pointer flex items-center gap-3 transition-all relative',
-              index === quiz.currentQuestionIndex
-                ? 'bg-blue-100 ring-1 ring-blue-200'
-                : 'bg-white hover:bg-gray-50 border border-gray-100'
-            ]"
-          >
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-blue-700 bg-blue-100">
-              <i :class="getQuestionIcon(question.type)"></i>
-            </div>
+      <!-- Sidebar with Questions List -->
+      <SidebarQuestions
+        :questions="quiz.questions"
+        :currentQuestionIndex="quiz.currentQuestionIndex"
+        :openMenuIndex="openMenuIndex"
+        @select="handleSelectQuestion"
+        @toggleMenu="toggleQuestionMenu"
+        @duplicate="duplicateQuestion"
+        @delete="deleteQuestion"
+      />
 
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-gray-800 truncate">
-                {{ question.text || `${question.type.replace('-', ' ')}...` }}
-              </div>
-            </div>
-
-            <span :class="['text-xs font-semibold px-2 py-1 rounded-md', getBadgeClass(question.type, index)]">
-              {{ index + 1 }}
-            </span>
-
-            <div class="ml-1 relative" @click.stop>
-              <button
-                class="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                @click.stop="toggleQuestionMenu(index)"
-                title="More actions"
-              >
-                <i class="fas fa-ellipsis-v"></i>
-              </button>
-              <div v-if="openMenuIndex === index" class="absolute right-0 top-9 z-10 w-36 bg-white border border-gray-200 rounded-md shadow-md py-1">
-                <button
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                  @click.stop="duplicateQuestion(index)"
-                >
-                  <i class="fas fa-copy text-gray-500"></i>
-                  Duplicate
-                </button>
-                <button
-                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                  @click.stop="deleteQuestion(index)"
-                >
-                  <i class="fas fa-trash"></i>
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-white mt-6 p-4 pb-10 ">
-          <button @click="openAddQuestionModal" 
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors cursor-pointer">
-            <i class="fas fa-plus mr-2"></i> Add Question
-          </button>
-        </div>
-      </div>
-
-      <!-- Main Content -->
+      <!-- Middle -->
       <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Bar - Quiz Info -->
+        <!-- Header inside center content container -->
         <div class="py-4">
           <div class="bg-white p-4 flex items-start gap-4 rounded-lg">
             <!-- Add Question Button -->
@@ -443,163 +126,27 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Middle Content - Question Editor -->
-        <div id="quiz-main-content" class="flex-1 overflow-auto py-6 bg-gray-50 scrollbar-hide">
-          <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-6">
-            <div v-if="!currentQuestion" class="text-center text-gray-500">
-              <i class="fas fa-question-circle text-4xl mb-4 text-blue-200"></i>
-              <h3 class="text-lg font-medium mb-2">No Question Selected</h3>
-              <p>Select a question from the sidebar or add a new one to start editing</p>
-            </div>
-            
-            <!-- Question Editor -->
-            <div v-else class="fade-in">
-              <!-- Question Text -->
-              <div class="mb-6">
-                <div class="flex items-center gap-3 mb-2">
-                  <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
-                    {{ quiz.currentQuestionIndex + 1 }}
-                  </span>
-                  <span class="text-sm font-medium text-gray-700">Question Text</span>
-                </div>
-                <textarea v-model="currentQuestion.text"
-                          @input="autoResizeTextarea($event)"
-                          class="w-full px-4 py-3 rounded-lg bg-gray-50 focus:bg-white border-0 ring-1 ring-transparent focus:ring-2 focus:ring-blue-100 focus:outline-none placeholder-gray-400 shadow-inner resize-none overflow-hidden"
-                          rows="1"
-                          placeholder="Type your question here..."></textarea>
-              </div>
-
-              <!-- Question Type Editors -->
-              <MultipleChoiceEditor 
-                v-if="currentQuestion.type === 'multiple-choice'"
-                v-model:options="currentQuestion.options"
-                :questionId="currentQuestion.id"
-              />
-              
-              <TrueFalseEditor 
-                v-else-if="currentQuestion.type === 'true-false'"
-                v-model:options="currentQuestion.options"
-                :questionId="currentQuestion.id"
-              />
-              
-              <FillBlankEditor 
-                v-else-if="currentQuestion.type === 'fill-blank'"
-                v-model:correctAnswer="currentQuestion.correctAnswer"
-              />
-              
-              <ShortAnswerEditor 
-                v-else-if="currentQuestion.type === 'short-answer'"
-                v-model:correctAnswer="currentQuestion.correctAnswer"
-              />
-              
-              <MatchingEditor 
-                v-else-if="currentQuestion.type === 'matching'"
-                v-model:pairs="currentQuestion.pairs"
-              />
-              
-              <EnumerationEditor 
-                v-else-if="currentQuestion.type === 'enumeration'"
-                v-model:items="currentQuestion.items"
-              />
-              
-              <EssayEditor 
-                v-else-if="currentQuestion.type === 'essay'"
-                v-model:correctAnswer="currentQuestion.correctAnswer"
-              />
-            </div>
-          </div>
+        <!-- Question Editor -->
+        <div class="flex-1 overflow-auto scrollbar-hide">
+          <QuestionEditorPanel :question="currentQuestion" />
         </div>
       </div>
 
-      <!-- Right Sidebar -->
-      <div class="w-80 flex flex-col p-4">
-        <div class="bg-white rounded-lg flex-1 overflow-y-auto p-4 pretty-scroll space-y-6">
-          <!-- Section: Type and Points -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-gray-700">Question Type</label>
-            </div>
-            <select v-model="questionSettings.type" 
-                    class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option v-for="type in questionTypes" :key="type.value" :value="type.value">
-                {{ type.label }}
-              </option>
-            </select>
-            <div class="grid grid-cols-1 gap-3 mt-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Points</label>
-                <input v-model.number="questionSettings.points" type="number" min="1" 
-                       class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: Media -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-gray-700">Media</label>
-            </div>
-            <select v-model="questionSettings.mediaType" 
-                    class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3">
-              <option value="none">None</option>
-              <option value="image">Image</option>
-              <option value="video">Video</option>
-            </select>
-            <div v-if="showMediaUpload" class="">
-              <div v-if="currentQuestion?.mediaUrl" class="mb-3">
-                <div v-if="questionSettings.mediaType === 'image'" class="relative">
-                  <img :src="currentQuestion.mediaUrl" alt="question media" class="w-full h-40 object-cover rounded-md border" />
-                </div>
-                <div v-else-if="questionSettings.mediaType === 'video'" class="relative">
-                  <video :src="currentQuestion.mediaUrl" controls class="w-full h-40 object-cover rounded-md border"></video>
-                </div>
-                <button @click="clearQuestionMedia" class="mt-2 text-red-600 text-sm hover:underline">Remove media</button>
-              </div>
-              <label class="block w-full">
-                <div class="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-300 transition">
-                  <i class="fas fa-cloud-upload-alt text-3xl text-blue-300 mb-2"></i>
-                  <p class="text-sm text-gray-500">Click to upload or drag and drop</p>
-                </div>
-                <input type="file" accept="image/*,video/*" class="hidden" @change="onQuestionMediaChange" />
-              </label>
-            </div>
-          </div>
-
-          <!-- Section: Actions -->
-          <div v-if="currentQuestion" class="space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-gray-700">Question Actions</span> 
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <button @click="duplicateCurrentQuestion" 
-                      class="bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-3 rounded-md flex items-center justify-center gap-2 transition-colors">
-                <i class="fas fa-copy"></i>
-                <span class="text-sm">Duplicate</span>
-              </button>
-              <button @click="deleteCurrentQuestion" 
-                      class="bg-red-50 hover:bg-red-100 text-red-700 py-2 px-3 rounded-md flex items-center justify-center gap-2 transition-colors">
-                <i class="fas fa-trash"></i>
-                <span class="text-sm">Delete</span>
-              </button>
-              <button @click="moveQuestion('up')" 
-                      class="bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-3 rounded-md flex items-center justify-center gap-2 transition-colors">
-                <i class="fas fa-arrow-up"></i>
-                <span class="text-sm">Move <br> Up</span>
-              </button>
-              <button @click="moveQuestion('down')" 
-                      class="bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-3 rounded-md flex items-center justify-center gap-2 transition-colors">
-                <i class="fas fa-arrow-down"></i>
-                <span class="text-sm">Move Down</span>
-              </button>
-              <button v-if="currentQuestion.type === 'multiple-choice'" @click="shuffleOptions" 
-                      class="col-span-2 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-3 rounded-md flex items-center justify-center gap-2 transition-colors">
-                <i class="fas fa-random"></i>
-                <span class="text-sm">Shuffle Options</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Settings Panel -->
+      <SettingsPanel
+        :question="currentQuestion"
+        :questionSettings="questionSettings"
+        :questionTypes="questionTypes"
+        :showMediaUpload="showMediaUpload"
+        @update:type="(val) => questionSettings.type = val"
+        @update:points="(val) => questionSettings.points = val"
+        @update:mediaType="(val) => questionSettings.mediaType = val"
+        @mediaChange="onQuestionMediaChange"
+        @clearMedia="clearQuestionMedia"
+        @moveUp="moveQuestion('up')"
+        @moveDown="moveQuestion('down')"
+        @shuffle="shuffleOptions"
+      />
     </div>
 
     <!-- Add Question Modal -->
