@@ -1,5 +1,5 @@
 <script setup lang="ts">
- import { ref } from 'vue'
+ import { ref, computed } from 'vue'
 import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
@@ -12,6 +12,8 @@ interface Props {
   quizzes: TeacherQuizItem[]
   hideHeader?: boolean
   viewMode?: 'cards' | 'rows'
+  showFilters?: boolean
+  initialFilter?: 'all' | 'draft' | 'published'
 }
 
 // CONSTANTS
@@ -21,6 +23,8 @@ const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 const props = withDefaults(defineProps<Props>(), {
   hideHeader: false,
   viewMode: 'cards',
+  showFilters: false,
+  initialFilter: 'all',
 })
 
 // EMITS
@@ -30,7 +34,29 @@ const emit = defineEmits<{
 
 // REFS
 const openMenuId = ref<number | null>(null)
+const statusFilter = ref<'all' | 'draft' | 'published'>(props.initialFilter)
  
+// COMPUTED
+const filteredQuizzes = computed(() => {
+  let filtered = props.quizzes
+  
+  if (statusFilter.value !== 'all') {
+    filtered = filtered.filter(q => (q.status || 'published') === statusFilter.value)
+  }
+  
+  return filtered.sort((a, b) => {
+    const aStatus = a.status || 'published'
+    const bStatus = b.status || 'published'
+    
+    if (aStatus === 'draft' && bStatus !== 'draft') return -1
+    if (aStatus !== 'draft' && bStatus === 'draft') return 1
+    
+    const aDate = new Date(a.createdAt || 0).getTime()
+    const bDate = new Date(b.createdAt || 0).getTime()
+    return bDate - aDate
+  })
+})
+
 // METHODS
 const getDeterministicIndex = (key: string) => {
   let hash = 0
@@ -93,21 +119,69 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View All</button>
     </div>
     
+    <!-- Filter Buttons -->
+    <div v-if="props.showFilters" class="flex gap-2 mb-4">
+      <button
+        @click="statusFilter = 'all'"
+        :class="[
+          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
+          statusFilter === 'all'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+        ]"
+      >
+        All
+      </button>
+      <button
+        @click="statusFilter = 'draft'"
+        :class="[
+          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
+          statusFilter === 'draft'
+            ? 'bg-amber-600 text-white shadow-md'
+            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+        ]"
+      >
+        <i class="fas fa-file-pen mr-2"></i>Drafts
+      </button>
+      <button
+        @click="statusFilter = 'published'"
+        :class="[
+          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
+          statusFilter === 'published'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+        ]"
+      >
+        <i class="fas fa-check-circle mr-2"></i>Published
+      </button>
+    </div>
+    
     <div v-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 cursor-pointer">
       <div 
-        v-for="quiz in quizzes" 
+        v-for="quiz in filteredQuizzes" 
         :key="quiz.id"
         class="quiz-card rounded-xl shadow-md overflow-hidden"
-        :class="getCardColorClasses(quiz.color)"
-        :style="{ ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"
+        :class="[
+          quiz.status === 'draft' ? 'draft-card' : getCardColorClasses(quiz.color)
+        ]"
+        :style="quiz.status === 'draft' ? {} : { ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"
       >
-        <div class="p-5">
+        <div class="p-5 min-h-[180px] flex flex-col justify-between" :class="quiz.status === 'draft' ? 'bg-gradient-to-br from-slate-600 to-slate-700' : ''">
           <div class="flex justify-between items-start mb-3">
-            <span class="text-xs text-white">Due: {{ quiz.dueDate }}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">Due: {{ quiz.dueDate }}</span>
+              <span 
+                v-if="quiz.status === 'draft'"
+                class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-sm"
+              >
+                <i class="fas fa-file-pen mr-1"></i>DRAFT
+              </span>
+            </div>
             <div class="relative">
               <button
                 @click.stop="toggleMenu(quiz.id)"
-                class="text-white hover:text-gray-200 text-lg transition-colors cursor-pointer"
+                :class="quiz.status === 'draft' ? 'text-slate-200 hover:text-white' : 'text-white hover:text-gray-200'"
+                class="text-lg transition-colors cursor-pointer"
                 title="More options"
               >
                 <i class="fas fa-ellipsis-vertical"></i>
@@ -130,13 +204,18 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
               </div>
             </div>
           </div>
-          <h3 class="text-lg font-bold text-white mb-2">{{ quiz.title }}</h3>
-          <p class="text-white/90 text-sm mb-4">{{ quiz.subject }}</p>
+          <h3 class="text-lg font-bold mb-2" :class="quiz.status === 'draft' ? 'text-white' : 'text-white'">{{ quiz.title }}</h3>
+          <p class="text-sm mb-4" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white/90'">{{ quiz.subject }}</p>
         </div>
-        <div class="bg-white px-5 py-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-gray-500">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
-            <div class="w-full bg-gray-200 rounded-full h-1.5 ml-2">
+        <div class="px-5 py-3 h-12" :class="quiz.status === 'draft' ? 'bg-slate-100' : 'bg-white'">
+          <div v-if="quiz.status === 'draft'" class="flex items-center justify-end h-full">
+            <button class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
+              <span>Continue Editing</span>
+            </button>
+          </div>
+          <div v-else class="flex items-center gap-3 h-full">
+            <span class="text-xs text-gray-500 whitespace-nowrap">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
+            <div class="flex-1 bg-gray-200 rounded-full h-1.5">
               <div 
                 class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
                 :style="{ width: `${(quiz.submitted / quiz.total) * 100}%` }"
@@ -149,19 +228,38 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
 
     <div v-else class="space-y-3">
       <div 
-        v-for="quiz in quizzes" 
+        v-for="quiz in filteredQuizzes" 
         :key="quiz.id"
-        class="rounded-lg border border-gray-200 bg-white overflow-hidden"
+        class="rounded-lg border overflow-hidden"
+        :class="quiz.status === 'draft' ? 'border-slate-400 bg-slate-50 draft-card' : 'border-gray-200 bg-white'"
       >
         <div class="flex items-stretch">
-          <div class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>
+          <div v-if="quiz.status !== 'draft'" class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>
+          <div v-else class="hidden md:block w-48 bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+            <i class="fas fa-file-pen text-5xl text-slate-300"></i>
+          </div>
           <div class="flex-1 p-4">
             <div class="flex items-start justify-between">
               <div>
-                <div class="text-xs text-gray-500 mb-1">Due: {{ quiz.dueDate }}</div>
-                <div class="text-base font-semibold text-gray-900">{{ quiz.title }}</div>
-                <div class="text-sm text-gray-600">{{ quiz.subject }}</div>
-                <div class="mt-3 flex items-center gap-2">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-500'">Due: {{ quiz.dueDate }}</span>
+                  <span 
+                    v-if="quiz.status === 'draft'"
+                    class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full"
+                  >
+                    <i class="fas fa-file-pen mr-1"></i>DRAFT
+                  </span>
+                </div>
+                <div class="text-base font-semibold" :class="quiz.status === 'draft' ? 'text-slate-800' : 'text-gray-900'">{{ quiz.title }}</div>
+                <div class="text-sm" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-600'">{{ quiz.subject }}</div>
+                <div v-if="quiz.status === 'draft'" class="mt-3">
+                  <button class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
+                    <i class="fas fa-edit"></i>
+                    <span>Continue Editing</span>
+                    <i class="fas fa-arrow-right text-xs"></i>
+                  </button>
+                </div>
+                <div v-else class="mt-3 flex items-center gap-2">
                   <span class="text-xs text-gray-500">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
                   <div class="w-40 bg-gray-200 rounded-full h-1.5">
                     <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: `${(quiz.submitted / quiz.total) * 100}%` }"></div>
@@ -202,5 +300,15 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
 
 .quiz-card:hover {
   box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+.draft-card {
+  position: relative;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 3px rgba(59, 130, 246, 0.3);
+  transition: all 0.3s ease;
+}
+
+.draft-card:hover {
+  box-shadow: 0 8px 15px rgba(0,0,0,0.15), 0 0 0 3px rgba(59, 130, 246, 0.5);
 }
 </style>

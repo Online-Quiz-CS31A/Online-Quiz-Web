@@ -1,10 +1,12 @@
 import { ref, reactive, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { QuizQuestion } from '@/interfaces/interfaces'
+import type { QuizQuestion, TeacherQuizItem } from '@/interfaces/interfaces'
+import { useToast } from '@/composables/useToast'
 
 export function useQuizEditor() {
   const route = useRoute()
   const router = useRouter()
+  const toast = useToast()
   
   const showAddQuestionModal = ref(false)
   const openMenuIndex = ref<number | null>(null)
@@ -121,6 +123,86 @@ export function useQuizEditor() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  function saveQuizDraft() {
+    if (!quiz.title.trim()) {
+      toast.error('Please enter a quiz title')
+      return
+    }
+
+    if (quiz.questions.length === 0) {
+      toast.error('Please add at least one question')
+      return
+    }
+
+    const quizData: TeacherQuizItem = {
+      id: Date.now(),
+      title: quiz.title,
+      subject: quiz.subject || 'Not specified',
+      description: quiz.description || '',
+      dueDate: 'Not set',
+      class: classId.value,
+      submitted: 0,
+      total: 0,
+      color: 'blue',
+      status: 'draft',
+      questions: JSON.parse(JSON.stringify(quiz.questions)),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    const drafts = getStoredQuizzes()
+    drafts.push(quizData)
+    localStorage.setItem('quizzes', JSON.stringify(drafts))
+    
+    toast.success('Quiz saved as draft!')
+    return quizData
+  }
+
+  function publishQuiz() {
+    if (!quiz.title.trim()) {
+      toast.error('Please enter a quiz title')
+      return
+    }
+
+    if (quiz.questions.length === 0) {
+      toast.error('Please add at least one question')
+      return
+    }
+
+    const quizData: TeacherQuizItem = {
+      id: Date.now(),
+      title: quiz.title,
+      subject: quiz.subject || 'Not specified',
+      description: quiz.description || '',
+      dueDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      class: classId.value,
+      submitted: 0,
+      total: 0,
+      color: 'blue',
+      status: 'published',
+      questions: JSON.parse(JSON.stringify(quiz.questions)),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    const quizzes = getStoredQuizzes()
+    quizzes.push(quizData)
+    localStorage.setItem('quizzes', JSON.stringify(quizzes))
+    
+    toast.success('Quiz published successfully!')
+    return quizData
+  }
+
+  function getStoredQuizzes(): TeacherQuizItem[] {
+    try {
+      const stored = localStorage.getItem('quizzes')
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.error('Error reading quizzes from localStorage:', error)
+      return []
+    }
+  }
+
   return {
     quiz,
     classId,
@@ -140,6 +222,9 @@ export function useQuizEditor() {
     moveQuestion,
     shuffleOptions,
     goBack,
-    goToContent
+    goToContent,
+    saveQuizDraft,
+    publishQuiz,
+    getStoredQuizzes
   }
 }

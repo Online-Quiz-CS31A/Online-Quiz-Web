@@ -100,6 +100,10 @@ export interface TeacherQuizItem {
   submitted: number
   total: number
   color: string
+  status?: 'draft' | 'published'
+  questions?: any[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS

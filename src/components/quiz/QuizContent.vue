@@ -25,6 +25,8 @@ const {
   deleteQuestion,
   moveQuestion,
   shuffleOptions,
+  saveQuizDraft,
+  publishQuiz,
 } = useQuizEditor()
 
 const { questionSettings, questionTypes, syncSettings } = useQuestionSettings(currentQuestion)
@@ -70,6 +72,11 @@ onMounted(() => {
     
     useToast().success(`Successfully imported ${importedQuestions.length} question${importedQuestions.length > 1 ? 's' : ''}!`)
   }
+})
+
+defineExpose({
+  saveQuiz: saveQuizDraft,
+  publishQuiz
 })
 </script>
 
