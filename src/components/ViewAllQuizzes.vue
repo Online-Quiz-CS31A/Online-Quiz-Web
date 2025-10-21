@@ -12,15 +12,37 @@ const quizzesStore = useQuizzesStore()
 
 // REFS
 const query = ref('')
+const statusFilter = ref<'all' | 'draft' | 'published'>('all')
 
 // COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
 
-const quizzes = computed(() => (isTeacher.value ? quizzesStore.myTeacherQuizzes : quizzesStore.myStudentQuizzes))
+const quizzes = computed(() => {
+  if (isTeacher.value) {
+    const stored = loadStoredQuizzes()
+    return [...stored, ...quizzesStore.myTeacherQuizzes]
+  }
+  return quizzesStore.myStudentQuizzes
+})
+
+function loadStoredQuizzes() {
+  try {
+    const stored = localStorage.getItem('quizzes')
+    return stored ? JSON.parse(stored) : []
+  } catch (error) {
+    console.error('Error loading quizzes from localStorage:', error)
+    return []
+  }
+}
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
-  const list = quizzes.value || []
+  let list = quizzes.value || []
+  
+  if (statusFilter.value !== 'all') {
+    list = list.filter((qz: any) => (qz.status || 'published') === statusFilter.value)
+  }
+  
   if (!q) return list
   return list.filter((qz: any) =>
     (qz.title || '').toLowerCase().includes(q) ||
@@ -37,6 +59,43 @@ const filtered = computed(() => {
       <h2 class="text-xl font-semibold text-gray-800">All Quizzes</h2>
     </div>
 
+    <!-- Filter Buttons -->
+    <div v-if="isTeacher" class="flex gap-2">
+      <button
+        @click="statusFilter = 'all'"
+        :class="[
+          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
+          statusFilter === 'all'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+        ]"
+      >
+        All
+      </button>
+      <button
+        @click="statusFilter = 'draft'"
+        :class="[
+          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
+          statusFilter === 'draft'
+            ? 'bg-amber-600 text-white shadow-md'
+            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+        ]"
+      >
+        <i class="fas fa-file-pen mr-2"></i>Drafts
+      </button>
+      <button
+        @click="statusFilter = 'published'"
+        :class="[
+          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
+          statusFilter === 'published'
+            ? 'bg-green-600 text-white shadow-md'
+            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+        ]"
+      >
+        <i class="fas fa-check-circle mr-2"></i>Published
+      </button>
+    </div>
+
     <div>
       <div class="relative">
         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -49,7 +108,7 @@ const filtered = computed(() => {
       </div>
     </div>
 
-    <TeacherQuizList v-if="isTeacher" :quizzes="filtered as any" :hide-header="true" />
+    <TeacherQuizList v-if="isTeacher" :quizzes="filtered as any" :hide-header="true" :show-filters="false" />
     <StudentQuizList v-else :quizzes="filtered as any" :hide-header="true" />
 
     <div v-if="filtered.length === 0" class="text-center text-gray-500 py-12">
