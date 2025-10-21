@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
@@ -19,8 +19,37 @@ const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
-const activeQuizzes = quizzesStore.myTeacherQuizzes
 const route = useRoute()
+const refreshTrigger = ref(0)
+
+// COMPUTED
+const activeQuizzes = computed(() => {
+  refreshTrigger.value
+  
+  const storedQuizzes: any[] = []
+  try {
+    const stored = localStorage.getItem('quizzes')
+    if (stored) {
+      storedQuizzes.push(...JSON.parse(stored))
+    }
+  } catch (error) {
+    console.error('Error loading quizzes from localStorage:', error)
+  }
+  
+  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
+  
+  return allQuizzes.sort((a, b) => {
+    const aStatus = a.status || 'published'
+    const bStatus = b.status || 'published'
+    
+    if (aStatus === 'draft' && bStatus !== 'draft') return -1
+    if (aStatus !== 'draft' && bStatus === 'draft') return 1
+    
+    const aDate = new Date(a.createdAt || 0).getTime()
+    const bDate = new Date(b.createdAt || 0).getTime()
+    return bDate - aDate
+  })
+})
 
 // WATCHERS
 watch(
@@ -30,6 +59,16 @@ watch(
     if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home') {
       currentSection.value = section as typeof currentSection.value
     }
+    if (section === 'home' || !section) {
+      refreshTrigger.value++
+    }
+  }
+)
+
+watch(
+  () => route.path,
+  () => {
+    refreshTrigger.value++
   }
 )
 
