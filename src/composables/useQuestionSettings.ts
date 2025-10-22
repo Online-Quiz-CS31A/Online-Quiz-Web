@@ -1,7 +1,9 @@
 import { reactive, watch, type ComputedRef } from 'vue'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 
 export function useQuestionSettings(currentQuestion: ComputedRef<QuizQuestion | null>) {
+  const quizzesStore = useQuizzesStore()
   const questionSettings = reactive({
     type: 'multiple-choice',
     points: 1,
@@ -26,40 +28,7 @@ export function useQuestionSettings(currentQuestion: ComputedRef<QuizQuestion | 
     const newType = questionSettings.type
     if (currentQuestion.value.type === newType) return
     
-    currentQuestion.value.type = newType
-    currentQuestion.value.options = []
-    currentQuestion.value.pairs = []
-    currentQuestion.value.items = []
-    currentQuestion.value.correctAnswer = ''
-    
-    switch(newType) {
-      case 'multiple-choice':
-        currentQuestion.value.options = [
-          { text: 'Option 1', isCorrect: true, imageUrl: '' },
-          { text: 'Option 2', isCorrect: false, imageUrl: '' },
-          { text: 'Option 3', isCorrect: false, imageUrl: '' },
-          { text: 'Option 4', isCorrect: false, imageUrl: '' }
-        ]
-        break
-      case 'true-false':
-        currentQuestion.value.options = [
-          { text: 'True', isCorrect: true },
-          { text: 'False', isCorrect: false }
-        ]
-        break
-      case 'matching':
-        currentQuestion.value.pairs = [
-          { left: 'Term 1', right: 'Definition 1' },
-          { left: 'Term 2', right: 'Definition 2' }
-        ]
-        break
-      case 'enumeration':
-        currentQuestion.value.items = ['Item 1', 'Item 2']
-        break
-      case 'image-question':
-        currentQuestion.value.mediaType = 'image'
-        break
-    }
+    quizzesStore.updateCurrentQuestionType(newType)
   }
 
   function syncSettings() {
@@ -75,19 +44,19 @@ export function useQuestionSettings(currentQuestion: ComputedRef<QuizQuestion | 
   
   watch(() => questionSettings.points, (newPoints) => {
     if (currentQuestion.value) {
-      currentQuestion.value.points = newPoints
+      quizzesStore.updateQuestionProperty('points', newPoints)
     }
   })
   
   watch(() => questionSettings.mediaType, (newMediaType) => {
     if (currentQuestion.value) {
-      currentQuestion.value.mediaType = newMediaType
+      quizzesStore.updateQuestionProperty('mediaType', newMediaType)
     }
   })
   
   watch(() => questionSettings.required, (newRequired) => {
     if (currentQuestion.value) {
-      currentQuestion.value.required = newRequired
+      quizzesStore.updateQuestionProperty('required', newRequired)
     }
   })
 

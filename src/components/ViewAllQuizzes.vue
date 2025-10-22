@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import type { TeacherQuizItem, StudentQuizItem } from '@/interfaces/interfaces'
+
 const StudentQuizList = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
 const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 
@@ -17,34 +19,27 @@ const statusFilter = ref<'all' | 'draft' | 'published'>('all')
 // COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
 
-const quizzes = computed(() => {
+const quizzes = computed<(TeacherQuizItem | StudentQuizItem)[]>(() => {
   if (isTeacher.value) {
-    const stored = loadStoredQuizzes()
+    const stored = quizzesStore.loadQuizzesFromStorage()
     return [...stored, ...quizzesStore.myTeacherQuizzes]
   }
   return quizzesStore.myStudentQuizzes
 })
 
-function loadStoredQuizzes() {
-  try {
-    const stored = localStorage.getItem('quizzes')
-    return stored ? JSON.parse(stored) : []
-  } catch (error) {
-    console.error('Error loading quizzes from localStorage:', error)
-    return []
-  }
-}
-
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   let list = quizzes.value || []
   
-  if (statusFilter.value !== 'all') {
-    list = list.filter((qz: any) => (qz.status || 'published') === statusFilter.value)
+  if (statusFilter.value !== 'all' && isTeacher.value) {
+    list = list.filter((qz) => {
+      const teacherQuiz = qz as TeacherQuizItem
+      return (teacherQuiz.status || 'published') === statusFilter.value
+    })
   }
   
   if (!q) return list
-  return list.filter((qz: any) =>
+  return list.filter((qz) =>
     (qz.title || '').toLowerCase().includes(q) ||
     (qz.subject || '').toLowerCase().includes(q) ||
     (qz.class || '').toLowerCase().includes(q) ||
@@ -108,8 +103,8 @@ const filtered = computed(() => {
       </div>
     </div>
 
-    <TeacherQuizList v-if="isTeacher" :quizzes="filtered as any" :hide-header="true" :show-filters="false" />
-    <StudentQuizList v-else :quizzes="filtered as any" :hide-header="true" />
+    <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-header="true" :show-filters="false" />
+    <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-header="true" />
 
     <div v-if="filtered.length === 0" class="text-center text-gray-500 py-12">
       No quizzes found for "{{ query }}".

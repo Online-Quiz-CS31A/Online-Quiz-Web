@@ -1,7 +1,9 @@
 import { ref, watch, type ComputedRef } from 'vue'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 
 export function useMediaUpload(currentQuestion: ComputedRef<QuizQuestion | null>, mediaType: ComputedRef<string>) {
+  const quizzesStore = useQuizzesStore()
   const showMediaUpload = ref(false)
 
   watch(mediaType, (newMediaType) => {
@@ -17,7 +19,7 @@ export function useMediaUpload(currentQuestion: ComputedRef<QuizQuestion | null>
     const reader = new FileReader()
     reader.onload = () => {
       if (currentQuestion.value) {
-        currentQuestion.value.mediaUrl = String(reader.result)
+        quizzesStore.updateQuestionProperty('mediaUrl', String(reader.result))
       }
     }
     reader.readAsDataURL(file)
@@ -26,7 +28,7 @@ export function useMediaUpload(currentQuestion: ComputedRef<QuizQuestion | null>
 
   function clearQuestionMedia() {
     if (!currentQuestion.value) return
-    currentQuestion.value.mediaUrl = ''
+    quizzesStore.updateQuestionProperty('mediaUrl', '')
   }
 
   return {

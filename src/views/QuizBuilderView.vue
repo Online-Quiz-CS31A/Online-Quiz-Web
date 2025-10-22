@@ -2,12 +2,15 @@
 import { ref, watch, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
 
 // CONSTANTS
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 
 // REACTIVE
@@ -18,13 +21,6 @@ const showResults = ref(route.name === 'quiz-results')
 const showAssign = ref(route.name === 'quiz-assign')
 const published = ref(false)
 const creatorRef = ref<InstanceType<typeof QuizContent> | null>(null)
-
-const quiz = ref({
-  title: '',
-  subject: '',
-  timeLimit: '',
-  questions: []
-})
 
 // WATCHERS
 watch(() => route.name, (newRouteName) => {
@@ -89,19 +85,19 @@ function onPreview() {
           <div class="bg-gray-50 rounded p-3 space-y-2">
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Title:</span>
-              <span class="font-medium">{{ quiz.title || 'Untitled Quiz' }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.title || 'Untitled Quiz' }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Subject:</span>
-              <span class="font-medium">{{ quiz.subject || 'Not specified' }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.subject || 'Not specified' }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Questions:</span>
-              <span class="font-medium">{{ quiz.questions?.length || 0 }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.questions?.length || 0 }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Time Limit:</span>
-              <span class="font-medium">{{ quiz.timeLimit || 'Not set' }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.timeLimit || 'Not set' }}</span>
             </div>
           </div>
         </template>

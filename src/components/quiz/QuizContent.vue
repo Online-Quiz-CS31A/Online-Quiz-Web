@@ -4,6 +4,7 @@ import { useToast } from '@/composables/useToast'
 import { useQuizEditor } from '@/composables/useQuizEditor'
 import { useQuestionSettings } from '@/composables/useQuestionSettings'
 import { useMediaUpload } from '@/composables/useMediaUpload'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 
 import SidebarQuestions from './SidebarQuestions.vue'
@@ -11,9 +12,9 @@ import QuestionEditorPanel from './QuestionEditorPanel.vue'
 import SettingsPanel from './SettingsPanel.vue'
 const AddQuestionModal = defineAsyncComponent(() => import('@/components/modals/AddQuestionModal.vue'))
 
+const quizzesStore = useQuizzesStore()
+
 const {
-  quiz,
-  currentQuestion,
   showAddQuestionModal,
   openMenuIndex,
   openAddQuestionModal,
@@ -28,6 +29,9 @@ const {
   saveQuizDraft,
   publishQuiz,
 } = useQuizEditor()
+
+const quiz = quizzesStore.currentQuiz
+const currentQuestion = computed(() => quizzesStore.currentQuestion)
 
 const { questionSettings, questionTypes, syncSettings } = useQuestionSettings(currentQuestion)
 const { showMediaUpload, onQuestionMediaChange, clearQuestionMedia } = useMediaUpload(
@@ -63,12 +67,8 @@ onMounted(() => {
         pairs: [],
         items: []
       }
-      quiz.questions.push(newQuestion)
+      handleAddQuestion(newQuestion)
     })
-    
-    if (quiz.questions.length > 0) {
-      handleSelectQuestion(0)
-    }
     
     useToast().success(`Successfully imported ${importedQuestions.length} question${importedQuestions.length > 1 ? 's' : ''}!`)
   }

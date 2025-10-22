@@ -26,16 +26,7 @@ const refreshTrigger = ref(0)
 const activeQuizzes = computed(() => {
   refreshTrigger.value
   
-  const storedQuizzes: any[] = []
-  try {
-    const stored = localStorage.getItem('quizzes')
-    if (stored) {
-      storedQuizzes.push(...JSON.parse(stored))
-    }
-  } catch (error) {
-    console.error('Error loading quizzes from localStorage:', error)
-  }
-  
+  const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
   const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
   
   return allQuizzes.sort((a, b) => {
