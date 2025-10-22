@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '@/stores/calendarStore'
 import type { CalendarEventType, CalendarEventItem } from '../interfaces/interfaces'
+import CalendarEventAddModal from '@/components/modals/CalendarEventAddModal.vue'
+import CalendarEventEditModal from '@/components/modals/CalendarEventEditModal.vue'
 
 // REFS
 const now = ref(new Date())
@@ -250,64 +252,46 @@ onMounted(() => {
     </div>
 
 
-    <!-- Add Event Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xl font-semibold text-blue-800">{{ editingEventId !== null ? 'Edit Event' : 'Add New Event' }}</h3>
-          <button @click="closeModal" class="text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div v-if="selectedDateEvents.length" class="mb-4">
-          <div class="text-sm font-medium text-gray-700 mb-2">Events on {{ formDate }}:</div>
-          <ul class="space-y-1">
-            <li v-for="ev in selectedDateEvents" :key="'sel-' + ev.id" class="flex items-center justify-between text-sm bg-gray-50 px-2 py-1 rounded">
-              <span class="truncate">{{ ev.title }}<span v-if="ev.time"> ({{ ev.time }})</span></span>
-              <div class="space-x-2">
-                <button class="text-blue-600 hover:underline" @click="openEdit(ev)">Edit</button>
-                <button class="text-red-600 hover:underline" @click="() => { editingEventId = ev.id; onDelete() }">Delete</button>
-              </div>
-            </li>
-          </ul>
-        </div>
-        <form @submit.prevent="onSubmit">
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2" for="event-title">Event Title</label>
-            <input v-model="formTitle" type="text" id="event-title" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2">Date</label>
-            <!-- Replace this native input with shadcn-vue Calendar/DatePicker once installed -->
-            <input v-model="formDate" type="date" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2" for="event-time">Time (optional)</label>
-            <input v-model="formTime" type="time" id="event-time" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-          </div>
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2" for="event-type">Event Type</label>
-            <select v-model="formType" id="event-type" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-              <option value="quiz">Quiz</option>
-              <option value="holiday">Holiday</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div class="mb-4">
-            <label class="flex items-center">
-              <input v-model="formIsDeadline" type="checkbox" class="rounded text-blue-500 focus:ring-blue-300">
-              <span class="ml-2 text-gray-700">Is this a deadline?</span>
-            </label>
-          </div>
-          <div class="flex justify-end space-x-3">
-            <button type="button" @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
-            <button v-if="editingEventId !== null" type="button" @click="onDelete" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Delete</button>
-            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">{{ editingEventId !== null ? 'Save Changes' : 'Save Event' }}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Modals -->
+    <CalendarEventAddModal
+      v-if="showModal && editingEventId === null"
+      :open="showModal"
+      :form-title="formTitle"
+      :form-date="formDate"
+      :form-time="formTime"
+      :form-type="formType"
+      :form-is-deadline="formIsDeadline"
+      :selected-date-events="selectedDateEvents"
+      @close="closeModal"
+      @submit="onSubmit"
+      @update:form-title="val => (formTitle = val)"
+      @update:form-date="val => (formDate = val)"
+      @update:form-time="val => (formTime = val)"
+      @update:form-type="val => (formType = val)"
+      @update:form-is-deadline="val => (formIsDeadline = val)"
+      @openEdit="openEdit"
+      @quickDelete="id => { editingEventId = id; onDelete() }"
+    />
+
+    <CalendarEventEditModal
+      v-if="showModal && editingEventId !== null"
+      :open="showModal"
+      :form-title="formTitle"
+      :form-date="formDate"
+      :form-time="formTime"
+      :form-type="formType"
+      :form-is-deadline="formIsDeadline"
+      @close="closeModal"
+      @submit="onSubmit"
+      @delete="onDelete"
+      @update:form-title="val => (formTitle = val)"
+      @update:form-date="val => (formDate = val)"
+      @update:form-time="val => (formTime = val)"
+      @update:form-type="val => (formType = val)"
+      @update:form-is-deadline="val => (formIsDeadline = val)"
+    />
   </div>
 </template>
+
 
 
