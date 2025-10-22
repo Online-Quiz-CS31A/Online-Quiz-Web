@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { useCalendarStore } from '@/stores/calendarStore'
 import type { CalendarEventType, CalendarEventItem } from '../interfaces/interfaces'
 import CalendarEventAddModal from '@/components/modals/CalendarEventAddModal.vue'
@@ -17,6 +18,8 @@ const formTime = ref<string>('')
 const formType = ref<CalendarEventType>('quiz')
 const formIsDeadline = ref(false)
 const editingEventId = ref<number | null>(null)
+const readOnlyMode = ref(false)
+const { error: showError } = useToast()
 
 // REACTIVE
 const calendarStore = useCalendarStore()
@@ -79,6 +82,26 @@ const calendarCells = computed(() => {
 })
 
 // METHODS
+function isDateInPast(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const target = new Date(y, m - 1, d)
+  target.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return target < today
+}
+
+function isEventInPast(ev: CalendarEventItem) {
+  const [y, m, d] = ev.date.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  if (ev.time) {
+    const [hh, mm] = ev.time.split(':').map(Number)
+    dt.setHours(hh || 0, mm || 0, 0, 0)
+    return dt.getTime() < Date.now()
+  }
+  dt.setHours(23, 59, 59, 999)
+  return dt.getTime() < Date.now()
+}
 function eventsForDate(dateStr: string) {
   return events.value.filter(e => e.date === dateStr)
 }
@@ -115,10 +138,16 @@ function openModal(defaultDate?: string) {
 }
 
 function openAddForDate(dateStr: string) {
+  if (isDateInPast(dateStr)) {
+    showError("You can't add events in the past")
+    return
+  }
+  readOnlyMode.value = false
   openModal(dateStr)
 }
 
 function openEdit(ev: CalendarEventItem) {
+  readOnlyMode.value = isEventInPast(ev)
   editingEventId.value = ev.id
   formTitle.value = ev.title
   formDate.value = ev.date
@@ -281,6 +310,7 @@ onMounted(() => {
       :form-time="formTime"
       :form-type="formType"
       :form-is-deadline="formIsDeadline"
+      :read-only="readOnlyMode"
       @close="closeModal"
       @submit="onSubmit"
       @delete="onDelete"
