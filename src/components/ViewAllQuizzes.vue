@@ -4,6 +4,8 @@ import { defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { TeacherQuizItem, StudentQuizItem } from '@/interfaces/interfaces'
+import SearchFilterBar from '@/components/SearchFilterBar.vue'
+import { useToast } from '@/composables/useToast'
 
 const StudentQuizList = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
 const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
@@ -15,6 +17,11 @@ const quizzesStore = useQuizzesStore()
 // REFS
 const query = ref('')
 const statusFilter = ref<'all' | 'draft' | 'published'>('all')
+const { info: showInfo } = useToast()
+
+function addQuiz() {
+  showInfo('Add Quiz clicked')
+}
 
 // COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
@@ -54,54 +61,21 @@ const filtered = computed(() => {
       <h2 class="text-xl font-semibold text-gray-800">All Quizzes</h2>
     </div>
 
-    <!-- Filter Buttons -->
-    <div v-if="isTeacher" class="flex gap-2">
-      <button
-        @click="statusFilter = 'all'"
-        :class="[
-          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
-          statusFilter === 'all'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-        ]"
-      >
-        All
-      </button>
-      <button
-        @click="statusFilter = 'draft'"
-        :class="[
-          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
-          statusFilter === 'draft'
-            ? 'bg-amber-600 text-white shadow-md'
-            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-        ]"
-      >
-        <i class="fas fa-file-pen mr-2"></i>Drafts
-      </button>
-      <button
-        @click="statusFilter = 'published'"
-        :class="[
-          'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
-          statusFilter === 'published'
-            ? 'bg-green-600 text-white shadow-md'
-            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-        ]"
-      >
-        <i class="fas fa-check-circle mr-2"></i>Published
-      </button>
-    </div>
-
-    <div>
-      <div class="relative">
-        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-        <input
-          v-model="query"
-          type="text"
-          placeholder="Search by title, subject, class, or due date..."
-          class="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-        />
-      </div>
-    </div>
+    <SearchFilterBar
+      :model-value="query"
+      :filter="statusFilter"
+      :options="[
+        { label: 'All', value: 'all' },
+        { label: 'Drafts', value: 'draft' },
+        { label: 'Published', value: 'published' }
+      ]"
+      placeholder="Search by title, subject, class, or due date..."
+      :action-label="isTeacher ? 'Add Quiz' : undefined"
+      no-border
+      @update:modelValue="(v: string) => (query = v)"
+      @update:filter="(v: string) => (statusFilter = v as 'all' | 'draft' | 'published')"
+      @action="addQuiz"
+    />
 
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-header="true" :show-filters="false" />
     <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-header="true" />
