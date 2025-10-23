@@ -1,5 +1,7 @@
 <script setup lang="ts">
- import { ref, computed } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
@@ -18,6 +20,8 @@ interface Props {
 
 // CONSTANTS
 const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
+const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 // PROPS
 const props = withDefaults(defineProps<Props>(), {
@@ -110,6 +114,11 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
   }
   closeMenu()
 }
+
+const handleQuizClick = (quiz: TeacherQuizItem) => {
+  quizzesStore.loadQuizForEditing(quiz.id)
+  router.push({ name: 'quiz-builder', params: { id: quiz.class || 'default' } })
+}
 </script>
 
 <template>
@@ -165,6 +174,7 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
           quiz.status === 'draft' ? 'draft-card' : getCardColorClasses(quiz.color)
         ]"
         :style="quiz.status === 'draft' ? {} : { ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"
+        @click="handleQuizClick(quiz)"
       >
         <div class="p-5 min-h-[180px] flex flex-col justify-between" :class="quiz.status === 'draft' ? 'bg-gradient-to-br from-slate-600 to-slate-700' : ''">
           <div class="flex justify-between items-start mb-3">
@@ -230,8 +240,9 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
       <div 
         v-for="quiz in filteredQuizzes" 
         :key="quiz.id"
-        class="rounded-lg border overflow-hidden"
+        class="rounded-lg border overflow-hidden cursor-pointer"
         :class="quiz.status === 'draft' ? 'border-slate-400 bg-slate-50 draft-card' : 'border-gray-200 bg-white'"
+        @click="handleQuizClick(quiz)"
       >
         <div class="flex items-stretch">
           <div v-if="quiz.status !== 'draft'" class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>

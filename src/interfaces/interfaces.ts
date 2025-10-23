@@ -244,6 +244,13 @@ export interface StudentQuiz {
   color: string
 }
 
+export interface QuizAttempt {
+  attempt: string
+  date: string
+  score: string
+  mark: string
+}
+
 // HEADER INTERFACES
 export interface HeaderProps {
   breadcrumb?: string

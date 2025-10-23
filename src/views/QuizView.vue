@@ -2,111 +2,45 @@
   import { ref, computed, onMounted, onUnmounted } from 'vue'
   import { useRouter } from 'vue-router'
   import Header from '@/components/Header.vue'
-  import type { QuizViewQuestion } from '@/interfaces/interfaces'
+  import type { QuizViewQuestion, QuizQuestion } from '@/interfaces/interfaces'
   
-// CONSTANT
-  const questions: QuizViewQuestion[] = [
-    {
-      question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
-      options: ["6.75", "8", "11.25", "720"],
-      correctAnswer: 0
-    },
-    {
-      question: "What is 25% of 80?",
-      options: ["15", "20", "25", "30"],
-      correctAnswer: 1
-    },
-    {
-      question: "If a shirt costs $45 and is discounted by 20%, what is the final price?",
-      options: ["$9", "$36", "$54", "$45"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the sum of 1/4 + 1/3?",
-      options: ["2/7", "7/12", "1/2", "2/3"],
-      correctAnswer: 1
-    },
-    {
-      question: "If 3x + 7 = 22, what is the value of x?",
-      options: ["3", "5", "7", "15"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the area of a rectangle with length 8 and width 6?",
-      options: ["14", "28", "48", "56"],
-      correctAnswer: 2
-    },
-    {
-      question: "If a car travels 240 miles in 4 hours, what is its average speed?",
-      options: ["40 mph", "60 mph", "80 mph", "120 mph"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is 15% of 200?",
-      options: ["15", "20", "30", "35"],
-      correctAnswer: 2
-    },
-    {
-      question: "If 2y - 5 = 11, what is the value of y?",
-      options: ["3", "6", "8", "13"],
-      correctAnswer: 2
-    },
-    {
-      question: "What is the perimeter of a square with side length 5?",
-      options: ["10", "15", "20", "25"],
-      correctAnswer: 2
-    },
-    {
-      question: "What is 3/4 of 100?",
-      options: ["25", "50", "75", "100"],
-      correctAnswer: 2
-    },
-    {
-      question: "If a book costs $24 and tax is 8%, what is the total cost?",
-      options: ["$19.20", "$24.00", "$25.92", "$32.00"],
-      correctAnswer: 2
-    },
-    {
-      question: "What is the value of 2³?",
-      options: ["4", "6", "8", "16"],
-      correctAnswer: 2
-    },
-    {
-      question: "If 4x = 20, what is the value of x?",
-      options: ["4", "5", "16", "20"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the square root of 64?",
-      options: ["6", "7", "8", "9"],
-      correctAnswer: 2
-    },
-    {
-      question: "If a triangle has angles of 45°, 45°, and 90°, what type of triangle is it?",
-      options: ["Equilateral", "Isosceles", "Scalene", "Right"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is 1/2 + 1/6?",
-      options: ["1/3", "2/3", "1/2", "3/4"],
-      correctAnswer: 1
-    },
-    {
-      question: "If a circle has radius 5, what is its circumference?",
-      options: ["10π", "15π", "20π", "25π"],
-      correctAnswer: 0
-    },
-    {
-      question: "What is 20% of 150?",
-      options: ["20", "25", "30", "35"],
-      correctAnswer: 2
-    },
-    {
-      question: "If 5z + 3 = 18, what is the value of z?",
-      options: ["2", "3", "4", "5"],
-      correctAnswer: 1
+const router = useRouter()
+
+const convertToViewFormat = (quizQuestions: QuizQuestion[]): QuizViewQuestion[] => {
+  return quizQuestions.map(q => {
+    if (q.type === 'multiple-choice' && q.options && q.options.length > 0) {
+      const options = q.options.map(opt => opt.text)
+      const correctAnswer = q.options.findIndex(opt => opt.isCorrect)
+      return {
+        question: q.text,
+        options: options,
+        correctAnswer: correctAnswer >= 0 ? correctAnswer : 0
+      }
     }
-  ]
+    else if (q.type === 'true-false' && q.options && q.options.length > 0) {
+      const options = q.options.map(opt => opt.text)
+      const correctAnswer = q.options.findIndex(opt => opt.isCorrect)
+      return {
+        question: q.text,
+        options: options,
+        correctAnswer: correctAnswer >= 0 ? correctAnswer : 0
+      }
+    }
+    else {
+      return {
+        question: q.text,
+        options: ['Answer not displayed in quiz view'],
+        correctAnswer: 0
+      }
+    }
+  })
+}
+
+const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
+const questions = ref<QuizViewQuestion[]>(convertToViewFormat(quizStateQuestions))
+const quizTitle = ref(history.state?.quizTitle || 'Quiz')
+const quizSubject = ref(history.state?.quizSubject || 'Quiz')
+const hasValidQuestions = computed(() => questions.value.length > 0)
   
   // REFS
   const currentQuestion = ref(0)
@@ -114,12 +48,11 @@
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const answeredQuestions = ref<Set<number>>(new Set())
-  const router = useRouter()
   
   // COMPUTED
-  const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz`)
+  const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
   const progress = computed(() => {
-    return ((currentQuestion.value + 1) / questions.length) * 100
+    return ((currentQuestion.value + 1) / questions.value.length) * 100
   })
   
   // METHODS
@@ -136,7 +69,7 @@
   }
   
   const nextQuestion = () => {
-    if (currentQuestion.value < questions.length - 1) {
+    if (currentQuestion.value < questions.value.length - 1) {
       currentQuestion.value++
       selectedOption.value = null
     }
@@ -181,8 +114,20 @@
       <Header :breadcrumb="breadcrumb" />
       <div class="max-w-6xl mx-auto p-4 mt-8">
       
+      <!-- No Questions Available -->
+      <div v-if="!hasValidQuestions" class="flex items-center justify-center min-h-[400px]">
+        <div class="text-center">
+          <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+          <h2 class="text-2xl font-bold text-gray-800 mb-2">No Questions Available</h2>
+          <p class="text-gray-600 mb-4">This quiz doesn't have any questions yet.</p>
+          <button @click="router.push({ name: 'student-home' })" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+
       <!-- Main Content -->
-      <main class="grid grid-cols-3 gap-6">
+      <main v-else class="grid grid-cols-3 gap-6">
         <!-- Left Panel-->
         <div class="col-span-2">
           <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">

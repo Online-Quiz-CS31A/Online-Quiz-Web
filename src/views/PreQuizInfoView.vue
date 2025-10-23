@@ -3,43 +3,78 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+import type { QuizAttempt } from '@/interfaces/interfaces'
 
 
 const route = useRoute()
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 interface RouteParams {
   quizId: string
 }
 
 // COMPUTED
-const quizId = computed(() => (route.params as unknown as RouteParams).quizId)
+const quizId = computed(() => Number((route.params as unknown as RouteParams).quizId))
 
-const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value.title}`)
+const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value?.title || 'Quiz'}`)
 
-const quiz = computed(() => ({
-  id: quizId.value,
-  title: 'Week 1 Quiz',
-  subject: 'Information Assurance',
-  duration: '30 minutes',
-  questions: 20,
-  correctAnswers: 17,
-  passingScore: 12,
-  passingPercentage: 50,
-  attemptsAvailable: 1,
-  currentScore: 85,
-  improvement: 5,
-  history: [
-    { name: '1', date: 'May 15, 2023', score: '18/20', mark: 90 },
-    { name: '2', date: 'April 28, 2023', score: '17/20', mark: 85 },
-    { name: '3', date: 'April 10, 2023', score: '16/20', mark: 80 },
-  ]
-}))
+const studentQuizData = computed(() => {
+  return quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+})
+
+const quiz = computed(() => {
+  const studentQuiz = studentQuizData.value
+  if (!studentQuiz) {
+    return {
+      id: quizId.value,
+      title: 'Quiz Not Found',
+      subject: 'Unknown',
+      duration: '0 minutes',
+      questions: 0,
+      correctAnswers: 0,
+      passingScore: 0,
+      passingPercentage: 50,
+      attemptsAvailable: 1,
+      currentScore: 0,
+      improvement: 0,
+      history: [] as QuizAttempt[]
+    }
+  }
+  
+  const quizQuestions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const questionCount = quizQuestions.length
+  
+  return {
+    id: studentQuiz.id,
+    title: studentQuiz.title,
+    subject: studentQuiz.subject,
+    duration: studentQuiz.timeLimit,
+    questions: questionCount,
+    correctAnswers: 0,
+    passingScore: Math.ceil(questionCount * 0.5), 
+    passingPercentage: 50,
+    attemptsAvailable: 1,
+    currentScore: 0,
+    improvement: 0,
+    history: [] as QuizAttempt[]
+  }
+})
 
 
 // METHODS
 const startQuiz = () => {
-  router.push({ name: 'quiz' })
+  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  router.push({ 
+    name: 'quiz',
+    state: {
+      quizId: quizId.value,
+      quizTitle: quiz.value.title,
+      quizSubject: quiz.value.subject,
+      questions
+    }
+  })
 }
 
 const markAsDone = () => {
@@ -167,8 +202,11 @@ const markAsDone = () => {
               <div>Mark</div>
             </div>
             <div class="space-y-3">
-              <div v-for="item in quiz.history" :key="item.name + item.date" class="grid grid-cols-4 gap-4 text-center items-center bg-[#F4F7F9] p-3 rounded-xl border border-[#7B90DF]">
-                <div class="text-gray-800">{{ item.name }}</div>
+              <div v-if="quiz.history.length === 0" class="text-center py-8 text-gray-500">
+                <p>No attempts yet. Start the quiz to see your history.</p>
+              </div>
+              <div v-for="item in quiz.history" :key="item.attempt + item.date" class="grid grid-cols-4 gap-4 text-center items-center bg-[#F4F7F9] p-3 rounded-xl border border-[#7B90DF]">
+                <div class="text-gray-800">{{ item.attempt }}</div>
                 <div class="text-gray-600">{{ item.date }}</div>
                 <div class="font-bold text-[#4285f4]">{{ item.score }}</div>
                 <div class="font-bold text-[#1976d2]">{{ item.mark }}%</div>
