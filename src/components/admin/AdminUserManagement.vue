@@ -2,7 +2,7 @@
 import { ref, reactive, computed, watchEffect } from 'vue'
 import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
 import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
-import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
+import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import type { AdminUser } from '@/interfaces/interfaces'
 
