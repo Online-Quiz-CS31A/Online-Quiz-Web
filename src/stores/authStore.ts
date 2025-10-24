@@ -16,17 +16,11 @@ export const useAuthStore = defineStore('auth', () => {
     if (saved) {
       const parsed = JSON.parse(saved) as User
       currentUser.value = parsed
-      verifySession().catch(() => {
-        currentUser.value = null
-        try {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('currentUser')
-          }
-        } catch (e) {
-        }
-      })
     }
   } catch (e) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('currentUser')
+    }
   }
 
   /**
@@ -93,18 +87,20 @@ export const useAuthStore = defineStore('auth', () => {
    * Logout user
    */
   async function logout() {
+    currentUser.value = null
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('currentUser')
+      }
+    } catch (e) {
+      console.error('Failed to clear localStorage:', e)
+    }
+    
     try {
       await authService.logout()
-    } catch (err) {
-      console.error('Logout error:', err)
-    } finally {
-      currentUser.value = null
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('currentUser')
-        }
-      } catch (e) {
-        console.error('Failed to clear localStorage:', e)
+    } catch (err: any) {
+      if (err.status !== 401) {
+        console.warn('Backend logout failed:', err)
       }
     }
   }

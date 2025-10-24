@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -144,6 +145,53 @@ const router = createRouter({
       redirect: (to) => ({ name: 'quiz-results', params: to.params }),
     },
   ],
+})
+
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
+  const userRole = authStore.userRole
+
+  const requiresAuth = to.path !== '/'
+  const isLoginPage = to.path === '/' || to.name === 'login'
+  
+  if (isAuthenticated && isLoginPage) {
+    if (userRole === 'admin') {
+      return next({ name: 'admin-dashboard' })
+    } else if (userRole === 'teacher') {
+      return next({ name: 'teacher' })
+    } else if (userRole === 'student') {
+      return next({ name: 'student' })
+    }
+  }
+
+  if (requiresAuth && !isAuthenticated) {
+    return next({ name: 'login' })
+  }
+
+  if (isAuthenticated) {
+    const path = to.path.toLowerCase()
+    
+    if (userRole === 'admin') {
+      if (!path.startsWith('/admin')) {
+        return next({ name: 'admin-dashboard' })
+      }
+    }
+    
+    else if (userRole === 'teacher') {
+      if (path.startsWith('/admin') || path.startsWith('/student')) {
+        return next({ name: 'teacher' })
+      }
+    }
+    
+    else if (userRole === 'student') {
+      if (path.startsWith('/admin') || path.startsWith('/teacher')) {
+        return next({ name: 'student' })
+      }
+    }
+  }
+
+  next()
 })
 
 export default router
