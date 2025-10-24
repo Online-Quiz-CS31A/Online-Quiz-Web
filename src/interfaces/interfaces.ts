@@ -81,7 +81,7 @@ export interface CalendarEventItem {
 }
 
 // AUTHENTICATION AND USER ACCOUNT
-export type Role = 'teacher' | 'student'
+export type Role = 'teacher' | 'student' | 'admin'
 export interface User {
   username: string
   password: string

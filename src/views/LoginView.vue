@@ -47,6 +47,8 @@ const handleLogin = async () => {
       router.push({ name: 'teacher' })
     } else if (result.role === 'student') {
       router.push({ name: 'student' })
+    } else if (result.role === 'admin') {
+      router.push({ name: 'admin-dashboard' })
     } else {
       router.push({ name: 'login' })
     }

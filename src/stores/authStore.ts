@@ -85,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
     const roleLower = backendRole.toLowerCase()
     if (roleLower === 'teacher') return 'teacher'
     if (roleLower === 'student') return 'student'
-    if (roleLower === 'admin') return 'teacher' // Map admin to teacher for now
+    if (roleLower === 'admin') return 'admin'
     return 'student' 
   }
 
