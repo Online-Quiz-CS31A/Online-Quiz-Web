@@ -65,7 +65,20 @@ const getCoverStyle = (quiz: StudentQuiz) => {
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
     </div>
     
-    <div v-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Empty State -->
+    <div v-if="displayedQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+      <div class="relative mb-6">
+        <div class="w-24 h-24 bg-gradient-to-br from-purple-50 to-pink-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-file-lines text-4xl text-purple-400"></i>
+        </div>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-2">No Quizzes Available</h3>
+      <p class="text-gray-500 max-w-md">
+        You don't have any quizzes at the moment. Check back later for new assignments from your teachers.
+      </p>
+    </div>
+    
+    <div v-else-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
         v-for="quiz in displayedQuizzes" 
         :key="quiz.id"
