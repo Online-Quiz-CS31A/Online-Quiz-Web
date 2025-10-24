@@ -114,7 +114,23 @@ onBeforeUnmount(() => {
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Empty State -->
+    <div v-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+      <div class="relative mb-6">
+        <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-book-open text-4xl text-blue-400"></i>
+        </div>
+        <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+          <i class="fas fa-plus text-white text-sm"></i>
+        </div>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-2">No Courses Yet</h3>
+      <p class="text-gray-500 max-w-md mb-6">
+        You haven't created any courses yet. Create your first course to start teaching.
+      </p>
+    </div>
+    
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
         v-for="classItem in displayedClasses" 
         :key="classItem.id"
