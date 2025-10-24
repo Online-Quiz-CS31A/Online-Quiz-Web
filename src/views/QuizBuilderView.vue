@@ -63,6 +63,14 @@ function onResults() {
 function onPreview() {
   console.log('Preview quiz...')
 }
+
+// LIFECYCLE
+
+onMounted(() => {
+  if (quizzesStore.currentQuiz.id === null && quizzesStore.currentQuiz.questions.length === 0) {
+    quizzesStore.resetCurrentQuiz()
+  }
+})
 </script>
 
 <template>

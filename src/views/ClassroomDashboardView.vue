@@ -6,6 +6,7 @@ import { useSectionsStore } from '@/stores/sectionsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
@@ -229,6 +230,7 @@ const sectionsStore = useSectionsStore()
 const classesStore = useCoursesStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
+const quizzesStore = useQuizzesStore()
 
 const classMeta = reactive({
   title: currentSection.value?.name || 'Section',
@@ -247,6 +249,7 @@ watch([currentSection, currentCourse], () => {
 
 // METHODS
 function navigateToQuizCreator() {
+  quizzesStore.resetCurrentQuiz()
   router.push(`/teacher/create-quiz`)
 }
 

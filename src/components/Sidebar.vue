@@ -4,6 +4,7 @@ import { defineAsyncComponent } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 const ImportQuestionsModal = defineAsyncComponent(() => import('@/components/modals/ImportQuestionsModal.vue'))
 
 // TYPES
@@ -32,6 +33,7 @@ const showImportModal = ref(false)
 const route = useRoute()
 const auth = useAuthStore()
 const classesStore = useCoursesStore()
+const quizzesStore = useQuizzesStore()
 
 // PROPS
 const props = defineProps<Props>()
@@ -78,6 +80,7 @@ function colorDotClass(color?: string) {
 }
 
 function navigateToQuizCreator() {
+  quizzesStore.resetCurrentQuiz()
   router.push(`/teacher/create-quiz`)
 }
 

@@ -186,6 +186,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   })
 
   const currentQuiz = reactive({
+    id: null as number | null,
     title: '',
     subject: '',
     timeLimit: '',
@@ -344,27 +345,43 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       throw new Error('User not authenticated')
     }
 
-    const quizItem: TeacherQuizItem = {
-      id: Date.now(),
-      title: currentQuiz.title,
-      subject: currentQuiz.subject,
-      description: currentQuiz.description,
-      dueDate: '',
-      class: '',
-      submitted: 0,
-      total: 0,
-      color: 'blue',
-      status,
-      questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-
     const quizzes = getAllQuizzes()
-    quizzes.push(quizItem)
-    saveQuizzesToStorage(quizzes)
+    const existingIndex = currentQuiz.id ? quizzes.findIndex(q => q.id === currentQuiz.id) : -1
 
-    return quizItem
+    if (existingIndex !== -1) {
+      const existingQuiz = quizzes[existingIndex]
+      quizzes[existingIndex] = {
+        ...existingQuiz,
+        title: currentQuiz.title,
+        subject: currentQuiz.subject,
+        description: currentQuiz.description,
+        status,
+        questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
+        updatedAt: new Date().toISOString()
+      }
+      saveQuizzesToStorage(quizzes)
+      return quizzes[existingIndex]
+    } else {
+      const quizItem: TeacherQuizItem = {
+        id: Date.now(),
+        title: currentQuiz.title,
+        subject: currentQuiz.subject,
+        description: currentQuiz.description,
+        dueDate: '',
+        class: '',
+        submitted: 0,
+        total: 0,
+        color: 'blue',
+        status,
+        questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      currentQuiz.id = quizItem.id
+      quizzes.push(quizItem)
+      saveQuizzesToStorage(quizzes)
+      return quizItem
+    }
   }
 
   function deleteQuiz(quizId: number) {
@@ -383,6 +400,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     
     if (!quiz) return false
 
+    currentQuiz.id = quiz.id
     currentQuiz.title = quiz.title
     currentQuiz.subject = quiz.subject
     currentQuiz.description = quiz.description || ''
@@ -394,6 +412,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function resetCurrentQuiz() {
+    currentQuiz.id = null
     currentQuiz.title = ''
     currentQuiz.subject = ''
     currentQuiz.timeLimit = ''
