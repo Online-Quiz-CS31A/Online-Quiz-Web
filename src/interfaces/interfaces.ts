@@ -87,6 +87,9 @@ export interface User {
   password: string
   role: Role
   name?: string
+  id?: number
+  email?: string
+  roles?: string[]
 }
 
 // QUIZ LIST ITEMS FOR TEACHERS
