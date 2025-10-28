@@ -1,10 +1,12 @@
   <script setup lang="ts">
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
-  import { useRouter } from 'vue-router'
-  import Header from '@/components/Header.vue'
-  import type { QuizViewQuestion, QuizQuestion } from '@/interfaces/interfaces'
-  
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import Header from '@/components/Header.vue'
+import type { QuizViewQuestion, QuizQuestion } from '@/interfaces/interfaces'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 const convertToViewFormat = (quizQuestions: QuizQuestion[]): QuizViewQuestion[] => {
   return quizQuestions.map(q => {
@@ -47,7 +49,6 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   const selectedOption = ref<number | null>(null)
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  const answeredQuestions = ref<Set<number>>(new Set())
   
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
@@ -65,7 +66,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   
   const selectOption = (optionIndex: number) => {
     selectedOption.value = optionIndex
-    answeredQuestions.value.add(currentQuestion.value)
+    quizzesStore.markAnswered(currentQuestion.value)
   }
   
   const nextQuestion = () => {
@@ -229,7 +230,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
                   'w-10 h-10 border-2 rounded-lg font-semibold text-sm cursor-pointer transition-all',
                   currentQuestion === questionIndex - 1
                     ? 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
-                    : answeredQuestions.has(questionIndex - 1)
+                    : quizzesStore.isAnswered(questionIndex - 1)
                     ? 'border-[#8B9EE3] bg-[#C9E4F6] text-[#1976d2]'
                     : 'border-[#4D74FF] bg-[#F4F7F9] text-gray-600 hover:bg-gray-50'
                 ]"

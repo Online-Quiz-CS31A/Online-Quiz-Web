@@ -66,6 +66,7 @@ const quiz = computed(() => {
 // METHODS
 const startQuiz = () => {
   const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length)
   router.push({ 
     name: 'quiz',
     state: {

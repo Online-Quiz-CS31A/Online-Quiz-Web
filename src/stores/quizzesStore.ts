@@ -1,6 +1,6 @@
 import { ref, computed, reactive } from 'vue'
 import { defineStore } from 'pinia'
-import type { TeacherQuizItem, StudentQuizItem, QuizQuestion } from '../interfaces/interfaces'
+import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
@@ -193,6 +193,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     description: '',
     questions: [] as QuizQuestion[],
     currentQuestionIndex: -1
+  })
+
+  const currentAttempt = reactive({
+    quizId: null as number | null,
+    quizTitle: '',
+    questionsLength: 0,
+    answeredSet: new Set<number>() as Set<number>
   })
 
   const auth = useAuthStore()
@@ -458,10 +465,35 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return []
   }
 
+  function startAttempt(quizId: number, quizTitle: string, questionsLength: number) {
+    currentAttempt.quizId = quizId
+    currentAttempt.quizTitle = quizTitle
+    currentAttempt.questionsLength = questionsLength
+    currentAttempt.answeredSet = new Set<number>()
+  }
+
+  function markAnswered(index: number) {
+    if (index >= 0 && index < currentAttempt.questionsLength) {
+      currentAttempt.answeredSet.add(index)
+    }
+  }
+
+  function isAnswered(index: number): boolean {
+    return currentAttempt.answeredSet.has(index)
+  }
+
+  function getReviewQuestions(): ReviewQuestion[] {
+    return Array.from({ length: currentAttempt.questionsLength }, (_, i) => ({
+      id: i + 1,
+      answered: isAnswered(i)
+    }))
+  }
+
   return {
     myTeacherQuizzes,
     myStudentQuizzes,
     currentQuiz,
+    currentAttempt,
     currentQuestion,
     hasQuestions,
     addQuestion,
@@ -479,6 +511,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     getAllQuizzes,
     loadQuizzesFromStorage,
     saveQuizzesToStorage,
-    getStudentQuizQuestions
+    getStudentQuizQuestions,
+    startAttempt,
+    markAnswered,
+    isAnswered,
+    getReviewQuestions
   }
 })
