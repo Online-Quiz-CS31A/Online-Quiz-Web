@@ -8,6 +8,7 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
 
+const quizId = ref<number | null>((history.state?.quizId as number) || null)
 const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
 const questions = ref<QuizQuestion[]>(quizStateQuestions)
 const quizTitle = ref(history.state?.quizTitle || 'Quiz')
@@ -23,6 +24,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   const fillBlankAnswers = ref<string[]>([])
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
+  const durationSeconds = ref(0)
   
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
@@ -93,14 +95,49 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     router.push({ name: 'quiz-review' })
   }
   
+  const parseTimeLimitToSeconds = (tl: string | undefined): number => {
+    if (!tl) return 0
+    const s = tl.trim().toLowerCase()
+    const m = s.match(/(\d+)\s*(min|mins|minute|minutes)/)
+    if (m) return Number(m[1]) * 60
+    const h = s.match(/(\d+)\s*h/)
+    const mm = s.match(/(\d+)\s*m/)
+    if (h || mm) {
+      return (h ? Number(h[1]) * 3600 : 0) + (mm ? Number(mm[1]) * 60 : 0)
+    }
+    const num = Number(s)
+    if (!isNaN(num) && num > 0) return num * 60
+    return 0
+  }
+
+  const initDuration = () => {
+    if (quizId.value != null) {
+      const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+      const sec = parseTimeLimitToSeconds(sq?.timeLimit)
+      durationSeconds.value = sec > 0 ? sec : 0
+    } else {
+      durationSeconds.value = 0
+    }
+    timer.value = durationSeconds.value
+  }
+
   const startTimer = () => {
+    if (timerInterval.value) clearInterval(timerInterval.value)
     timerInterval.value = setInterval(() => {
-      timer.value++
+      if (timer.value > 0) {
+        timer.value--
+        if (timer.value === 0) {
+          clearInterval(timerInterval.value as any)
+          timerInterval.value = null
+          finishQuiz()
+        }
+      }
     }, 1000)
   }
   
   // LIFECYCLE
   onMounted(() => {
+    initDuration()
     startTimer()
   })
   
