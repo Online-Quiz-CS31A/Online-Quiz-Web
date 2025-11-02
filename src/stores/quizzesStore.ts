@@ -1,6 +1,6 @@
 import { ref, computed, reactive } from 'vue'
 import { defineStore } from 'pinia'
-import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion } from '../interfaces/interfaces'
+import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, QuizAttemptHistory } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
@@ -207,6 +207,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     isOngoing: false
   })
 
+  const quizAttemptHistory = ref<QuizAttemptHistory[]>([])
+
   const auth = useAuthStore()
 
   const myTeacherQuizzes = computed<TeacherQuizItem[]>(() => {
@@ -229,6 +231,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       
       teacherQuizzes.forEach(quiz => {
         if (enrollment.subjects.includes(quiz.subject)) {
+          let maxAttempts = 3
+          if (quiz.id === 1) maxAttempts = 2
+          else if (quiz.id === 2) maxAttempts = 1
+          
           studentQuizzes.push({
             id: quiz.id,
             subject: quiz.subject,
@@ -238,7 +244,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
             class: quiz.class,
             timeLimit: '30 min',
             status: 'Not Started',
-            color: quiz.color
+            color: quiz.color,
+            maxAttempts
           })
         }
       })
@@ -639,6 +646,93 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return Math.max(0, remaining)
   }
 
+  function calculateScore(): { score: number; totalPoints: number; percentage: number } {
+    if (currentAttempt.quizId == null) return { score: 0, totalPoints: 0, percentage: 0 }
+    
+    const quizQuestions = getStudentQuizQuestions(currentAttempt.quizId)
+    let score = 0
+    let totalPoints = 0
+
+    quizQuestions.forEach((q, i) => {
+      totalPoints += q.points || 0
+      
+      if ((q.type === 'multiple-choice' || q.type === 'true-false') && q.options && q.options.length > 0) {
+        const correctIndex = q.options.findIndex(opt => opt.isCorrect)
+        const userAnswer = currentAttempt.answers[i]
+        
+        if (userAnswer !== undefined && userAnswer === correctIndex) {
+          score += q.points || 0
+        }
+      }
+    })
+
+    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0
+    return { score, totalPoints, percentage }
+  }
+
+  function saveAttemptToHistory() {
+    const auth = useAuthStore()
+    const username = auth.currentUser?.username
+    
+    if (!username || currentAttempt.quizId == null) return
+
+    loadAttemptHistoryFromStorage()
+
+    const existingAttempts = quizAttemptHistory.value.filter(
+      a => a.quizId === currentAttempt.quizId && a.studentUsername === username
+    )
+    const attemptNumber = existingAttempts.length + 1
+
+    const { score, totalPoints, percentage } = calculateScore()
+
+    const historyEntry: QuizAttemptHistory = {
+      attemptNumber,
+      quizId: currentAttempt.quizId,
+      studentUsername: username,
+      score,
+      totalPoints,
+      percentage,
+      completedAt: new Date().toISOString(),
+      answers: JSON.parse(JSON.stringify(currentAttempt.answers))
+    }
+
+    quizAttemptHistory.value.push(historyEntry)
+    saveAttemptHistoryToStorage()
+  }
+
+  function getQuizAttemptHistory(quizId: number): QuizAttemptHistory[] {
+    const auth = useAuthStore()
+    const username = auth.currentUser?.username
+    
+    if (!username) return []
+
+    loadAttemptHistoryFromStorage()
+
+    return quizAttemptHistory.value.filter(
+      a => a.quizId === quizId && a.studentUsername === username
+    ).sort((a, b) => a.attemptNumber - b.attemptNumber)
+  }
+
+  function saveAttemptHistoryToStorage() {
+    try {
+      localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
+    } catch (e) {
+      console.error('Failed to save attempt history to localStorage:', e)
+    }
+  }
+
+  function loadAttemptHistoryFromStorage() {
+    try {
+      const stored = localStorage.getItem('quizAttemptHistory')
+      if (stored) {
+        quizAttemptHistory.value = JSON.parse(stored)
+      }
+    } catch (e) {
+      console.error('Failed to load attempt history from localStorage:', e)
+      quizAttemptHistory.value = []
+    }
+  }
+
   return {
     myTeacherQuizzes,
     myStudentQuizzes,
@@ -676,6 +770,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     saveAttemptToStorage,
     loadAttemptFromStorage,
     clearAttemptStorage,
-    getRemainingSeconds
+    getRemainingSeconds,
+    calculateScore,
+    saveAttemptToHistory,
+    getQuizAttemptHistory,
+    loadAttemptHistoryFromStorage
   }
 })

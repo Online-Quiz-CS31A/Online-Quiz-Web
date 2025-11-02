@@ -13,6 +13,7 @@ const quizzesStore = useQuizzesStore()
 
 onMounted(() => {
   quizzesStore.loadAttemptFromStorage()
+  quizzesStore.loadAttemptHistoryFromStorage()
 })
 
 interface RouteParams {
@@ -28,6 +29,10 @@ const studentQuizData = computed(() => {
   return quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
 })
 
+const attemptHistory = computed(() => {
+  return quizzesStore.getQuizAttemptHistory(quizId.value)
+})
+
 const quiz = computed(() => {
   const studentQuiz = studentQuizData.value
   if (!studentQuiz) {
@@ -41,6 +46,7 @@ const quiz = computed(() => {
       passingScore: 0,
       passingPercentage: 50,
       attemptsAvailable: 1,
+      maxAttempts: 1,
       currentScore: 0,
       improvement: 0,
       history: [] as QuizAttempt[]
@@ -49,6 +55,15 @@ const quiz = computed(() => {
   
   const quizQuestions = quizzesStore.getStudentQuizQuestions(quizId.value)
   const questionCount = quizQuestions.length
+  const maxAttempts = studentQuiz.maxAttempts || 1
+  const history = attemptHistory.value
+  
+  const latestAttempt = history.length > 0 ? history[history.length - 1] : null
+  const correctAnswers = latestAttempt ? latestAttempt.score : 0
+  
+  const improvement = history.length >= 2 
+    ? history[history.length - 1].percentage - history[0].percentage 
+    : 0
   
   return {
     id: studentQuiz.id,
@@ -56,14 +71,24 @@ const quiz = computed(() => {
     subject: studentQuiz.subject,
     duration: studentQuiz.timeLimit,
     questions: questionCount,
-    correctAnswers: 0,
+    correctAnswers,
     passingScore: Math.ceil(questionCount * 0.5), 
     passingPercentage: 50,
-    attemptsAvailable: 1,
-    currentScore: 0,
-    improvement: 0,
-    history: [] as QuizAttempt[]
+    attemptsAvailable: maxAttempts - history.length,
+    maxAttempts,
+    currentScore: latestAttempt ? latestAttempt.percentage : 0,
+    improvement,
+    history: history.map(h => ({
+      attempt: `Attempt ${h.attemptNumber}`,
+      date: new Date(h.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      score: `${h.score}/${h.totalPoints}`,
+      mark: h.percentage.toString()
+    }))
   }
+})
+
+const canStartQuiz = computed(() => {
+  return quiz.value.attemptsAvailable > 0 && !hasOngoingAttempt.value
 })
 
 const hasOngoingAttempt = computed(() => {
@@ -210,7 +235,7 @@ const markAsDone = () => {
                 </div>
                 <div class="flex items-start">
                   <HelpCircle class="mr-2 mt-1 text-blue-600 w-4 h-4" />
-                  <span>You will only have {{ quiz.attemptsAvailable }} attempt(s) to answer this quiz.</span>
+                  <span>You have {{ quiz.attemptsAvailable }} of {{ quiz.maxAttempts }} attempt(s) remaining for this quiz.</span>
                 </div>
               </div>
             </div>
@@ -221,12 +246,23 @@ const markAsDone = () => {
                 <HelpCircle class="w-4 h-4 mr-2" />
                 <span>Need help? Contact your instructor</span>
               </div>
-              <button v-if="!hasOngoingAttempt" @click="startQuiz" class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
-                <Play class="w-4 h-4 mr-2" /> Start Quiz
-              </button>
-              <button v-else @click="continueQuiz" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
-                <Play class="w-4 h-4 mr-2" /> Continue Ongoing Quiz
-              </button>
+              <div class="flex flex-col items-end gap-2">
+                <div v-if="!canStartQuiz && !hasOngoingAttempt" class="text-red-600 text-sm flex items-center">
+                  <XCircle class="w-4 h-4 mr-2" />
+                  Maximum attempts reached
+                </div>
+                <button 
+                  v-if="!hasOngoingAttempt" 
+                  @click="startQuiz" 
+                  :disabled="!canStartQuiz"
+                  class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                >
+                  <Play class="w-4 h-4 mr-2" /> Start Quiz
+                </button>
+                <button v-else @click="continueQuiz" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
+                  <Play class="w-4 h-4 mr-2" /> Continue Ongoing Quiz
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -58,7 +58,15 @@ const previousQuestion = () => {
 }
 
 const finishReview = () => {
-  router.push({ name: 'student' })
+  quizzesStore.saveAttemptToHistory()
+  quizzesStore.clearAttemptStorage()
+  
+  const quizId = quizzesStore.currentAttempt.quizId
+  if (quizId) {
+    router.push({ name: 'student-prequiz', params: { quizId: quizId.toString() } })
+  } else {
+    router.push({ name: 'student' })
+  }
 }
 
 const getQuestionButtonClass = (index: number) => {

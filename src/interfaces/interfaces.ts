@@ -120,6 +120,7 @@ export interface StudentQuizItem {
   timeLimit: string
   status: string
   color: string
+  maxAttempts?: number
 }
 
 // ADMIN COURSE CATALOG & DETAILS INTERFACES
@@ -252,6 +253,17 @@ export interface QuizAttempt {
   date: string
   score: string
   mark: string
+}
+
+export interface QuizAttemptHistory {
+  attemptNumber: number
+  quizId: number
+  studentUsername: string
+  score: number
+  totalPoints: number
+  percentage: number
+  completedAt: string
+  answers: Record<number, any>
 }
 
 // HEADER INTERFACES
