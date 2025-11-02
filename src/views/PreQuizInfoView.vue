@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
@@ -10,6 +10,10 @@ import type { QuizAttempt } from '@/interfaces/interfaces'
 const route = useRoute()
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
+
+onMounted(() => {
+  quizzesStore.loadAttemptFromStorage()
+})
 
 interface RouteParams {
   quizId: string
@@ -62,11 +66,32 @@ const quiz = computed(() => {
   }
 })
 
+const hasOngoingAttempt = computed(() => {
+  const attempt = (quizzesStore as any).currentAttempt
+  return Boolean(attempt && attempt.isOngoing && attempt.quizId === quizId.value)
+})
+
+const parseTimeLimitToSeconds = (tl: string | undefined): number => {
+  if (!tl) return 0
+  const s = tl.trim().toLowerCase()
+  const m = s.match(/(\d+)\s*(min|mins|minute|minutes)/)
+  if (m) return Number(m[1]) * 60
+  const h = s.match(/(\d+)\s*h/)
+  const mm = s.match(/(\d+)\s*m/)
+  if (h || mm) {
+    return (h ? Number(h[1]) * 3600 : 0) + (mm ? Number(mm[1]) * 60 : 0)
+  }
+  const num = Number(s)
+  if (!isNaN(num) && num > 0) return num * 60
+  return 0
+}
+
 
 // METHODS
 const startQuiz = () => {
   const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
-  quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length)
+  const durationSec = parseTimeLimitToSeconds(quiz.value.duration)
+  quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length, durationSec)
   router.push({ 
     name: 'quiz',
     state: {
@@ -75,7 +100,20 @@ const startQuiz = () => {
       quizSubject: quiz.value.subject,
       questions
     }
-  })
+  } as any)
+}
+
+const continueQuiz = () => {
+  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  router.push({ 
+    name: 'quiz',
+    state: {
+      quizId: quizId.value,
+      quizTitle: quiz.value.title,
+      quizSubject: quiz.value.subject,
+      questions
+    }
+  } as any)
 }
 
 const markAsDone = () => {
@@ -183,8 +221,11 @@ const markAsDone = () => {
                 <HelpCircle class="w-4 h-4 mr-2" />
                 <span>Need help? Contact your instructor</span>
               </div>
-              <button @click="startQuiz" class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
+              <button v-if="!hasOngoingAttempt" @click="startQuiz" class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
                 <Play class="w-4 h-4 mr-2" /> Start Quiz
+              </button>
+              <button v-else @click="continueQuiz" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
+                <Play class="w-4 h-4 mr-2" /> Continue Ongoing Quiz
               </button>
             </div>
           </div>

@@ -202,7 +202,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     answeredSet: new Set<number>() as Set<number>,
     answers: {} as Record<number, any>,
     startAtISO: null as string | null,
-    endAtISO: null as string | null
+    endAtISO: null as string | null,
+    durationSeconds: 0,
+    isOngoing: false
   })
 
   const auth = useAuthStore()
@@ -468,7 +470,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return []
   }
 
-  function startAttempt(quizId: number, quizTitle: string, questionsLength: number) {
+  function startAttempt(quizId: number, quizTitle: string, questionsLength: number, durationSeconds: number = 0) {
     currentAttempt.quizId = quizId
     currentAttempt.quizTitle = quizTitle
     currentAttempt.questionsLength = questionsLength
@@ -476,6 +478,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentAttempt.answers = {}
     currentAttempt.startAtISO = new Date().toISOString()
     currentAttempt.endAtISO = null
+    currentAttempt.durationSeconds = durationSeconds
+    currentAttempt.isOngoing = true
+    saveAttemptToStorage()
   }
 
   function markAnswered(index: number) {
@@ -492,6 +497,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     if (index >= 0 && index < currentAttempt.questionsLength) {
       currentAttempt.answers[index] = optionIndex
       markAnswered(index)
+      saveAttemptToStorage()
     }
   }
 
@@ -501,6 +507,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (text.trim()) {
         markAnswered(index)
       }
+      saveAttemptToStorage()
     }
   }
 
@@ -510,6 +517,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (items.some(item => item.trim())) {
         markAnswered(index)
       }
+      saveAttemptToStorage()
     }
   }
 
@@ -519,6 +527,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (Object.keys(pairs).length > 0) {
         markAnswered(index)
       }
+      saveAttemptToStorage()
     }
   }
 
@@ -528,6 +537,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (blanks.some(blank => blank.trim())) {
         markAnswered(index)
       }
+      saveAttemptToStorage()
     }
   }
 
@@ -566,6 +576,67 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
   function finishAttempt() {
     currentAttempt.endAtISO = new Date().toISOString()
+    currentAttempt.isOngoing = false
+    saveAttemptToStorage()
+  }
+
+  function saveAttemptToStorage() {
+    try {
+      const attemptData = {
+        quizId: currentAttempt.quizId,
+        quizTitle: currentAttempt.quizTitle,
+        questionsLength: currentAttempt.questionsLength,
+        answeredSet: Array.from(currentAttempt.answeredSet),
+        answers: currentAttempt.answers,
+        startAtISO: currentAttempt.startAtISO,
+        endAtISO: currentAttempt.endAtISO,
+        durationSeconds: currentAttempt.durationSeconds,
+        isOngoing: currentAttempt.isOngoing
+      }
+      localStorage.setItem('currentQuizAttempt', JSON.stringify(attemptData))
+    } catch (e) {
+      console.error('Failed to save attempt to localStorage:', e)
+    }
+  }
+
+  function loadAttemptFromStorage(): boolean {
+    try {
+      const stored = localStorage.getItem('currentQuizAttempt')
+      if (!stored) return false
+      const data = JSON.parse(stored)
+      if (!data.isOngoing) return false
+      
+      currentAttempt.quizId = data.quizId
+      currentAttempt.quizTitle = data.quizTitle
+      currentAttempt.questionsLength = data.questionsLength
+      currentAttempt.answeredSet = new Set(data.answeredSet || [])
+      currentAttempt.answers = data.answers || {}
+      currentAttempt.startAtISO = data.startAtISO
+      currentAttempt.endAtISO = data.endAtISO
+      currentAttempt.durationSeconds = data.durationSeconds || 0
+      currentAttempt.isOngoing = data.isOngoing
+      return true
+    } catch (e) {
+      console.error('Failed to load attempt from localStorage:', e)
+      return false
+    }
+  }
+
+  function clearAttemptStorage() {
+    try {
+      localStorage.removeItem('currentQuizAttempt')
+    } catch (e) {
+      console.error('Failed to clear attempt storage:', e)
+    }
+  }
+
+  function getRemainingSeconds(): number {
+    if (!currentAttempt.startAtISO || !currentAttempt.isOngoing) return 0
+    const start = new Date(currentAttempt.startAtISO).getTime()
+    const now = Date.now()
+    const elapsed = Math.floor((now - start) / 1000)
+    const remaining = currentAttempt.durationSeconds - elapsed
+    return Math.max(0, remaining)
   }
 
   return {
@@ -601,6 +672,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     setTextAnswer,
     setEnumerationAnswer,
     setMatchingAnswer,
-    setFillBlankAnswer
+    setFillBlankAnswer,
+    saveAttemptToStorage,
+    loadAttemptFromStorage,
+    clearAttemptStorage,
+    getRemainingSeconds
   }
 })

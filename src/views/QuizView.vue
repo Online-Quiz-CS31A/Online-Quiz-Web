@@ -71,27 +71,56 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     matchingAnswers.value = {}
     fillBlankAnswers.value = []
   }
+
+  const loadCurrentQuestionAnswers = () => {
+    const idx = currentQuestion.value
+    const answer = quizzesStore.currentAttempt.answers[idx]
+    const q = questions.value[idx]
+    if (!q || answer === undefined) {
+      clearAnswers()
+      return
+    }
+    
+    if (q.type === 'multiple-choice' || q.type === 'true-false') {
+      selectedOption.value = typeof answer === 'number' ? answer : null
+    } else if (q.type === 'short-answer' || q.type === 'essay') {
+      textAnswer.value = typeof answer === 'string' ? answer : ''
+    } else if (q.type === 'enumeration') {
+      enumerationAnswers.value = Array.isArray(answer) ? answer : []
+    } else if (q.type === 'matching') {
+      matchingAnswers.value = (typeof answer === 'object' && !Array.isArray(answer)) ? answer : {}
+    } else if (q.type === 'fill-blank') {
+      fillBlankAnswers.value = Array.isArray(answer) ? answer : []
+    } else {
+      clearAnswers()
+    }
+  }
   
   const nextQuestion = () => {
     if (currentQuestion.value < questions.value.length - 1) {
       currentQuestion.value++
-      clearAnswers()
+      loadCurrentQuestionAnswers()
     }
   }
   
   const previousQuestion = () => {
     if (currentQuestion.value > 0) {
       currentQuestion.value--
-      clearAnswers()
+      loadCurrentQuestionAnswers()
     }
   }
   
   const goToQuestion = (questionIndex: number) => {
     currentQuestion.value = questionIndex
-    clearAnswers()
+    loadCurrentQuestionAnswers()
   }
   
   const finishQuiz = () => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+    quizzesStore.finishAttempt()
     router.push({ name: 'quiz-review' })
   }
   
@@ -111,14 +140,53 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   }
 
   const initDuration = () => {
-    if (quizId.value != null) {
+    quizzesStore.loadAttemptFromStorage()
+    
+    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
+      durationSeconds.value = quizzesStore.currentAttempt.durationSeconds
+      timer.value = quizzesStore.getRemainingSeconds()
+      restoreAnswers()
+    } else if (quizId.value != null) {
       const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
       const sec = parseTimeLimitToSeconds(sq?.timeLimit)
       durationSeconds.value = sec > 0 ? sec : 0
+      timer.value = durationSeconds.value
     } else {
       durationSeconds.value = 0
+      timer.value = 0
     }
-    timer.value = durationSeconds.value
+  }
+
+  const restoreAnswers = () => {
+    const attempt = quizzesStore.currentAttempt
+    Object.keys(attempt.answers).forEach(key => {
+      const index = Number(key)
+      const answer = attempt.answers[index]
+      const q = questions.value[index]
+      if (!q) return
+      
+      if (q.type === 'multiple-choice' || q.type === 'true-false') {
+        if (typeof answer === 'number') {
+          selectedOption.value = answer
+        }
+      } else if (q.type === 'short-answer' || q.type === 'essay') {
+        if (typeof answer === 'string') {
+          textAnswer.value = answer
+        }
+      } else if (q.type === 'enumeration') {
+        if (Array.isArray(answer)) {
+          enumerationAnswers.value = answer
+        }
+      } else if (q.type === 'matching') {
+        if (typeof answer === 'object' && !Array.isArray(answer)) {
+          matchingAnswers.value = answer
+        }
+      } else if (q.type === 'fill-blank') {
+        if (Array.isArray(answer)) {
+          fillBlankAnswers.value = answer
+        }
+      }
+    })
   }
 
   const startTimer = () => {
@@ -138,6 +206,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   // LIFECYCLE
   onMounted(() => {
     initDuration()
+    loadCurrentQuestionAnswers()
     startTimer()
   })
   
