@@ -58,11 +58,13 @@ const submitQuiz = () => {
     showConfirmModal.value = true
     return
   }
+  quizzesStore.finishAttempt()
   router.push({ name: 'quiz-score' })
 }
 
 const confirmSubmit = () => {
   showConfirmModal.value = false
+  quizzesStore.finishAttempt()
   router.push({ name: 'quiz-score' })
 }
 

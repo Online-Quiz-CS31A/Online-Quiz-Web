@@ -2,44 +2,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
-import type { QuizViewQuestion, QuizQuestion } from '@/interfaces/interfaces'
+import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
 
-const convertToViewFormat = (quizQuestions: QuizQuestion[]): QuizViewQuestion[] => {
-  return quizQuestions.map(q => {
-    if (q.type === 'multiple-choice' && q.options && q.options.length > 0) {
-      const options = q.options.map(opt => opt.text)
-      const correctAnswer = q.options.findIndex(opt => opt.isCorrect)
-      return {
-        question: q.text,
-        options: options,
-        correctAnswer: correctAnswer >= 0 ? correctAnswer : 0
-      }
-    }
-    else if (q.type === 'true-false' && q.options && q.options.length > 0) {
-      const options = q.options.map(opt => opt.text)
-      const correctAnswer = q.options.findIndex(opt => opt.isCorrect)
-      return {
-        question: q.text,
-        options: options,
-        correctAnswer: correctAnswer >= 0 ? correctAnswer : 0
-      }
-    }
-    else {
-      return {
-        question: q.text,
-        options: ['Answer not displayed in quiz view'],
-        correctAnswer: 0
-      }
-    }
-  })
-}
-
 const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
-const questions = ref<QuizViewQuestion[]>(convertToViewFormat(quizStateQuestions))
+const questions = ref<QuizQuestion[]>(quizStateQuestions)
 const quizTitle = ref(history.state?.quizTitle || 'Quiz')
 const quizSubject = ref(history.state?.quizSubject || 'Quiz')
 const hasValidQuestions = computed(() => questions.value.length > 0)
@@ -47,6 +17,10 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   // REFS
   const currentQuestion = ref(0)
   const selectedOption = ref<number | null>(null)
+  const textAnswer = ref('')
+  const enumerationAnswers = ref<string[]>([])
+  const matchingAnswers = ref<Record<number, number>>({})
+  const fillBlankAnswers = ref<string[]>([])
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   
@@ -66,26 +40,53 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   
   const selectOption = (optionIndex: number) => {
     selectedOption.value = optionIndex
-    quizzesStore.markAnswered(currentQuestion.value)
+    quizzesStore.setAnswer(currentQuestion.value, optionIndex)
+  }
+
+  const updateTextAnswer = () => {
+    quizzesStore.setTextAnswer(currentQuestion.value, textAnswer.value)
+  }
+
+  const updateEnumerationAnswer = (index: number, value: string) => {
+    enumerationAnswers.value[index] = value
+    quizzesStore.setEnumerationAnswer(currentQuestion.value, enumerationAnswers.value)
+  }
+
+  const updateMatchingAnswer = (leftIndex: number, rightIndex: number) => {
+    matchingAnswers.value[leftIndex] = rightIndex
+    quizzesStore.setMatchingAnswer(currentQuestion.value, matchingAnswers.value)
+  }
+
+  const updateFillBlankAnswer = (index: number, value: string) => {
+    fillBlankAnswers.value[index] = value
+    quizzesStore.setFillBlankAnswer(currentQuestion.value, fillBlankAnswers.value)
+  }
+
+  const clearAnswers = () => {
+    selectedOption.value = null
+    textAnswer.value = ''
+    enumerationAnswers.value = []
+    matchingAnswers.value = {}
+    fillBlankAnswers.value = []
   }
   
   const nextQuestion = () => {
     if (currentQuestion.value < questions.value.length - 1) {
       currentQuestion.value++
-      selectedOption.value = null
+      clearAnswers()
     }
   }
   
   const previousQuestion = () => {
     if (currentQuestion.value > 0) {
       currentQuestion.value--
-      selectedOption.value = null
+      clearAnswers()
     }
   }
   
   const goToQuestion = (questionIndex: number) => {
     currentQuestion.value = questionIndex
-    selectedOption.value = null
+    clearAnswers()
   }
   
   const finishQuiz = () => {
@@ -141,12 +142,13 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
-              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].question }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text }}</p>
             </div>
             
-            <div class="space-y-3">
+            <!-- Multiple Choice / True-False -->
+            <div v-if="questions[currentQuestion].type === 'multiple-choice' || questions[currentQuestion].type === 'true-false'" class="space-y-3">
               <div 
-                v-for="(option, index) in questions[currentQuestion].options" 
+                v-for="(option, index) in (questions[currentQuestion].options || [])" 
                 :key="index"
                 :class="[
                   'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
@@ -177,7 +179,84 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
                     'text-base font-medium',
                     selectedOption === index ? 'text-[#4866DA]' : 'text-gray-800'
                   ]"
-                >{{ option }}</span>
+                >{{ (option && 'text' in option) ? option.text : option }}</span>
+              </div>
+            </div>
+
+            <!-- Short Answer -->
+            <div v-else-if="questions[currentQuestion].type === 'short-answer'" class="space-y-3">
+              <textarea
+                v-model="textAnswer"
+                @input="updateTextAnswer"
+                class="w-full p-4 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none resize-none"
+                rows="4"
+                placeholder="Type your answer here..."
+              ></textarea>
+            </div>
+
+            <!-- Essay -->
+            <div v-else-if="questions[currentQuestion].type === 'essay'" class="space-y-3">
+              <textarea
+                v-model="textAnswer"
+                @input="updateTextAnswer"
+                class="w-full p-4 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none resize-none"
+                rows="8"
+                placeholder="Write your essay here..."
+              ></textarea>
+            </div>
+
+            <!-- Enumeration -->
+            <div v-else-if="questions[currentQuestion].type === 'enumeration'" class="space-y-3">
+              <div v-for="i in Number(((questions[currentQuestion] as any)?.expectedItems) || 5)" :key="i" class="flex items-center gap-3">
+                <span class="text-gray-600 font-medium">{{ i }}.</span>
+                <input
+                  type="text"
+                  v-model="enumerationAnswers[i - 1]"
+                  @input="updateEnumerationAnswer(i - 1, enumerationAnswers[i - 1])"
+                  class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
+                  :placeholder="`Item ${i}`"
+                />
+              </div>
+            </div>
+
+            <!-- Matching Type -->
+            <div v-else-if="questions[currentQuestion].type === 'matching'" class="space-y-3">
+              <div class="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 class="font-semibold text-gray-700 mb-3">Column A</h3>
+                  <div v-for="(left, index) in (((questions[currentQuestion] as any)?.leftColumn) || [])" :key="index" class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg">
+                    {{ index + 1 }}. {{ left }}
+                  </div>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-gray-700 mb-3">Match with</h3>
+                  <div v-for="(left, leftIndex) in (((questions[currentQuestion] as any)?.leftColumn) || [])" :key="leftIndex" class="mb-2">
+                    <select
+                      v-model="matchingAnswers[leftIndex]"
+                      @change="updateMatchingAnswer(leftIndex, matchingAnswers[leftIndex])"
+                      class="w-full p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
+                    >
+                      <option value="">Select answer...</option>
+                      <option v-for="(right, rightIndex) in (((questions[currentQuestion] as any)?.rightColumn) || [])" :key="rightIndex" :value="rightIndex">
+                        {{ String.fromCharCode(65 + rightIndex) }}. {{ right }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fill in the Blank -->
+            <div v-else-if="questions[currentQuestion].type === 'fill-blank'" class="space-y-3">
+              <div v-for="(blank, index) in (((questions[currentQuestion] as any)?.blanks) || Array(1).fill({}))" :key="index" class="flex items-center gap-3">
+                <span class="text-gray-600 font-medium">Blank {{ index + 1 }}:</span>
+                <input
+                  type="text"
+                  v-model="fillBlankAnswers[index]"
+                  @input="updateFillBlankAnswer(index, fillBlankAnswers[index])"
+                  class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
+                  :placeholder="`Fill in blank ${index + 1}`"
+                />
               </div>
             </div>
           </div>

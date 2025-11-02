@@ -3,157 +3,19 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import type { QuizViewQuestion } from '@/interfaces/interfaces'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 
 // CONSTANTS
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 interface ReviewQuestion extends QuizViewQuestion {
   userAnswer: number | null
   isCorrect: boolean
+  points: number
 }
 
-const questions: ReviewQuestion[] = [
-  {
-    question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
-    options: ["6.75", "8", "11.25", "720"],
-    correctAnswer: 0,
-    userAnswer: 0,
-    isCorrect: false
-  },
-  {
-    question: "What is 25% of 80?",
-    options: ["15", "20", "25", "30"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "If a shirt costs $45 and is discounted by 20%, what is the final price?",
-    options: ["$9", "$36", "$54", "$45"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is the sum of 1/4 + 1/3?",
-    options: ["2/7", "7/12", "1/2", "2/3"],
-    correctAnswer: 1,
-    userAnswer: 3,
-    isCorrect: false
-  },
-  {
-    question: "If 3x + 7 = 22, what is the value of x?",
-    options: ["3", "5", "7", "15"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is the area of a rectangle with length 8 and width 6?",
-    options: ["14", "28", "48", "56"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If a car travels 240 miles in 4 hours, what is its average speed?",
-    options: ["40 mph", "60 mph", "80 mph", "120 mph"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is 15% of 200?",
-    options: ["15", "20", "30", "35"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If 2y - 5 = 11, what is the value of y?",
-    options: ["3", "6", "8", "13"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "What is the perimeter of a square with side length 5?",
-    options: ["10", "15", "20", "25"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "What is 3/4 of 100?",
-    options: ["25", "50", "75", "100"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If a book costs $24 and tax is 8%, what is the total cost?",
-    options: ["$19.20", "$24.00", "$25.92", "$32.00"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "What is the value of 2³?",
-    options: ["4", "6", "8", "16"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If 4x = 20, what is the value of x?",
-    options: ["4", "5", "16", "20"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is the square root of 64?",
-    options: ["6", "7", "8", "9"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If a triangle has angles of 45°, 45°, and 90°, what type of triangle is it?",
-    options: ["Equilateral", "Isosceles", "Scalene", "Right"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is 1/2 + 1/6?",
-    options: ["1/3", "2/3", "1/2", "3/4"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "If a circle has radius 5, what is its circumference?",
-    options: ["10π", "15π", "20π", "25π"],
-    correctAnswer: 0,
-    userAnswer: 3,
-    isCorrect: false
-  },
-  {
-    question: "What is 20% of 150?",
-    options: ["20", "25", "30", "35"],
-    correctAnswer: 2,
-    userAnswer: 0,
-    isCorrect: false
-  },
-  {
-    question: "If 5z + 3 = 18, what is the value of z?",
-    options: ["2", "3", "4", "5"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  }
-]
+const questions: ReviewQuestion[] = quizzesStore.getScoreItems() as ReviewQuestion[]
 
 // REFS
 const currentQuestion = ref(0)
@@ -167,6 +29,16 @@ const score = computed(() => {
 })
 
 const correctCount = computed(() => questions.filter(q => q.isCorrect).length)
+
+const startedAtText = computed(() => {
+  const iso = quizzesStore.currentAttempt.startAtISO
+  return iso ? new Date(iso).toLocaleString() : '-'
+})
+
+const completedAtText = computed(() => {
+  const iso = quizzesStore.currentAttempt.endAtISO
+  return iso ? new Date(iso).toLocaleString() : '-'
+})
 
 // METHODS
 const goToQuestion = (questionIndex: number) => {
@@ -209,12 +81,14 @@ const getOptionClass = (optionIndex: number) => {
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
-  if (isCorrectAnswer && isUserAnswer) {
+  if (isUserAnswer && isCorrectAnswer) {
     return 'bg-[#86efac] border-[#4ade80]'
-  } else if (isCorrectAnswer) {
-    return 'bg-[#F4F7F9] border-[#7B90DF]'
-  } else if (isUserAnswer) {
+  }
+  if (isUserAnswer && !isCorrectAnswer) {
     return 'bg-[#fca5a5] border-[#f87171]'
+  }
+  if (isCorrectAnswer) {
+    return 'bg-[#F4F7F9] border-[#4ade80]'
   }
   
   return 'bg-[#F4F7F9] border-[#7B90DF]'
@@ -227,8 +101,9 @@ const getOptionIconClass = (optionIndex: number) => {
   
   if (isCorrectAnswer && isUserAnswer) {
     return 'bg-[#4ade80] border-[#4ade80] text-white'
-  } else if (isCorrectAnswer) {
-    return 'bg-[#F4F7F9] border-[#7B90DF] text-black'
+  }
+  if (isCorrectAnswer) {
+    return 'bg-[#F4F7F9] border-[#4ade80] text-[#4ade80]'
   } else if (isUserAnswer) {
     return 'bg-[#f87171] border-[#f87171] text-white'
   }
@@ -249,6 +124,11 @@ const getIconType = (optionIndex: number) => {
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
   return isCorrectAnswer ? 'check' : 'times'
+}
+
+const isCorrectOption = (optionIndex: number) => {
+  const question = questions[currentQuestion.value]
+  return question.correctAnswer === optionIndex
 }
 </script>
 
@@ -276,7 +156,7 @@ const getIconType = (optionIndex: number) => {
               </div>
               <div class="px-6 py-3 text-sm">
                 <span class="text-[#4285f4] font-semibold">Started:</span>
-                <span class="ml-2 text-gray-800">July 27, 2025, 10:30 AM</span>
+                <span class="ml-2 text-gray-800">{{ startedAtText }}</span>
               </div>
             </div>
             <!-- Row 2 -->
@@ -287,7 +167,7 @@ const getIconType = (optionIndex: number) => {
               </div>
               <div class="px-6 py-3 text-sm">
                 <span class="text-[#4285f4] font-semibold">Completed:</span>
-                <span class="ml-2 text-gray-800">July 27, 2025, 11:30 AM</span>
+                <span class="ml-2 text-gray-800">{{ completedAtText }}</span>
               </div>
             </div>
           </div>
@@ -300,7 +180,10 @@ const getIconType = (optionIndex: number) => {
         <div class="col-span-2">
           <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
             <div class="mb-6">
-              <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Question {{ currentQuestion + 1 }}</h2>
+                <span class="text-sm font-semibold text-[#4285f4]">Points: {{ questions[currentQuestion].points }}</span>
+              </div>
               <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].question }}</p>
             </div>
             
@@ -309,10 +192,16 @@ const getIconType = (optionIndex: number) => {
                 v-for="(option, index) in questions[currentQuestion].options" 
                 :key="index"
                 :class="[
-                  'flex items-center p-2 rounded-xl transition-all border-1',
+                  'relative flex items-center p-2 rounded-xl transition-all border-1',
                   getOptionClass(index)
                 ]"
               >
+                <div 
+                  v-if="isCorrectOption(index) && questions[currentQuestion].userAnswer !== index" 
+                  class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
+                >
+                  Correct
+                </div>
                 <div class="mr-4 flex items-center justify-center w-8 h-8">
                   <div 
                     :class="[

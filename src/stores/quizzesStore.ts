@@ -199,7 +199,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     quizId: null as number | null,
     quizTitle: '',
     questionsLength: 0,
-    answeredSet: new Set<number>() as Set<number>
+    answeredSet: new Set<number>() as Set<number>,
+    answers: {} as Record<number, any>,
+    startAtISO: null as string | null,
+    endAtISO: null as string | null
   })
 
   const auth = useAuthStore()
@@ -470,6 +473,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentAttempt.quizTitle = quizTitle
     currentAttempt.questionsLength = questionsLength
     currentAttempt.answeredSet = new Set<number>()
+    currentAttempt.answers = {}
+    currentAttempt.startAtISO = new Date().toISOString()
+    currentAttempt.endAtISO = null
   }
 
   function markAnswered(index: number) {
@@ -482,11 +488,84 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return currentAttempt.answeredSet.has(index)
   }
 
+  function setAnswer(index: number, optionIndex: number) {
+    if (index >= 0 && index < currentAttempt.questionsLength) {
+      currentAttempt.answers[index] = optionIndex
+      markAnswered(index)
+    }
+  }
+
+  function setTextAnswer(index: number, text: string) {
+    if (index >= 0 && index < currentAttempt.questionsLength) {
+      currentAttempt.answers[index] = text
+      if (text.trim()) {
+        markAnswered(index)
+      }
+    }
+  }
+
+  function setEnumerationAnswer(index: number, items: string[]) {
+    if (index >= 0 && index < currentAttempt.questionsLength) {
+      currentAttempt.answers[index] = items
+      if (items.some(item => item.trim())) {
+        markAnswered(index)
+      }
+    }
+  }
+
+  function setMatchingAnswer(index: number, pairs: Record<number, number>) {
+    if (index >= 0 && index < currentAttempt.questionsLength) {
+      currentAttempt.answers[index] = pairs
+      if (Object.keys(pairs).length > 0) {
+        markAnswered(index)
+      }
+    }
+  }
+
+  function setFillBlankAnswer(index: number, blanks: string[]) {
+    if (index >= 0 && index < currentAttempt.questionsLength) {
+      currentAttempt.answers[index] = blanks
+      if (blanks.some(blank => blank.trim())) {
+        markAnswered(index)
+      }
+    }
+  }
+
   function getReviewQuestions(): ReviewQuestion[] {
     return Array.from({ length: currentAttempt.questionsLength }, (_, i) => ({
       id: i + 1,
       answered: isAnswered(i)
     }))
+  }
+
+  function getScoreItems() {
+    if (currentAttempt.quizId == null) return [] as { question: string; options: string[]; correctAnswer: number; userAnswer: number | null; isCorrect: boolean }[]
+    const quizQuestions = getStudentQuizQuestions(currentAttempt.quizId)
+    return quizQuestions.map((q, i) => {
+      let options: string[] = []
+      let correctIndex = 0
+      if ((q.type === 'multiple-choice' || q.type === 'true-false') && q.options && q.options.length > 0) {
+        options = q.options.map(opt => opt.text)
+        const idx = q.options.findIndex(opt => opt.isCorrect)
+        correctIndex = idx >= 0 ? idx : 0
+      } else {
+        options = ['Answer not displayed in quiz view']
+        correctIndex = 0
+      }
+      const userAnswer = (i in currentAttempt.answers) ? currentAttempt.answers[i] : null
+      return {
+        question: q.text,
+        options,
+        correctAnswer: correctIndex,
+        userAnswer,
+        isCorrect: userAnswer !== null && userAnswer === correctIndex,
+        points: q.points ?? 0
+      }
+    })
+  }
+
+  function finishAttempt() {
+    currentAttempt.endAtISO = new Date().toISOString()
   }
 
   return {
@@ -515,6 +594,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     startAttempt,
     markAnswered,
     isAnswered,
-    getReviewQuestions
+    setAnswer,
+    getReviewQuestions,
+    getScoreItems,
+    finishAttempt,
+    setTextAnswer,
+    setEnumerationAnswer,
+    setMatchingAnswer,
+    setFillBlankAnswer
   }
 })
