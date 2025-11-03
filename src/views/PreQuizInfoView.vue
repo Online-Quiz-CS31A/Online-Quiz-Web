@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
@@ -156,8 +156,10 @@ const continueQuiz = () => {
   } as any)
 }
 
-const markAsDone = () => {
-  console.log('Quiz marked as done')
+const isDone = ref(false)
+
+const toggleMarkAsDone = () => {
+  isDone.value = !isDone.value
 }
 
 const reviewAttempt = (attemptNumber: number) => {
@@ -186,8 +188,16 @@ const reviewAttempt = (attemptNumber: number) => {
                 </h2>
                 <p class="mt-2 opacity-90">Before you begin, here's important information about this quiz</p>
               </div>
-              <button @click="markAsDone" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-xl transition duration-200 flex items-center shadow-sm">
-                <CheckCircle class="w-4 h-4 mr-2" /> Mark as Done
+              <button
+                @click="toggleMarkAsDone"
+                :class="[
+                  isDone
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-white border-2 border-[#4285f4] text-[#4285f4] hover:bg-[#e3f2fd]',
+                  'font-semibold py-2 px-6 rounded-xl transition duration-200 flex items-center shadow-sm cursor-pointer'
+                ]"
+              >
+                <CheckCircle class="w-4 h-4 mr-2" /> {{ isDone ? 'Done' : 'Mark as Done' }}
               </button>
             </div>
           </div>
