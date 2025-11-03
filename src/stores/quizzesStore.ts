@@ -204,7 +204,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     startAtISO: null as string | null,
     endAtISO: null as string | null,
     durationSeconds: 0,
-    isOngoing: false
+    isOngoing: false,
+    isHistoricalReview: false
   })
 
   const quizAttemptHistory = ref<QuizAttemptHistory[]>([])
@@ -487,6 +488,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentAttempt.endAtISO = null
     currentAttempt.durationSeconds = durationSeconds
     currentAttempt.isOngoing = true
+    currentAttempt.isHistoricalReview = false
     saveAttemptToStorage()
   }
 
@@ -675,6 +677,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const username = auth.currentUser?.username
     
     if (!username || currentAttempt.quizId == null) return
+    
+    if (currentAttempt.isHistoricalReview) return
 
     loadAttemptHistoryFromStorage()
 
@@ -733,6 +737,36 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
+  function loadAttemptForReview(quizId: number, attemptNumber: number) {
+    const auth = useAuthStore()
+    const username = auth.currentUser?.username
+    if (!username) return false
+
+    loadAttemptHistoryFromStorage()
+    
+    const attempt = quizAttemptHistory.value.find(
+      a => a.quizId === quizId && a.studentUsername === username && a.attemptNumber === attemptNumber
+    )
+    
+    if (!attempt) return false
+
+    const quiz = myStudentQuizzes.value.find(q => q.id === quizId)
+    if (!quiz) return false
+
+    currentAttempt.quizId = attempt.quizId
+    currentAttempt.quizTitle = quiz.title
+    currentAttempt.questionsLength = getStudentQuizQuestions(quizId).length
+    currentAttempt.answers = JSON.parse(JSON.stringify(attempt.answers))
+    currentAttempt.answeredSet = new Set(Object.keys(attempt.answers).map(k => Number(k)))
+    currentAttempt.startAtISO = attempt.completedAt
+    currentAttempt.endAtISO = attempt.completedAt
+    currentAttempt.durationSeconds = 0
+    currentAttempt.isOngoing = false
+    currentAttempt.isHistoricalReview = true
+
+    return true
+  }
+
   return {
     myTeacherQuizzes,
     myStudentQuizzes,
@@ -774,6 +808,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     calculateScore,
     saveAttemptToHistory,
     getQuizAttemptHistory,
-    loadAttemptHistoryFromStorage
+    loadAttemptHistoryFromStorage,
+    loadAttemptForReview
   }
 })

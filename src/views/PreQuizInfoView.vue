@@ -89,7 +89,8 @@ const quiz = computed(() => {
     currentScore: bestAttempt ? bestAttempt.percentage : (latestAttempt ? latestAttempt.percentage : 0),
     improvement,
     history: history.map(h => ({
-      attempt: `Attempt ${h.attemptNumber}`,
+      attempt: h.attemptNumber.toString(),
+      attemptNumber: h.attemptNumber,
       date: new Date(h.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       score: `${h.score}/${h.totalPoints}`,
       mark: h.percentage.toString(),
@@ -157,6 +158,15 @@ const continueQuiz = () => {
 
 const markAsDone = () => {
   console.log('Quiz marked as done')
+}
+
+const reviewAttempt = (attemptNumber: number) => {
+  const loaded = quizzesStore.loadAttemptForReview(quizId.value, attemptNumber)
+  if (loaded) {
+    router.push({ name: 'quiz-score' })
+  } else {
+    console.error('Failed to load attempt for review')
+  }
 }
 </script>
 
@@ -287,24 +297,33 @@ const markAsDone = () => {
             <BarChart2 class="w-5 h-5 mr-2" /> Attempts History
           </h3>
           <div class="mt-4">
-            <div class="grid grid-cols-4 gap-4 text-center mb-4 text-gray-700 font-semibold">
+            <div class="grid grid-cols-5 gap-4 text-center mb-4 text-gray-700 font-semibold">
               <div>Attempts</div>
               <div>Date</div>
               <div>Score</div>
               <div>Mark</div>
+              <div>Review</div>
             </div>
             <div class="space-y-3">
               <div v-if="quiz.history.length === 0" class="text-center py-8 text-gray-500">
                 <p>No attempts yet. Start the quiz to see your history.</p>
               </div>
               <div v-for="item in quiz.history" :key="item.attempt + item.date" :class="[
-                  'grid grid-cols-4 gap-4 text-center items-center p-3 rounded-xl border',
+                  'grid grid-cols-5 gap-4 text-center items-center p-3 rounded-xl border',
                   item.isBest ? 'bg-blue-50 border-blue-400' : 'bg-[#F4F7F9] border-[#7B90DF]'
                 ]">
                 <div :class="item.isBest ? 'text-blue-800 font-semibold' : 'text-gray-800'">{{ item.attempt }}</div>
                 <div :class="item.isBest ? 'text-blue-700' : 'text-gray-600'">{{ item.date }}</div>
                 <div :class="item.isBest ? 'font-extrabold text-blue-600' : 'font-bold text-[#4285f4]'">{{ item.score }}</div>
                 <div :class="item.isBest ? 'font-extrabold text-blue-700' : 'font-bold text-[#1976d2]'">{{ item.mark }}%</div>
+                <div>
+                  <button 
+                    @click="reviewAttempt(item.attemptNumber)" 
+                    class="text-[#4285f4] hover:text-[#1976d2] font-medium hover:underline transition-colors"
+                  >
+                    Review
+                  </button>
+                </div>
               </div>
             </div>
           </div>
