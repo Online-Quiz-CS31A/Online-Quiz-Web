@@ -49,7 +49,9 @@ const quiz = computed(() => {
       maxAttempts: 1,
       currentScore: 0,
       improvement: 0,
-      history: [] as QuizAttempt[]
+      history: [] as any[],
+      basePoints: 0,
+      hasScore: false
     }
   }
   
@@ -59,11 +61,19 @@ const quiz = computed(() => {
   const history = attemptHistory.value
   
   const latestAttempt = history.length > 0 ? history[history.length - 1] : null
-  const correctAnswers = latestAttempt ? latestAttempt.score : 0
+  const bestAttempt = history.reduce((best, cur) => {
+    if (!best) return cur
+    return cur.percentage > best.percentage ? cur : best
+  }, null as any)
+  const correctAnswers = bestAttempt ? bestAttempt.score : 0
   
   const improvement = history.length >= 2 
     ? history[history.length - 1].percentage - history[0].percentage 
     : 0
+  
+  const overallTotalPoints = quizQuestions.reduce((sum: number, q: any) => sum + (typeof q.points === 'number' ? q.points : 1), 0)
+  const basePoints = overallTotalPoints
+  const passingScore = Math.ceil(basePoints * 0.5)
   
   return {
     id: studentQuiz.id,
@@ -72,18 +82,22 @@ const quiz = computed(() => {
     duration: studentQuiz.timeLimit,
     questions: questionCount,
     correctAnswers,
-    passingScore: Math.ceil(questionCount * 0.5), 
+    passingScore, 
     passingPercentage: 50,
     attemptsAvailable: maxAttempts - history.length,
     maxAttempts,
-    currentScore: latestAttempt ? latestAttempt.percentage : 0,
+    currentScore: bestAttempt ? bestAttempt.percentage : (latestAttempt ? latestAttempt.percentage : 0),
     improvement,
     history: history.map(h => ({
       attempt: `Attempt ${h.attemptNumber}`,
       date: new Date(h.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       score: `${h.score}/${h.totalPoints}`,
-      mark: h.percentage.toString()
-    }))
+      mark: h.percentage.toString(),
+      isBest: bestAttempt ? h.percentage === bestAttempt.percentage : false,
+      percentage: h.percentage
+    })),
+    basePoints,
+    hasScore: history.length > 0
   }
 })
 
@@ -203,17 +217,17 @@ const markAsDone = () => {
                 <div class="mt-4">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-gray-700 font-medium">Passing Score</span>
-                    <span class="font-bold text-[#1976d2] text-lg">{{ quiz.passingScore }}/{{ quiz.questions }}</span>
+                    <span class="font-bold text-[#1976d2] text-lg">{{ quiz.passingScore }}/{{ quiz.basePoints }}</span>
                   </div>
                   <div class="flex items-center justify-between mb-3">
                     <span class="text-gray-700 font-medium">Your Score</span>
-                    <span class="font-bold text-[#4285f4] text-2xl">{{ quiz.correctAnswers }}/{{ quiz.questions }}</span>
+                    <span class="font-bold text-[#4285f4] text-2xl">{{ quiz.hasScore ? quiz.correctAnswers : 0 }}/{{ quiz.basePoints }}</span>
                   </div>
                   <div class="flex items-center gap-3 mt-1">
                     <div class="w-full bg-gray-200 rounded-full h-3">
-                      <div class="bg-[#4285f4] h-3 rounded-full transition-all" :style="{ width: (quiz.correctAnswers / quiz.questions * 100) + '%' }"></div>
+                      <div class="bg-[#4285f4] h-3 rounded-full transition-all" :style="{ width: (quiz.hasScore ? quiz.currentScore : 0) + '%' }"></div>
                     </div>
-                    <span class="min-w-[3rem] text-sm font-semibold text-[#4285f4] text-right">{{ Math.round((quiz.correctAnswers / quiz.questions) * 100) }}%</span>
+                    <span class="min-w-[3rem] text-sm font-semibold text-[#4285f4] text-right">{{ quiz.hasScore ? Math.round(quiz.currentScore) : 0 }}%</span>
                   </div>
                 </div>
               </div>
@@ -283,11 +297,14 @@ const markAsDone = () => {
               <div v-if="quiz.history.length === 0" class="text-center py-8 text-gray-500">
                 <p>No attempts yet. Start the quiz to see your history.</p>
               </div>
-              <div v-for="item in quiz.history" :key="item.attempt + item.date" class="grid grid-cols-4 gap-4 text-center items-center bg-[#F4F7F9] p-3 rounded-xl border border-[#7B90DF]">
-                <div class="text-gray-800">{{ item.attempt }}</div>
-                <div class="text-gray-600">{{ item.date }}</div>
-                <div class="font-bold text-[#4285f4]">{{ item.score }}</div>
-                <div class="font-bold text-[#1976d2]">{{ item.mark }}%</div>
+              <div v-for="item in quiz.history" :key="item.attempt + item.date" :class="[
+                  'grid grid-cols-4 gap-4 text-center items-center p-3 rounded-xl border',
+                  item.isBest ? 'bg-blue-50 border-blue-400' : 'bg-[#F4F7F9] border-[#7B90DF]'
+                ]">
+                <div :class="item.isBest ? 'text-blue-800 font-semibold' : 'text-gray-800'">{{ item.attempt }}</div>
+                <div :class="item.isBest ? 'text-blue-700' : 'text-gray-600'">{{ item.date }}</div>
+                <div :class="item.isBest ? 'font-extrabold text-blue-600' : 'font-bold text-[#4285f4]'">{{ item.score }}</div>
+                <div :class="item.isBest ? 'font-extrabold text-blue-700' : 'font-bold text-[#1976d2]'">{{ item.mark }}%</div>
               </div>
             </div>
           </div>
