@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
+import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
@@ -62,6 +63,8 @@ const showGradesModal = ref(false)
 const selectedStudent = ref<GradeRow | null>(null)
 const breakdown = ref<QuizBreakdown[]>([])
 const quizViewMode = ref<'cards' | 'rows'>('cards')
+const showRemoveConfirm = ref(false)
+const removeTarget = ref<{ name: string; email: string } | null>(null)
 
 // COMPUTED
 const sectionId = computed(() => Number(route.params.id || 0))
@@ -311,6 +314,38 @@ function openGrades(row: GradeRow) {
 function closeGrades() {
   showGradesModal.value = false
 }
+
+function removeStudentFromSection(email: string) {
+  if (!currentSection.value) return
+  const entry = Object.entries(studentsStore.profiles).find(([, p]) => p.email === email)
+  const username = entry?.[0]
+  if (!username) return
+  const existing = currentSection.value.studentUsernames || []
+  if (!existing.includes(username)) return
+  const updated = existing.filter(u => u !== username)
+  sectionsStore.updateSection(currentSection.value.id, {
+    studentUsernames: updated,
+    students: updated.length,
+  })
+  success('Student removed from section')
+}
+
+function openRemoveConfirm(student: { name: string; email: string }) {
+  removeTarget.value = { name: student.name, email: student.email }
+  showRemoveConfirm.value = true
+}
+
+function confirmRemove() {
+  if (!removeTarget.value) return
+  removeStudentFromSection(removeTarget.value.email)
+  showRemoveConfirm.value = false
+  removeTarget.value = null
+}
+
+function cancelRemove() {
+  showRemoveConfirm.value = false
+  removeTarget.value = null
+}
 </script>
 
 <template>
@@ -457,7 +492,7 @@ function closeGrades() {
                 <div class="w-40 shrink-0 grade-progress"><div class="grade-progress-fill" :style="{ width: s.progress + '%' }"></div></div>
                 <span class="inline-flex items-center text-xs px-2 py-1 rounded-full"
                       :class="s.grade.startsWith('A') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">Grade {{ s.grade }}</span>
-                <button class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer">Message</button>
+                <button @click="openRemoveConfirm(s)" class="px-3 py-1.5 border border-red-300 text-red-700 rounded-md hover:bg-red-50 cursor-pointer">Remove</button>
               </div>
             </div>
           </div>
@@ -563,6 +598,13 @@ function closeGrades() {
     </div>
   </div>
 </div>
+
+<RemoveStudentConfirmModal
+  :open="showRemoveConfirm"
+  :name="removeTarget?.name || undefined"
+  @cancel="cancelRemove"
+  @confirm="confirmRemove"
+/>
 </template>
 
 <style scoped>
