@@ -268,6 +268,10 @@ function saveClass() {
     error('Please enter a class name')
     return
   }
+  if (selectedStudents.value.length === 0) {
+    error('Please add at least one student before saving the class')
+    return
+  }
   
   const studentUsernames = selectedStudents.value.map(s => s.username)
   
