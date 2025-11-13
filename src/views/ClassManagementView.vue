@@ -8,6 +8,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+import { X } from 'lucide-vue-next'
 
 // CONSTANTS
 const router = useRouter()
@@ -17,6 +18,9 @@ const selectedStudents = ref<StudentViewModel[]>([])
 const search = ref('')
 const filters = ref<'All' | YearLevel>('All')
 const dragOver = ref(false)
+const showImportResult = ref(false)
+const importAdded = ref<StudentViewModel[]>([])
+const importSkipped = ref<{ studentNumber: string; name: string; reason: string }[]>([])
 
 // COMPUTED
 const classId = computed(() => String(route.params.id || '1'))
@@ -138,9 +142,15 @@ function onImportMasterList(e: Event) {
         return
       }
       const [header, ...data] = rows
+      importAdded.value = []
+      importSkipped.value = []
+
       const map: Record<string, number> = {}
-      header.forEach((h, i) => { map[h.trim()] = i })
-      const required = ['studentNumber', 'firstName', 'lastName', 'yearLevel', 'program']
+      header.forEach((h, i) => {
+        const key = String(h).replace(/^\uFEFF/, '').trim().toLowerCase()
+        if (key) map[key] = i
+      })
+      const required = ['studentnumber', 'firstname', 'lastname', 'yearlevel', 'program']
       const missing = required.filter(k => !(k in map))
       if (missing.length) {
         error(`Missing column(s): ${missing.join(', ')}`)
@@ -149,30 +159,45 @@ function onImportMasterList(e: Event) {
 
       let added = 0
       let skipped = 0
+      let duplicates = 0
+      let notFound = 0
+      let missingId = 0
       const toAdd: StudentViewModel[] = []
       const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
         students.value.map(s => [s.username, s])
       )
       data.forEach(row => {
         if (!row || row.length === 0) return
-        const studentNumber = String(row[map['studentNumber']] || '').trim()
-        if (!studentNumber) { skipped++; return }
+        const rawId = String(row[map['studentnumber']] ?? '').trim()
+        let digits = rawId.replace(/[^0-9]/g, '')
+        if (digits.length > 0 && digits.length < 10) digits = digits.padStart(10, '0')
+        const studentNumber = digits
+        if (!studentNumber) { skipped++; missingId++; return }
+        const firstNameIdx = map['firstname']
+        const lastNameIdx = map['lastname']
+        const fullName = `${String(row[firstNameIdx] || '').trim()} ${String(row[lastNameIdx] || '').trim()}`.trim()
         const existing = byUsername[studentNumber]
         if (existing) {
           if (!isSelected(existing.username)) {
             toAdd.push(existing)
             added++
           } else {
-            skipped++
+            skipped++; duplicates++
+            importSkipped.value.push({ studentNumber, name: fullName || existing.name, reason: 'duplicate' })
           }
         } else {
-          skipped++
+          skipped++; notFound++
+          importSkipped.value.push({ studentNumber, name: fullName || 'Unknown', reason: 'not found in directory' })
         }
       })
       if (toAdd.length) {
         selectedStudents.value = [...selectedStudents.value, ...toAdd]
       }
-      success(`Imported ${added} student(s). Skipped ${skipped}.`)
+      importAdded.value = toAdd
+      if (missingId > 0) {
+        importSkipped.value.push({ studentNumber: '', name: '—', reason: `${missingId} row(s) missing studentNumber` })
+      }
+      showImportResult.value = true
     } catch (e) {
       error('Failed to import CSV. Please verify the format.')
     } finally {
@@ -210,6 +235,10 @@ function parseCsv(text: string): string[][] {
   row.push(cur)
   if (row.length > 1 || (row.length === 1 && row[0].trim() !== '')) rows.push(row)
   return rows
+}
+
+function closeImportResult() {
+  showImportResult.value = false
 }
 
 function downloadTemplate() {
@@ -444,6 +473,57 @@ function yearPillClass(year: YearLevel) {
         </div>
       </div>
     </main>
+    
+    <div v-if="showImportResult" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div class="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Import Results</h3>
+          <button @click="closeImportResult" class="p-2 rounded-md hover:bg-gray-100 text-gray-700">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-medium text-green-700">Added Students</h4>
+              <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{{ importAdded.length }}</span>
+            </div>
+            <div v-if="importAdded.length === 0" class="text-sm text-gray-500">No students added.</div>
+            <ul v-else class="space-y-1">
+              <li v-for="s in importAdded" :key="s.username" class="flex items-center justify-between bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                <div class="flex items-center gap-2">
+                  <img :src="s.avatar" :alt="s.name" class="w-6 h-6 rounded-full object-cover" />
+                  <span class="text-sm text-gray-900">{{ s.name }}</span>
+                </div>
+                <span class="text-xs text-gray-500">{{ s.username }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-medium text-red-700">Skipped Students</h4>
+              <span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">{{ importSkipped.length }}</span>
+            </div>
+            <div v-if="importSkipped.length === 0" class="text-sm text-gray-500">No skipped entries.</div>
+            <ul v-else class="space-y-1">
+              <li v-for="(s, idx) in importSkipped" :key="`${s.studentNumber}-${idx}`" class="flex items-center justify-between bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                <div class="flex flex-col">
+                  <span class="text-sm text-gray-900">{{ s.name }}</span>
+                  <span class="text-xs text-gray-600">{{ s.studentNumber || 'N/A' }}</span>
+                </div>
+                <span class="text-xs text-red-700">{{ s.reason }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button @click="closeImportResult" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-md">Done</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -451,7 +531,6 @@ function yearPillClass(year: YearLevel) {
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #2563eb; }
 .student-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
 .drag-enter { border: 2px dashed #3b82f6; background-color: #eff6ff; }
 </style>
