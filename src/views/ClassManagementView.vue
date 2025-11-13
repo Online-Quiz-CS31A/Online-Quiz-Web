@@ -120,8 +120,96 @@ function onDrop(evt: DragEvent) {
 function onImportMasterList(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
-  selectedStudents.value = [...students.value]
-  success('Master list imported successfully! All students have been added to the class.')
+  const file = input.files[0]
+  const isCsv = file.name.toLowerCase().endsWith('.csv') || file.type.includes('csv')
+  if (!isCsv) {
+    error('Please upload the CSV template. Excel (.xlsx/.xls) is not supported yet.')
+    input.value = ''
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const text = String(reader.result || '')
+      const rows = parseCsv(text)
+      if (rows.length <= 1) {
+        error('CSV is empty or missing rows')
+        return
+      }
+      const [header, ...data] = rows
+      const map: Record<string, number> = {}
+      header.forEach((h, i) => { map[h.trim()] = i })
+      const required = ['studentNumber', 'firstName', 'lastName', 'yearLevel', 'program']
+      const missing = required.filter(k => !(k in map))
+      if (missing.length) {
+        error(`Missing column(s): ${missing.join(', ')}`)
+        return
+      }
+
+      let added = 0
+      let skipped = 0
+      const toAdd: StudentViewModel[] = []
+      const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+        students.value.map(s => [s.username, s])
+      )
+      data.forEach(row => {
+        if (!row || row.length === 0) return
+        const studentNumber = String(row[map['studentNumber']] || '').trim()
+        if (!studentNumber) { skipped++; return }
+        const existing = byUsername[studentNumber]
+        if (existing) {
+          if (!isSelected(existing.username)) {
+            toAdd.push(existing)
+            added++
+          } else {
+            skipped++
+          }
+        } else {
+          skipped++
+        }
+      })
+      if (toAdd.length) {
+        selectedStudents.value = [...selectedStudents.value, ...toAdd]
+      }
+      success(`Imported ${added} student(s). Skipped ${skipped}.`)
+    } catch (e) {
+      error('Failed to import CSV. Please verify the format.')
+    } finally {
+      input.value = ''
+    }
+  }
+  reader.onerror = () => {
+    error('Failed to read the file')
+    input.value = ''
+  }
+  reader.readAsText(file)
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cur = ''
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    const next = text[i + 1]
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { cur += '"'; i++ }
+      else if (ch === '"') { inQuotes = false }
+      else { cur += ch }
+    } else {
+      if (ch === '"') { inQuotes = true }
+      else if (ch === ',') { row.push(cur); cur = '' }
+      else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = '' }
+      else if (ch === '\r') { }
+      else { cur += ch }
+    }
+  }
+
+  row.push(cur)
+  if (row.length > 1 || (row.length === 1 && row[0].trim() !== '')) rows.push(row)
+  return rows
 }
 
 function downloadTemplate() {
