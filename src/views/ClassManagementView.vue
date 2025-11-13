@@ -124,6 +124,28 @@ function onImportMasterList(e: Event) {
   success('Master list imported successfully! All students have been added to the class.')
 }
 
+function downloadTemplate() {
+  const headers = ['studentNumber', 'firstName', 'lastName', 'yearLevel', 'program']
+  const sample = [
+    ['0212345678', 'Juan', 'Dela Cruz', '1', 'BSCS'],
+    ['0212345679', 'Maria', 'Santos', '2', 'BSIT']
+  ]
+  const rows = [headers, ...sample]
+  const csv = rows
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\r\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'class_import_template.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  success('Template downloaded')
+}
+
 function saveClass() {
   if (!form.className) {
     error('Please enter a class name')
@@ -275,12 +297,18 @@ function yearPillClass(year: YearLevel) {
             </div>
 
             <div class="mb-6">
-              <label class="relative cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-md transition inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Import Master List</span>
-                <input type="file" class="hidden" accept=".csv,.xlsx,.xls" @change="onImportMasterList" />
-              </label>
-              <span class="text-xs text-gray-500 ml-2">CSV or Excel format</span>
+              <div class="flex items-center gap-3 flex-wrap">
+                <label class="relative cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-md transition inline-flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Import Master List</span>
+                  <input type="file" class="hidden" accept=".csv,.xlsx,.xls" @change="onImportMasterList" />
+                </label>
+                <button @click="downloadTemplate" class="bg-green-50 hover:bg-green-100 text-green-800 font-medium py-2 px-4 rounded-md transition inline-flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Download Template (CSV)</span>
+                </button>
+                <span class="text-xs text-gray-500">CSV or Excel format</span>
+              </div>
             </div>
 
             <!-- Student Grid -->
