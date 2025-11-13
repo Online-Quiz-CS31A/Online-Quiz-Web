@@ -377,7 +377,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         description: currentQuiz.description,
         status,
         questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        ownerUsername: existingQuiz.ownerUsername || username
       }
       saveQuizzesToStorage(quizzes)
       return quizzes[existingIndex]
@@ -395,7 +396,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         status,
         questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        ownerUsername: username
       }
       currentQuiz.id = quizItem.id
       quizzes.push(quizItem)
@@ -452,7 +454,21 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function loadQuizzesFromStorage(): TeacherQuizItem[] {
-    return getAllQuizzes()
+    const auth = useAuthStore()
+    const username = auth.currentUser?.username
+    const all = getAllQuizzes()
+    if (!username) return []
+    let mutated = false
+    all.forEach(q => {
+      if ((q.status === 'draft') && !q.ownerUsername) {
+        q.ownerUsername = username
+        mutated = true
+      }
+    })
+    if (mutated) {
+      saveQuizzesToStorage(all)
+    }
+    return all.filter(q => (q.status !== 'draft') || q.ownerUsername === username)
   }
 
   function saveQuizzesToStorage(quizzes: TeacherQuizItem[]) {

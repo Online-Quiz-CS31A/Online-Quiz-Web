@@ -107,6 +107,7 @@ export interface TeacherQuizItem {
   questions?: any[]
   createdAt?: string
   updatedAt?: string
+  ownerUsername?: string
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS
