@@ -7,7 +7,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, ActiveQuiz } from '@/interfaces/interfaces'
+import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, TeacherQuizItem } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
 import ClassDashboardTab from '@/components/teacher/ClassDashboardTab.vue'
@@ -153,48 +153,6 @@ const scheduleInfo = computed(() => {
   return `${day}, ${formattedTime} - ${room}`
 })
 
-const activeQuizzes = computed<ActiveQuiz[]>(() => {
-  const courseName = currentCourse.value?.name || 'Course'
-  const sectionName = currentSection.value?.name || 'Section'
-  const total = totalStudents.value
-  
-  return [
-    {
-      id: 1,
-      subject: courseName,
-      title: 'Quiz 2',
-      description: 'Basic algebraic equations and expressions quiz covering chapters 1-3.',
-      dueDate: 'May 15',
-      class: sectionName,
-      submitted: Math.floor(total * 0.75),
-      total: total,
-      color: 'blue',
-    },
-    {
-      id: 2,
-      subject: courseName,
-      title: 'Quiz 3',
-      description: 'Comprehensive geometry midterm covering all concepts from the first half.',
-      dueDate: 'May 22',
-      class: sectionName,
-      submitted: Math.floor(total * 0.5),
-      total: total,
-      color: 'indigo',
-    },
-    {
-      id: 3,
-      subject: courseName,
-      title: 'Quiz 4',
-      description: 'Basic trigonometric functions and identities quiz.',
-      dueDate: 'May 30',
-      class: sectionName,
-      submitted: Math.floor(total * 0.125),
-      total: total,
-      color: 'purple',
-    },
-  ]
-})
-
 // REACTIVE
 const route = useRoute()
 const sectionsStore = useSectionsStore()
@@ -202,6 +160,21 @@ const classesStore = useCoursesStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 const quizzesStore = useQuizzesStore()
+
+const activeQuizzes = computed<TeacherQuizItem[]>(() => {
+  const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
+  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
+  const courseName = currentCourse.value?.name || ''
+
+  return allQuizzes
+    .filter(q => (q.status || 'published') !== 'draft')
+    .filter(q => (!courseName || q.subject === courseName))
+    .sort((a, b) => {
+      const aDate = new Date(a.createdAt || 0).getTime()
+      const bDate = new Date(b.createdAt || 0).getTime()
+      return bDate - aDate
+    })
+})
 
 const classMeta = reactive({
   title: currentSection.value?.name || 'Section',

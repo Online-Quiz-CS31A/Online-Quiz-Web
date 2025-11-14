@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
 import { defineAsyncComponent } from 'vue'
-import type { ActiveQuiz } from '@/interfaces/interfaces'
+import type { TeacherQuizItem } from '@/interfaces/interfaces'
 
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 
 const props = defineProps<{ 
-  quizzes: ActiveQuiz[],
+  quizzes: TeacherQuizItem[],
   viewMode: 'cards' | 'rows'
 }>()
 

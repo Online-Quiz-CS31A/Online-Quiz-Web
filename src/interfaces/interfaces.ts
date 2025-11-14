@@ -354,18 +354,6 @@ export interface Notification {
 // CLASSROOM DASHBOARD/TABS SHARED TYPES
 export type TabKey = 'dashboard' | 'people' | 'grades'
 
-export interface ActiveQuiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  submitted: number
-  total: number
-  color: string
-}
-
 export interface QuizBreakdown {
   title: string
   score: number
