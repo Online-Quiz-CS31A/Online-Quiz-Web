@@ -10,7 +10,9 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
-const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
+import ClassDashboardTab from '@/components/teacher/ClassDashboardTab.vue'
+import ClassPeopleTab from '@/components/teacher/ClassPeopleTab.vue'
+import ClassGradesTab from '@/components/teacher/ClassGradesTab.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 // TYPE
@@ -397,165 +399,38 @@ function cancelRemove() {
       </div>
 
       <!-- Dashboard tab -->
-      <div v-show="activeTab === 'dashboard'" class="rounded-lg overflow-hidden">
-        <div class="px-6 flex justify-between items-center">
-          <h2 class="text-xl font-semibold text-blue-800">Quizzes</h2>
-          <div class="flex items-center gap-3">
-            <div class="inline-flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-              <button
-                class="relative px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ease-in-out"
-                :class="quizViewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-                @click="quizViewMode = 'cards'"
-                aria-label="Cards view"
-                title="Cards view"
-              >
-                <i class="fas fa-grip"></i>
-              </button>
-              <button
-                class="relative px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ease-in-out"
-                :class="quizViewMode === 'rows' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-                @click="quizViewMode = 'rows'"
-                aria-label="Rows view"
-                title="Rows view"
-              >
-                <i class="fas fa-list"></i>
-              </button>
-            </div>
-            <button @click="navigateToQuizCreator" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer transition-colors duration-200">
-              <i class="fas fa-plus mr-2"></i> Create Quiz
-            </button>
-          </div>
-        </div>
-        <div class="p-6">
-          <!-- Empty State -->
-          <div v-if="activeQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
-            <div class="relative mb-6">
-              <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
-                <i class="fas fa-clipboard-list text-4xl text-blue-400"></i>
-              </div>
-              <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                <i class="fas fa-plus text-white text-sm"></i>
-              </div>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">No Quizzes Created Yet</h3>
-            <p class="text-gray-500 max-w-md mb-6">
-              You haven't created any quizzes for this class yet. Click the "Create Quiz" button above to get started and engage your students.
-            </p>
-            <button 
-              @click="navigateToQuizCreator"
-              class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 cursor-pointer"
-            >
-              <i class="fas fa-plus"></i>
-              <span>Create Your First Quiz</span>
-            </button>
-            <div class="flex items-center gap-2 text-sm text-gray-400 mt-6">
-              <i class="fas fa-info-circle"></i>
-              <span>Quizzes help you assess student understanding and track progress</span>
-            </div>
-          </div>
-          
-          <!-- Quiz List -->
-          <ActiveQuizzes v-else :quizzes="activeQuizzes" :hideHeader="true" :viewMode="quizViewMode" />
-        </div>
+      <div v-show="activeTab === 'dashboard'">
+        <ClassDashboardTab
+          :quizzes="activeQuizzes"
+          :viewMode="quizViewMode"
+          @update:viewMode="(v) => (quizViewMode = v)"
+          @create-quiz="navigateToQuizCreator"
+        />
       </div>
 
       <!-- People tab -->
-      <div v-show="activeTab === 'people'" class="space-y-6">
-        <div class="bg-white rounded-lg shadow border border-gray-200">
-          <div class="px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-gray-200">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-800">Class Roster</h2>
-              <p class="text-sm text-gray-500">Manage enrolled students and invite new members</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="relative">
-                <input v-model="searchTerm" type="text" placeholder="Search students..." class="pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64" />
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              </div>
-              <button class="px-3 py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200 hover:bg-blue-100 cursor-pointer">Add</button>
-            </div>
-          </div>
-          <div class="divide-y divide-gray-100">
-            <div v-for="s in paginatedStudents" :key="s.id" class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-              <div class="flex items-center gap-3">
-                <img :src="s.avatar" :alt="s.name" class="h-10 w-10 rounded-full object-cover ring-2 ring-blue-100" />
-                <div>
-                  <div class="font-medium text-gray-900">{{ s.name }}</div>
-                  <div class="text-sm text-gray-500">{{ s.email }}</div>
-                </div>
-              </div>
-              <div class="hidden md:flex items-center gap-8">
-                <div class="flex items-center gap-2 w-28 justify-between text-sm text-gray-600">
-                  <span>Progress</span>
-                  <span class="font-medium text-gray-800 whitespace-nowrap">{{ s.progress }}%</span>
-                </div>
-                <div class="w-40 shrink-0 grade-progress"><div class="grade-progress-fill" :style="{ width: s.progress + '%' }"></div></div>
-                <span class="inline-flex items-center text-xs px-2 py-1 rounded-full"
-                      :class="s.grade.startsWith('A') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">Grade {{ s.grade }}</span>
-                <button @click="openRemoveConfirm(s)" class="px-3 py-1.5 border border-red-300 text-red-700 rounded-md hover:bg-red-50 cursor-pointer">Remove</button>
-              </div>
-            </div>
-          </div>
-          <div class="px-6 py-3 flex items-center justify-between bg-gray-50 border-t border-gray-200">
-            <div class="text-sm text-gray-600">Page {{ currentPage }} of {{ totalPages }}</div>
-            <div class="flex items-center gap-1">
-              <button @click="prevPage" class="px-2 py-1 border rounded-md text-gray-700 hover:bg-gray-100 cursor-pointer" :disabled="currentPage === 1">Prev</button>
-              <button @click="nextPage" class="px-2 py-1 border rounded-md text-gray-700 hover:bg-gray-100 cursor-pointer" :disabled="currentPage === totalPages">Next</button>
-            </div>
-          </div>
-        </div>
+      <div v-show="activeTab === 'people'">
+        <ClassPeopleTab
+          :searchTerm="searchTerm"
+          :students="paginatedStudents"
+          :currentPage="currentPage"
+          :totalPages="totalPages"
+          @update:searchTerm="(v) => (searchTerm = v)"
+          @prev-page="prevPage"
+          @next-page="nextPage"
+          @remove="openRemoveConfirm"
+        />
       </div>
 
       <!-- Grades tab -->
-      <div v-show="activeTab === 'grades'" class="space-y-6">
-        <div class="bg-white rounded-lg shadow border border-gray-200">
-          <div class="px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-gray-200">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-800">Gradebook</h2>
-              <!-- <p class="text-sm text-gray-500">Sorted by {{ sortCol }} ({{ sortAsc ? 'asc' : 'desc' }})</p> -->
-            </div>
-            <div class="flex items-center gap-2">
-              <button @click="exportGrades" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer">Export</button>
-            </div>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" @click="sortBy('name')">Student</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" @click="sortBy('quizzes')">Quizzes</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" @click="sortBy('final')">Final</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="row in sortedGrades" :key="row.id" class="hover:bg-gray-50">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <img :src="getAvatarByEmail(row.email)" :alt="row.name" class="h-8 w-8 rounded-full object-cover ring-2 ring-blue-100" />
-                      <div>
-                        <div class="text-sm font-medium text-gray-900">{{ row.name }}</div>
-                        <div class="text-xs text-gray-500">{{ row.email }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-700">{{ row.quizzes }}%</td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-2">
-                      <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-green-500" :style="{ width: row.final + '%' }"></div>
-                      </div>
-                      <span class="text-sm font-medium text-gray-800">{{ row.final }}%</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-sm">
-                    <button @click="openGrades(row)" class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer">View</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div v-show="activeTab === 'grades'">
+        <ClassGradesTab
+          :rows="sortedGrades"
+          :getAvatarByEmail="getAvatarByEmail"
+          @export="exportGrades"
+          @sort="sortBy"
+          @view="openGrades"
+        />
       </div>
     </div>
   </div>
@@ -614,20 +489,6 @@ function cancelRemove() {
   background-position: center;
   height: 250px;
 }
-
-.grade-progress {
-  height: 8px;
-  border-radius: 4px;
-  background-color: #e0e7ff;
-}
-
-.grade-progress-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
-  transition: width 0.5s ease;
-}
-
 .quiz-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
