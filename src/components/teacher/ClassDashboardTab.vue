@@ -1,18 +1,7 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
 import { defineAsyncComponent } from 'vue'
-
-interface ActiveQuiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  submitted: number
-  total: number
-  color: string
-}
+import type { ActiveQuiz } from '@/interfaces/interfaces'
 
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 

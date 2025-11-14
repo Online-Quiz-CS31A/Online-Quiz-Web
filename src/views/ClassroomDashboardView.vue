@@ -7,7 +7,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import type { Student } from '@/interfaces/interfaces'
+import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, ActiveQuiz } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
 import ClassDashboardTab from '@/components/teacher/ClassDashboardTab.vue'
@@ -15,40 +15,6 @@ import ClassPeopleTab from '@/components/teacher/ClassPeopleTab.vue'
 import ClassGradesTab from '@/components/teacher/ClassGradesTab.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
-// TYPE
-type TabKey = 'dashboard' | 'people' | 'grades'
-interface GradeRow { 
-  id: number; 
-  name: string; 
-  email: string; 
-  assignments: number; 
-  quizzes: number; 
-  exams: number; 
-  final: number 
-}
-
-type GradeCol = keyof Omit<GradeRow, 'id' | 'email'>
-
-interface QuizBreakdown { 
-  title: string; 
-  score: number; 
-  total: number; 
-  percent: number; 
-  due: string; 
-  status: 'Submitted' | 'Missing' 
-}
-
-interface ActiveQuiz {
-  id: number
-  subject: string
-  title: string
-  description: string
-  dueDate: string
-  class: string
-  submitted: number
-  total: number
-  color: string
-}
 
 // CONSTANT
 const router = useRouter()

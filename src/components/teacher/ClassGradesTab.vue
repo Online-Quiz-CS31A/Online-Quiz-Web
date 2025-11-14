@@ -1,17 +1,6 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
-
-type GradeCol = 'name' | 'quizzes' | 'final'
-
-interface GradeRow { 
-  id: number; 
-  name: string; 
-  email: string; 
-  assignments: number; 
-  quizzes: number; 
-  exams: number; 
-  final: number 
-}
+import type { GradeRow, GradeCol } from '@/interfaces/interfaces'
 
 const props = defineProps<{ 
   rows: GradeRow[],

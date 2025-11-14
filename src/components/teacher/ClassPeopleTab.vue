@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
-
-interface StudentItem {
-  id: number
-  name: string
-  email: string
-  progress: number
-  grade: string
-  avatar: string
-}
+import type { StudentItem } from '@/interfaces/interfaces'
 
 const props = defineProps<{ 
   searchTerm: string,

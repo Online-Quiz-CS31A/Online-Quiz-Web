@@ -350,3 +350,48 @@ export interface Notification {
   time: string
   read: boolean
 }
+
+// CLASSROOM DASHBOARD/TABS SHARED TYPES
+export type TabKey = 'dashboard' | 'people' | 'grades'
+
+export interface ActiveQuiz {
+  id: number
+  subject: string
+  title: string
+  description: string
+  dueDate: string
+  class: string
+  submitted: number
+  total: number
+  color: string
+}
+
+export interface QuizBreakdown {
+  title: string
+  score: number
+  total: number
+  percent: number
+  due: string
+  status: 'Submitted' | 'Missing'
+}
+
+export interface GradeRow {
+  id: number
+  name: string
+  email: string
+  assignments: number
+  quizzes: number
+  exams: number
+  final: number
+}
+
+export type GradeCol = 'name' | 'quizzes' | 'final'
+
+export interface StudentItem {
+  id: number
+  name: string
+  email: string
+  progress: number
+  grade: string
+  avatar: string
+}
