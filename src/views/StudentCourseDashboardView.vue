@@ -92,8 +92,6 @@ const students = computed<Student[]>(() => {
         id: i + 1,
         name: username,
         email: `${username}@unknown.com`,
-        grade: 'N/A',
-        progress: 0,
         initials: username.substring(0, 2).toUpperCase(),
         avatar: AVATAR_URL,
       }
@@ -103,8 +101,6 @@ const students = computed<Student[]>(() => {
       id: i + 1,
       name: fullName,
       email: profile.email,
-      grade: ['A', 'A-', 'B+'][i % 3],
-      progress: 75 + ((i * 7) % 25),
       initials: fullName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
       avatar: profile.photoUrl || AVATAR_URL,
     }

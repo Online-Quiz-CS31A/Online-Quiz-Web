@@ -281,8 +281,6 @@ export interface Student {
   id: number
   name: string
   email: string
-  grade: string
-  progress: number
   initials: string
   avatar: string
 }
@@ -379,7 +377,5 @@ export interface StudentItem {
   id: number
   name: string
   email: string
-  progress: number
-  grade: string
   avatar: string
 }

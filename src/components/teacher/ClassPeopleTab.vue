@@ -42,13 +42,7 @@ const emit = defineEmits<{
               <div class="text-sm text-gray-500">{{ s.email }}</div>
             </div>
           </div>
-          <div class="hidden md:flex items-center gap-8">
-            <div class="flex items-center gap-2 w-28 justify-between text-sm text-gray-600">
-              <span>Progress</span>
-              <span class="font-medium text-gray-800 whitespace-nowrap">{{ s.progress }}%</span>
-            </div>
-            <div class="w-40 shrink-0 grade-progress"><div class="grade-progress-fill" :style="{ width: s.progress + '%' }"></div></div>
-            <span class="inline-flex items-center text-xs px-2 py-1 rounded-full" :class="s.grade.startsWith('A') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">Grade {{ s.grade }}</span>
+          <div class="hidden md:flex items-center">
             <button @click="$emit('remove', s)" class="px-3 py-1.5 border border-red-300 text-red-700 rounded-md hover:bg-red-50 cursor-pointer">Remove</button>
           </div>
         </div>
@@ -63,18 +57,3 @@ const emit = defineEmits<{
     </div>
   </div>
 </template>
-
-<style scoped>
-.grade-progress { 
-  height: 8px; 
-  border-radius: 4px; 
-  background-color: #e0e7ff; 
-}
-
-.grade-progress-fill { 
-  height: 100%; 
-  border-radius: 4px; 
-  background: linear-gradient(90deg, #3b82f6, #1d4ed8); 
-  transition: width 0.5s ease; 
-}
-</style>
