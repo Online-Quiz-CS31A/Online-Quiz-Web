@@ -30,6 +30,17 @@ watch(() => route.name, (newRouteName) => {
 
 
 // METHODS
+function syncPublished() {
+  const id = quizzesStore.currentQuiz.id
+  if (id != null) {
+    const fromDefaults = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
+    const fromStorage = quizzesStore.getAllQuizzes().find(q => q.id === id)
+    published.value = (fromDefaults?.status === 'published') || (fromStorage?.status === 'published')
+  } else {
+    published.value = false
+  }
+}
+
 function onContent() {
   showResults.value = false
   showAssign.value = false
@@ -40,6 +51,7 @@ function onContent() {
 
 function onSave() {
   creatorRef.value?.saveQuiz?.()
+  syncPublished()
 }
 
 function onPublish() {
@@ -70,6 +82,11 @@ onMounted(() => {
   if (quizzesStore.currentQuiz.id === null && quizzesStore.currentQuiz.questions.length === 0) {
     quizzesStore.resetCurrentQuiz()
   }
+  syncPublished()
+})
+
+watch(() => quizzesStore.currentQuiz.id, (id) => {
+  syncPublished()
 })
 </script>
 

@@ -27,6 +27,7 @@ const {
   moveQuestion,
   shuffleOptions,
   saveQuizDraft,
+  saveQuiz: saveQuizFromEditor,
   publishQuiz,
 } = useQuizEditor()
 
@@ -42,6 +43,13 @@ const { showMediaUpload, onQuestionMediaChange, clearQuestionMedia } = useMediaU
 function handleSelectQuestion(index: number) {
   selectQuestion(index)
   syncSettings()
+}
+
+function saveQuiz() {
+  if (typeof saveQuizFromEditor === 'function') {
+    return (saveQuizFromEditor as () => void)()
+  }
+  return saveQuizDraft()
 }
 
 onMounted(() => {
@@ -75,7 +83,7 @@ onMounted(() => {
 })
 
 defineExpose({
-  saveQuiz: saveQuizDraft,
+  saveQuiz,
   publishQuiz
 })
 </script>

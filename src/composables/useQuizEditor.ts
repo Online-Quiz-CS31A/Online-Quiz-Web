@@ -87,6 +87,24 @@ export function useQuizEditor() {
     }
   }
 
+  function isCurrentQuizPublished(): boolean {
+    const id = store.currentQuiz.id
+    if (id == null) return false
+    const fromDefaults = store.myTeacherQuizzes.find(q => q.id === id)
+    const fromStorage = store.getAllQuizzes().find(q => q.id === id)
+    return (fromDefaults?.status === 'published') || (fromStorage?.status === 'published')
+  }
+
+  function saveQuiz() {
+    try {
+      const keepPublished = isCurrentQuizPublished()
+      store.saveQuiz(keepPublished ? 'published' : 'draft')
+      toast.success(keepPublished ? 'Quiz saved!' : 'Quiz saved as draft!')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save quiz')
+    }
+  }
+
   function publishQuiz() {
     try {
       store.saveQuiz('published')
@@ -121,6 +139,7 @@ export function useQuizEditor() {
     goBack,
     goToContent,
     saveQuizDraft,
+    saveQuiz,
     publishQuiz,
     getStoredQuizzes
   }
