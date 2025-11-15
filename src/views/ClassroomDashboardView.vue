@@ -114,16 +114,44 @@ const paginatedStudents = computed(() => {
   return filteredStudents.value.slice(start, start + pageSize)
 })
 
+function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
+  const base = studentId % 5
+  return Array.from({ length: 5 }).map((_, i) => {
+    const total = 20
+    const score = Math.max(0, Math.min(total, 12 + ((base + i) * 2) % 9))
+    const percent = Math.round((score / total) * 100)
+    return {
+      title: `Quiz ${i + 1}`,
+      score,
+      total,
+      percent,
+      due: `May ${10 + i}`,
+      status: percent > 0 ? 'Submitted' as const : 'Missing' as const,
+    }
+  })
+}
+
 const gradeRows = computed<GradeRow[]>(() => {
-  return students.value.slice(0, 10).map((s, idx) => ({
-    id: s.id,
-    name: s.name,
-    email: s.email,
-    assignments: 80 + ((idx * 5) % 20),
-    quizzes: 75 + ((idx * 9) % 20),
-    exams: 70 + ((idx * 11) % 25),
-    final: 78 + ((idx * 8) % 20),
-  }))
+  return students.value.slice(0, 10).map((s, idx) => {
+    const quizzesBreakdown = buildQuizBreakdown(s.id)
+    const overallQuizPercent = quizzesBreakdown.length
+      ? Math.round(quizzesBreakdown.reduce((sum, q) => sum + q.percent, 0) / quizzesBreakdown.length)
+      : 0
+    const answeredCount = quizzesBreakdown.filter(q => q.status === 'Submitted').length
+    const progress = quizzesBreakdown.length
+      ? Math.round((answeredCount / quizzesBreakdown.length) * 100)
+      : 0
+
+    return {
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      assignments: 80 + ((idx * 5) % 20),
+      quizzes: overallQuizPercent,
+      exams: 70 + ((idx * 11) % 25),
+      final: progress,
+    }
+  })
 })
 
 const sortedGrades = computed(() => {
@@ -235,21 +263,7 @@ function exportGrades() {
 
 function openGrades(row: GradeRow) {
   selectedStudent.value = row
-  const base = row.id % 5
-  const quizzes = Array.from({ length: 5 }).map((_, i) => {
-    const total = 20
-    const score = Math.max(0, Math.min(total, 12 + ((base + i) * 2) % 9))
-    const percent = Math.round((score / total) * 100)
-    return {
-      title: `Quiz ${i + 1}`,
-      score,
-      total,
-      percent,
-      due: `May ${10 + i}`,
-      status: percent > 0 ? 'Submitted' as const : 'Missing' as const,
-    }
-  })
-  breakdown.value = quizzes
+  breakdown.value = buildQuizBreakdown(row.id)
   showGradesModal.value = true
 }
 function closeGrades() {
