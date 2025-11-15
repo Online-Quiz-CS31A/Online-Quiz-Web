@@ -98,6 +98,14 @@ const students = computed<Student[]>(() => {
   })
 })
 
+function getUsernameForStudentId(studentId: number): string | null {
+  if (!currentSection.value) return null
+  const usernames = currentSection.value.studentUsernames || []
+  const index = studentId - 1
+  if (index < 0 || index >= usernames.length) return null
+  return usernames[index]
+}
+
 const filteredStudents = computed(() => {
   const q = searchTerm.value.trim().toLowerCase()
   if (!q) return students.value
@@ -110,12 +118,12 @@ const paginatedStudents = computed(() => {
   return filteredStudents.value.slice(start, start + pageSize)
 })
 
-function buildQuizBreakdown(_studentId: number): QuizBreakdown[] {
+function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
   const quizzesForClass = activeQuizzes.value
+  const username = getUsernameForStudentId(studentId)
 
-  return quizzesForClass.map((quiz) => {
+  if (!username) return quizzesForClass.map((quiz) => {
     const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
-
     return {
       title: quiz.title,
       score: 0,
@@ -123,6 +131,36 @@ function buildQuizBreakdown(_studentId: number): QuizBreakdown[] {
       percent: 0,
       due: quiz.dueDate,
       status: 'Missing',
+    }
+  })
+
+  return quizzesForClass.map((quiz) => {
+    const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
+    const history = quizzesStore.getQuizAttemptHistoryForStudent(quiz.id, username)
+
+    if (!history.length) {
+      return {
+        title: quiz.title,
+        score: 0,
+        total: totalPoints,
+        percent: 0,
+        due: quiz.dueDate,
+        status: 'Missing',
+      }
+    }
+
+    const bestAttempt = history.reduce((best, cur) => {
+      if (!best) return cur
+      return cur.percentage > best.percentage ? cur : best
+    }, history[0])
+
+    return {
+      title: quiz.title,
+      score: bestAttempt.score,
+      total: totalPoints,
+      percent: bestAttempt.percentage,
+      due: quiz.dueDate,
+      status: 'Submitted',
     }
   })
 }

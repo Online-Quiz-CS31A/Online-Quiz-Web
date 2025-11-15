@@ -733,6 +733,16 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     ).sort((a, b) => a.attemptNumber - b.attemptNumber)
   }
 
+  function getQuizAttemptHistoryForStudent(quizId: number, studentUsername: string): QuizAttemptHistory[] {
+    if (!studentUsername) return []
+
+    loadAttemptHistoryFromStorage()
+
+    return quizAttemptHistory.value
+      .filter(a => a.quizId === quizId && a.studentUsername === studentUsername)
+      .sort((a, b) => a.attemptNumber - b.attemptNumber)
+  }
+
   function saveAttemptHistoryToStorage() {
     try {
       localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
@@ -825,6 +835,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     saveAttemptToHistory,
     getQuizAttemptHistory,
     loadAttemptHistoryFromStorage,
-    loadAttemptForReview
+    loadAttemptForReview,
+    getQuizAttemptHistoryForStudent
   }
 })
