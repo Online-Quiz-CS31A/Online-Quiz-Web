@@ -22,7 +22,12 @@ const router = createRouter({
     {
       path: '/teacher/profile',
       name: 'teacher-profile',
-      component: () => import('../views/TeacherProfileView.vue'),
+      component: () => import('../views/ProfileView.vue'),
+    },
+    {
+      path: '/student/profile',
+      name: 'student-profile',
+      component: () => import('../views/ProfileView.vue'),
     },
     {
       path: '/quiz',

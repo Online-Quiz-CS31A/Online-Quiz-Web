@@ -81,12 +81,22 @@ function logout() {
 
 function viewProfile() {
   closeProfileDropdown()
-  router.push({ name: 'teacher-profile' })
+  const role = store.userRole
+  if (role === 'teacher') {
+    router.push({ name: 'teacher-profile' })
+  } else {
+    router.push({ name: 'student-profile' })
+  }
 }
 
 function settings() {
   closeProfileDropdown()
-  router.push({ name: 'teacher-profile', query: { tab: 'account' } })
+  const role = store.userRole
+  if (role === 'teacher') {
+    router.push({ name: 'teacher-profile', query: { tab: 'account' } })
+  } else {
+    router.push({ name: 'student-profile', query: { tab: 'account' } })
+  }
 }
 
 function openPublishModal() {
