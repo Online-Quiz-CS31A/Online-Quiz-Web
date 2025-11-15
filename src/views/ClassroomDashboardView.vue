@@ -110,19 +110,19 @@ const paginatedStudents = computed(() => {
   return filteredStudents.value.slice(start, start + pageSize)
 })
 
-function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
-  const base = studentId % 5
-  return Array.from({ length: 5 }).map((_, i) => {
-    const total = 20
-    const score = Math.max(0, Math.min(total, 12 + ((base + i) * 2) % 9))
-    const percent = Math.round((score / total) * 100)
+function buildQuizBreakdown(_studentId: number): QuizBreakdown[] {
+  const quizzesForClass = activeQuizzes.value
+
+  return quizzesForClass.map((quiz) => {
+    const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
+
     return {
-      title: `Quiz ${i + 1}`,
-      score,
-      total,
-      percent,
-      due: `May ${10 + i}`,
-      status: percent > 0 ? 'Submitted' as const : 'Missing' as const,
+      title: quiz.title,
+      score: 0,
+      total: totalPoints,
+      percent: 0,
+      due: quiz.dueDate,
+      status: 'Missing',
     }
   })
 }
