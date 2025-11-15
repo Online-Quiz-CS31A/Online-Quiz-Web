@@ -366,6 +366,7 @@ function cancelRemove() {
         <ClassGradesTab
           :rows="sortedGrades"
           :getAvatarByEmail="getAvatarByEmail"
+          :breakdown="breakdown"
           @export="exportGrades"
           @sort="sortBy"
           @view="openGrades"
@@ -373,45 +374,6 @@ function cancelRemove() {
       </div>
     </div>
   </div>
-
-<div v-if="showGradesModal">
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/40" @click="closeGrades"></div>
-    <div class="relative bg-white w-full max-w-3xl rounded-lg shadow-xl overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-800">Grades — {{ selectedStudent?.name }}</h3>
-          <p class="text-sm text-gray-500">{{ selectedStudent?.email }}</p>
-        </div>
-        <button @click="closeGrades" class="p-2 rounded-md hover:bg-gray-100" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div v-for="q in breakdown" :key="q.title" class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
-            <div class="flex items-start justify-between mb-2">
-              <div>
-                <h4 class="font-medium text-gray-900">{{ q.title }}</h4>
-                <p class="text-xs text-gray-500">Due {{ q.due }}</p>
-              </div>
-              <span class="text-xs px-2 py-1 rounded-full" :class="q.status === 'Submitted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">{{ q.status }}</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div class="h-full bg-blue-600" :style="{ width: q.percent + '%' }"></div>
-              </div>
-              <div class="text-sm text-gray-800">{{ q.score }}/{{ q.total }} ({{ q.percent }}%)</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-        <button @click="closeGrades" class="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <RemoveStudentConfirmModal
   :open="showRemoveConfirm"
