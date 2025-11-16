@@ -10,9 +10,9 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, TeacherQuizItem } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
-import ClassDashboardTab from '@/components/teacher/ClassDashboardTab.vue'
-import ClassPeopleTab from '@/components/teacher/ClassPeopleTab.vue'
-import ClassGradesTab from '@/components/teacher/ClassGradesTab.vue'
+import ClassDashboardTab from '@/components/teacher/TeacherClassQuizzesTab.vue'
+import ClassPeopleTab from '@/components/teacher/TeacherClassPeopleTab.vue'
+import ClassGradesTab from '@/components/teacher/TeacherClassGradesTab.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
 
