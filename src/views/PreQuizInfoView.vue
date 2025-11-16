@@ -156,10 +156,10 @@ const continueQuiz = () => {
   } as any)
 }
 
-const isDone = ref(false)
+const isDone = computed(() => quizzesStore.isQuizMarkedDone(quizId.value))
 
 const toggleMarkAsDone = () => {
-  isDone.value = !isDone.value
+  quizzesStore.toggleQuizDone(quizId.value)
 }
 
 const reviewAttempt = (attemptNumber: number) => {

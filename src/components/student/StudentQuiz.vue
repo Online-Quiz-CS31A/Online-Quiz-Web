@@ -33,7 +33,6 @@ const emit = defineEmits<{
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
-const doneMap = reactive<Record<number, boolean>>({})
 
 // COMPUTED
 const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
@@ -56,6 +55,21 @@ const getCoverStyle = (quiz: StudentQuiz) => {
     backgroundImage: `url(${url})`
   }
 }
+
+const isDone = (quizId: number) => quizzesStore.isQuizMarkedDone(quizId)
+
+const toggleDone = (quizId: number) => {
+  quizzesStore.toggleQuizDone(quizId)
+}
+
+const isAnswered = (quizId: number) => {
+  const history = quizzesStore.getQuizAttemptHistory(quizId)
+  return history.length > 0
+}
+
+const getStatusLabel = (quizId: number) => (isAnswered(quizId) ? 'Answered' : 'Unanswered')
+
+const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700' : 'text-yellow-700')
 </script>
 
 <template>
@@ -94,12 +108,11 @@ const getCoverStyle = (quiz: StudentQuiz) => {
           <div class="flex items-center justify-between">
             <div></div>
             <button 
-              @click.stop="doneMap[quiz.id] = true"
-              :disabled="doneMap[quiz.id]"
+              @click.stop="toggleDone(quiz.id)"
               class="text-sm font-medium transition-colors"
-              :class="doneMap[quiz.id] ? 'text-green-200 cursor-default' : 'text-white hover:opacity-90'"
+              :class="isDone(quiz.id) ? 'text-green-200 cursor-default' : 'text-white hover:opacity-90'"
             >
-              {{ doneMap[quiz.id] ? 'Done' : 'Mark as done' }}
+              {{ isDone(quiz.id) ? 'Done' : 'Mark as done' }}
             </button>
           </div>
         </div>
@@ -108,7 +121,7 @@ const getCoverStyle = (quiz: StudentQuiz) => {
             <span class="text-xs text-gray-500">Time: {{ quiz.timeLimit }}</span>
             <div class="flex items-center">
               <span class="text-xs text-gray-500 mr-2">Status:</span>
-              <span class="text-xs font-medium" :class="doneMap[quiz.id] ? 'text-green-600' : 'text-yellow-600'">{{ doneMap[quiz.id] ? 'Done' : quiz.status }}</span>
+              <span class="text-xs font-medium" :class="getStatusClass(quiz.id)">{{ getStatusLabel(quiz.id) }}</span>
             </div>
           </div>
         </div>
@@ -134,19 +147,18 @@ const getCoverStyle = (quiz: StudentQuiz) => {
                   <span>Time: {{ quiz.timeLimit }}</span>
                   <span>
                     Status:
-                    <span class="font-medium" :class="doneMap[quiz.id] ? 'text-green-700' : 'text-yellow-700'">
-                      {{ doneMap[quiz.id] ? 'Done' : quiz.status }}
+                    <span class="font-medium" :class="getStatusClass(quiz.id)">
+                      {{ getStatusLabel(quiz.id) }}
                     </span>
                   </span>
                 </div>
               </div>
               <div class="ml-3">
                 <button 
-                  @click.stop="doneMap[quiz.id] = true"
-                  :disabled="doneMap[quiz.id]"
+                  @click.stop="toggleDone(quiz.id)"
                   class="px-3 py-1.5 rounded-md text-sm"
-                  :class="doneMap[quiz.id] ? 'bg-green-100 text-green-700 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'"
-                >{{ doneMap[quiz.id] ? 'Done' : 'Mark as done' }}</button>
+                  :class="isDone(quiz.id) ? 'bg-green-100 text-green-700 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'"
+                >{{ isDone(quiz.id) ? 'Done' : 'Mark as done' }}</button>
               </div>
             </div>
           </div>

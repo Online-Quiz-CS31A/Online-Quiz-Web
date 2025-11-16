@@ -209,6 +209,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   })
 
   const quizAttemptHistory = ref<QuizAttemptHistory[]>([])
+  const quizDoneMap = ref<Record<string, boolean>>({})
+  let quizDoneLoaded = false
 
   const auth = useAuthStore()
 
@@ -254,6 +256,50 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     
     return studentQuizzes
   })
+
+  function loadQuizDoneFromStorage() {
+    if (quizDoneLoaded) return
+    quizDoneLoaded = true
+    try {
+      const stored = localStorage.getItem('quizDoneMap')
+      if (stored) {
+        quizDoneMap.value = JSON.parse(stored)
+      }
+    } catch (e) {
+      console.error('Failed to load quiz done map from localStorage:', e)
+      quizDoneMap.value = {}
+    }
+  }
+
+  function saveQuizDoneToStorage() {
+    try {
+      localStorage.setItem('quizDoneMap', JSON.stringify(quizDoneMap.value))
+    } catch (e) {
+      console.error('Failed to save quiz done map to localStorage:', e)
+    }
+  }
+
+  function getQuizDoneKey(quizId: number): string | null {
+    const auth = useAuthStore()
+    const username = auth.currentUser?.username
+    if (!username) return null
+    return `${username}:${quizId}`
+  }
+
+  function isQuizMarkedDone(quizId: number): boolean {
+    loadQuizDoneFromStorage()
+    const key = getQuizDoneKey(quizId)
+    if (!key) return false
+    return !!quizDoneMap.value[key]
+  }
+
+  function toggleQuizDone(quizId: number) {
+    loadQuizDoneFromStorage()
+    const key = getQuizDoneKey(quizId)
+    if (!key) return
+    quizDoneMap.value[key] = !quizDoneMap.value[key]
+    saveQuizDoneToStorage()
+  }
 
   const currentQuestion = computed(() => {
     if (currentQuiz.currentQuestionIndex === -1) return null
@@ -850,6 +896,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     loadAttemptHistoryFromStorage,
     loadAttemptForReview,
     getQuizAttemptHistoryForStudent,
-    getQuizUniqueSubmitterCount
+    getQuizUniqueSubmitterCount,
+    isQuizMarkedDone,
+    toggleQuizDone,
+    loadQuizDoneFromStorage
   }
 })
