@@ -28,6 +28,8 @@ const router = useRouter()
 // REFS
 const classesOpen = ref(false)
 const showImportModal = ref(false)
+const archivedOpen = ref(false)
+const archivedQuizzesOpen = ref(false)
 
 // REACTIVE
 const route = useRoute()
@@ -46,6 +48,10 @@ defineEmits<{
   'nav-quizzes': []
   'nav-calendar': []
   'nav-archived': []
+  'nav-archived-courses': []
+  'nav-archived-quizzes': []
+  'nav-archived-quizzes-published': []
+  'nav-archived-quizzes-draft': []
 }>()
 
 // COMPUTED
@@ -213,10 +219,62 @@ async function handleImport(file: File) {
             </button>
           </li>
           <li class="mb-1" v-if="isTeacher">
-            <button @click="$emit('nav-archived')" class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" :class="isArchivedActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'">
+            <button 
+              @click="archivedOpen = !archivedOpen; $emit('nav-archived')"
+              class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" 
+              :class="isArchivedActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'"
+            >
               <i class="fas fa-box-archive mr-3"></i>
               <span>Archived</span>
+              <i 
+                class="fas fa-chevron-down ml-auto transition-transform duration-200"
+                :class="archivedOpen ? 'rotate-180' : ''"
+              ></i>
             </button>
+            <ul v-show="archivedOpen" class="mt-1 ml-6">
+              <li class="mb-1">
+                <button
+                  @click="archivedQuizzesOpen = !archivedQuizzesOpen; $emit('nav-archived-quizzes')"
+                  class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                >
+                  <i class="fas fa-clipboard-list mr-3"></i>
+                  <span>Quizzes</span>
+                  <i 
+                    class="fas fa-chevron-down ml-auto transition-transform duration-200"
+                    :class="archivedQuizzesOpen ? 'rotate-180' : ''"
+                  ></i>
+                </button>
+                <ul v-show="archivedQuizzesOpen" class="mt-1 ml-6">
+                  <li class="mb-1">
+                    <button 
+                      @click="$emit('nav-archived-quizzes-published')"
+                      class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                    >
+                      <i class="fas fa-circle-check mr-3"></i>
+                      <span>Published</span>
+                    </button>
+                  </li>
+                  <li class="mb-1">
+                    <button 
+                      @click="$emit('nav-archived-quizzes-draft')"
+                      class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                    >
+                      <i class="fas fa-file-pen mr-3"></i>
+                      <span>Draft</span>
+                    </button>
+                  </li>
+                </ul>
+              </li>
+              <li class="mb-1">
+                <button 
+                  @click="$emit('nav-archived-courses')"
+                  class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                >
+                  <i class="fas fa-book-open mr-3"></i>
+                  <span>Courses</span>
+                </button>
+              </li>
+            </ul>
           </li>
         </ul>
       </div>

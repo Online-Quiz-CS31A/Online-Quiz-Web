@@ -18,6 +18,7 @@ const showCreateQuiz = ref(false)
 const showImport = ref(false)
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
 const archivedTab = ref<'courses' | 'quizzes'>('courses')
+const archivedQuizzesFilter = ref<'all' | 'published' | 'draft'>('all')
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
@@ -52,7 +53,11 @@ const archivedCourses = computed(() => {
 const archivedQuizzes = computed(() => {
   const storedQuizzes = quizzesStore.getAllQuizzes()
   const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
-  return allQuizzes.filter(q => q.archived)
+  let list = allQuizzes.filter(q => q.archived)
+  if (archivedQuizzesFilter.value !== 'all') {
+    list = list.filter(q => (q.status || 'published') === archivedQuizzesFilter.value)
+  }
+  return list
 })
 
 // WATCHERS
@@ -114,6 +119,33 @@ const navigateToArchived = () => {
   closeSidebar()
 }
 
+const navigateToArchivedCourses = () => {
+  currentSection.value = 'archived'
+  archivedTab.value = 'courses'
+  closeSidebar()
+}
+
+const navigateToArchivedQuizzes = () => {
+  currentSection.value = 'archived'
+  archivedTab.value = 'quizzes'
+  archivedQuizzesFilter.value = 'all'
+  closeSidebar()
+}
+
+const navigateToArchivedQuizzesPublished = () => {
+  currentSection.value = 'archived'
+  archivedTab.value = 'quizzes'
+  archivedQuizzesFilter.value = 'published'
+  closeSidebar()
+}
+
+const navigateToArchivedQuizzesDraft = () => {
+  currentSection.value = 'archived'
+  archivedTab.value = 'quizzes'
+  archivedQuizzesFilter.value = 'draft'
+  closeSidebar()
+}
+
 const navigateToHome = () => {
   currentSection.value = 'home'
   closeSidebar()
@@ -163,6 +195,10 @@ onUnmounted(() => {
       @nav-quizzes="navigateToQuizzes"
       @nav-calendar="navigateToCalendar"
       @nav-archived="navigateToArchived"
+      @nav-archived-courses="navigateToArchivedCourses"
+      @nav-archived-quizzes="navigateToArchivedQuizzes"
+      @nav-archived-quizzes-published="navigateToArchivedQuizzesPublished"
+      @nav-archived-quizzes-draft="navigateToArchivedQuizzesDraft"
     />
 
     <!-- Main Content -->
