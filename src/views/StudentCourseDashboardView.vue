@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
@@ -114,19 +114,31 @@ const myCourseQuizzes = computed<StudentQuiz[]>(() => {
 })
 
 const myScores = computed<MyScoreItem[]>(() => {
-  const uname = myUsername.value
-  return myCourseQuizzes.value.map((q, i) => {
-    const total = 20
-    const base = getDeterministicIndex(`${uname}-${q.id}`) % 21 // 0..20
-    const score = Math.min(total, Math.max(0, base))
-    const percent = Math.round((score / total) * 100)
+  return myCourseQuizzes.value.map((q) => {
+    const history = quizzesStore.getQuizAttemptHistory(q.id)
+    const latestAttempt = history.length > 0 ? history[history.length - 1] : null
+
+    let total = 0
+    let score = 0
+
+    if (latestAttempt) {
+      score = latestAttempt.score
+      total = latestAttempt.totalPoints
+    } else {
+      const questions = quizzesStore.getStudentQuizQuestions(q.id)
+      total = questions.reduce((sum: number, qq: any) => sum + (typeof qq.points === 'number' ? qq.points : 0), 0)
+    }
+
+    const percent = total > 0 ? Math.round((score / total) * 100) : 0
+    const status: 'Answered' | 'Unanswered' = history.length > 0 ? 'Answered' : 'Unanswered'
+
     return {
       title: q.title,
       score,
       total,
       percent,
       due: q.dueDate,
-      status: percent > 0 ? 'Answered' : 'Unanswered',
+      status,
     }
   })
 })
@@ -137,6 +149,10 @@ const filteredScores = computed<MyScoreItem[]>(() => {
   return myScores.value.filter(s => s.status === 'Unanswered')
 })
 
+
+onMounted(() => {
+	quizzesStore.loadAttemptHistoryFromStorage()
+})
 
 // WATCHERS
 watch(courseId, () => {
