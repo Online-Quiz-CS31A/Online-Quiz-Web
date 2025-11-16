@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
 import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
@@ -22,6 +23,7 @@ interface Props {
 const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
+const sectionsStore = useSectionsStore()
 
 // PROPS
 const props = withDefaults(defineProps<Props>(), {
@@ -118,6 +120,21 @@ const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
 const handleQuizClick = (quiz: TeacherQuizItem) => {
   quizzesStore.loadQuizForEditing(quiz.id)
   router.push({ name: 'quiz-builder', params: { id: quiz.class || 'default' } })
+}
+
+const getSubmissionStats = (quiz: TeacherQuizItem) => {
+  const submitted = quizzesStore.getQuizUniqueSubmitterCount(quiz.id)
+  const section = sectionsStore.allSections.find(s => s.name === quiz.class)
+  const total = section
+    ? (section.studentUsernames?.length || section.students || 0)
+    : (quiz.total || 0)
+  const percent = total > 0 ? Math.min(100, (submitted / total) * 100) : 0
+
+  return {
+    submitted,
+    total,
+    percent
+  }
 }
 </script>
 
@@ -240,11 +257,13 @@ const handleQuizClick = (quiz: TeacherQuizItem) => {
             </button>
           </div>
           <div v-else class="flex items-center gap-3 h-full">
-            <span class="text-xs text-gray-500 whitespace-nowrap">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
+            <span class="text-xs text-gray-500 whitespace-nowrap">
+              {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }} submitted
+            </span>
             <div class="flex-1 bg-gray-200 rounded-full h-1.5">
               <div 
                 class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
-                :style="{ width: `${(quiz.submitted / quiz.total) * 100}%` }"
+                :style="{ width: `${getSubmissionStats(quiz).percent}%` }"
               ></div>
             </div>
           </div>
@@ -287,9 +306,14 @@ const handleQuizClick = (quiz: TeacherQuizItem) => {
                   </button>
                 </div>
                 <div v-else class="mt-3 flex items-center gap-2">
-                  <span class="text-xs text-gray-500">{{ quiz.submitted }}/{{ quiz.total }} submitted</span>
+                  <span class="text-xs text-gray-500">
+                    {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }} submitted
+                  </span>
                   <div class="w-40 bg-gray-200 rounded-full h-1.5">
-                    <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: `${(quiz.submitted / quiz.total) * 100}%` }"></div>
+                    <div
+                      class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                      :style="{ width: `${getSubmissionStats(quiz).percent}%` }"
+                    ></div>
                   </div>
                 </div>
               </div>

@@ -743,6 +743,19 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       .sort((a, b) => a.attemptNumber - b.attemptNumber)
   }
 
+  function getQuizUniqueSubmitterCount(quizId: number): number {
+    loadAttemptHistoryFromStorage()
+
+    const submitters = new Set<string>()
+    quizAttemptHistory.value.forEach(a => {
+      if (a.quizId === quizId) {
+        submitters.add(a.studentUsername)
+      }
+    })
+
+    return submitters.size
+  }
+
   function saveAttemptHistoryToStorage() {
     try {
       localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
@@ -836,6 +849,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     getQuizAttemptHistory,
     loadAttemptHistoryFromStorage,
     loadAttemptForReview,
-    getQuizAttemptHistoryForStudent
+    getQuizAttemptHistoryForStudent,
+    getQuizUniqueSubmitterCount
   }
 })
