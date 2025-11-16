@@ -292,7 +292,61 @@ function sortBy(col: GradeCol) {
 const { success } = useToast()
 
 function exportGrades() {
-  success('Grades exported')
+  if (!activeQuizzes.value.length || !students.value.length) {
+    success('No grades available to export')
+    return
+  }
+
+  const quizTitles = activeQuizzes.value.map(q => q.title)
+
+  const quizTotals = new Map<string, number>()
+  activeQuizzes.value.forEach(q => {
+    const totalPoints = (q.questions || []).reduce((sum, question: any) => sum + (question.points || 0), 0)
+    quizTotals.set(q.title, totalPoints)
+  })
+
+  const headers = ['Student Name', ...quizTitles.map(title => {
+    const total = quizTotals.get(title) || 0
+    return total ? `${title} (${total}/${total})` : title
+  })]
+
+  const dataRows = students.value.map(s => {
+    const breakdown = buildQuizBreakdown(s.id)
+    const byTitle = new Map<string, QuizBreakdown>()
+    breakdown.forEach(q => {
+      byTitle.set(q.title, q)
+    })
+
+    const row: (string | number)[] = [s.name]
+    quizTitles.forEach(title => {
+      const q = byTitle.get(title)
+      row.push(q ? q.score : '')
+    })
+
+    return row
+  })
+
+  const escapeCell = (value: string | number) => {
+    const str = String(value)
+    const escaped = str.replace(/"/g, '""')
+    return `"${escaped}"`
+  }
+
+  const csvContent = [headers, ...dataRows]
+    .map(row => row.map(escapeCell).join(','))
+    .join('\r\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `${classMeta.title || 'grades'}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+
+  success('Grades exported as CSV')
 }
 
 function openGrades(row: GradeRow) {
