@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
@@ -25,14 +25,14 @@ type ImportedQuestion = {
 // CONSTANTS
 const router = useRouter()
 
+// REACTIVE
+const route = useRoute()
+
 // REFS
 const classesOpen = ref(false)
 const showImportModal = ref(false)
 const archivedOpen = ref(false)
 const archivedQuizzesOpen = ref(false)
-
-// REACTIVE
-const route = useRoute()
 const auth = useAuthStore()
 const classesStore = useCoursesStore()
 const quizzesStore = useQuizzesStore()
@@ -53,6 +53,16 @@ defineEmits<{
   'nav-archived-quizzes-published': []
   'nav-archived-quizzes-draft': []
 }>()
+
+// WATCHERS
+watch(
+  () => props.activeSection,
+  (section) => {
+    if (section === 'archived') {
+      archivedOpen.value = true
+    }
+  },
+)
 
 // COMPUTED
 const isCoursesActive = computed(() => {
@@ -220,7 +230,7 @@ async function handleImport(file: File) {
           </li>
           <li class="mb-1" v-if="isTeacher">
             <button 
-              @click="archivedOpen = !archivedOpen; $emit('nav-archived')"
+              @click="archivedOpen = !archivedOpen"
               class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" 
               :class="isArchivedActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'"
             >

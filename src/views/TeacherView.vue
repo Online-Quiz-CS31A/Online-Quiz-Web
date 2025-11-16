@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
@@ -11,19 +11,22 @@ const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCal
 const TeacherClasses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
+const ArchivedCourses = defineAsyncComponent(() => import('@/components/teacher/ArchivedCourses.vue'))
+const ArchivedQuizzes = defineAsyncComponent(() => import('@/components/teacher/ArchivedQuizzes.vue'))
 
 // REFS
 const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
 const showImport = ref(false)
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
-const archivedTab = ref<'courses' | 'quizzes'>('courses')
-const archivedQuizzesFilter = ref<'all' | 'published' | 'draft'>('all')
+const archivedView = ref<'courses' | 'quizzes'>('courses')
+const archivedQuizzesTab = ref<'published' | 'draft'>('published')
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
 const coursesStore = useCoursesStore()
 const route = useRoute()
+const router = useRouter()
 const refreshTrigger = ref(0)
 
 // COMPUTED
@@ -46,19 +49,6 @@ const activeQuizzes = computed(() => {
   })
 })
 
-const archivedCourses = computed(() => {
-  return coursesStore.allCourses.filter(c => c.status === 'Archived')
-})
-
-const archivedQuizzes = computed(() => {
-  const storedQuizzes = quizzesStore.getAllQuizzes()
-  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
-  let list = allQuizzes.filter(q => q.archived)
-  if (archivedQuizzesFilter.value !== 'all') {
-    list = list.filter(q => (q.status || 'published') === archivedQuizzesFilter.value)
-  }
-  return list
-})
 
 // WATCHERS
 watch(
@@ -116,34 +106,29 @@ const navigateToCalendar = () => {
 
 const navigateToArchived = () => {
   currentSection.value = 'archived'
-  closeSidebar()
+  archivedView.value = 'courses'
 }
 
 const navigateToArchivedCourses = () => {
   currentSection.value = 'archived'
-  archivedTab.value = 'courses'
-  closeSidebar()
+  archivedView.value = 'courses'
 }
 
 const navigateToArchivedQuizzes = () => {
   currentSection.value = 'archived'
-  archivedTab.value = 'quizzes'
-  archivedQuizzesFilter.value = 'all'
-  closeSidebar()
+  archivedView.value = 'quizzes'
 }
 
 const navigateToArchivedQuizzesPublished = () => {
   currentSection.value = 'archived'
-  archivedTab.value = 'quizzes'
-  archivedQuizzesFilter.value = 'published'
-  closeSidebar()
+  archivedView.value = 'quizzes'
+  archivedQuizzesTab.value = 'published'
 }
 
 const navigateToArchivedQuizzesDraft = () => {
   currentSection.value = 'archived'
-  archivedTab.value = 'quizzes'
-  archivedQuizzesFilter.value = 'draft'
-  closeSidebar()
+  archivedView.value = 'quizzes'
+  archivedQuizzesTab.value = 'draft'
 }
 
 const navigateToHome = () => {
@@ -221,28 +206,8 @@ onUnmounted(() => {
         <SchoolCalendar v-else-if="currentSection === 'calendar'" />
         <!-- Archived Section -->
         <div v-else-if="currentSection === 'archived'" class="space-y-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-2xl font-semibold text-gray-800">Archived</h2>
-            <select
-              v-model="archivedTab"
-              class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="courses">Courses</option>
-              <option value="quizzes">Quizzes</option>
-            </select>
-          </div>
-
-          <div v-if="archivedTab === 'courses'">
-            <TeacherClasses :classes="archivedCourses" />
-          </div>
-
-          <div v-else>
-            <ActiveQuizzes
-              :quizzes="archivedQuizzes"
-              :hide-header="true"
-              :show-filters="false"
-            />
-          </div>
+          <ArchivedCourses v-if="archivedView === 'courses'" />
+          <ArchivedQuizzes v-else :tab="archivedQuizzesTab" @update:tab="value => (archivedQuizzesTab = value)" />
         </div>
         <!-- Courses Section (View All) -->
         <ViewAllCourses v-else />

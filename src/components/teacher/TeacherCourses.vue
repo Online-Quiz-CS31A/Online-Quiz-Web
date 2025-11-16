@@ -15,7 +15,9 @@ const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const router = useRouter()
 
 // PROPS
-const props = defineProps<{ classes?: ClassItem[];  maxItems?: number }>()
+const props = withDefaults(defineProps<{ classes?: ClassItem[]; maxItems?: number; showHeader?: boolean }>(), {
+  showHeader: true,
+})
 
 // EMITS
 const emit = defineEmits<{
@@ -109,7 +111,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="mb-8">
-    <div class="flex justify-between items-center mb-4 student-classes-header">
+    <div v-if="props.showHeader" class="flex justify-between items-center mb-4 student-classes-header">
       <h2 class="text-xl font-bold text-gray-800">My Courses</h2>
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
