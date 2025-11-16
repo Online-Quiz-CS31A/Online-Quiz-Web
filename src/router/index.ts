@@ -107,7 +107,7 @@ const router = createRouter({
     {
       path: '/teacher/classes/:id/dashboard',
       name: 'teacher-class-dashboard',
-      component: () => import('../views/ClassroomDashboardView.vue'),
+      component: () => import('../views/TeacherClassroomDashboardView.vue'),
       props: true,
     },
     {

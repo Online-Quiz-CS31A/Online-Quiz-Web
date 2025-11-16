@@ -119,7 +119,8 @@ const getCoverStyle = (quiz: StudentQuiz) => {
       <div
         v-for="quiz in displayedQuizzes"
         :key="quiz.id"
-        class="rounded-lg border border-gray-200 bg-white overflow-hidden"
+        class="rounded-lg border border-gray-200 bg-white overflow-hidden cursor-pointer"
+        @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
       >
         <div class="flex items-stretch min-h-[120px]">
           <div class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>
