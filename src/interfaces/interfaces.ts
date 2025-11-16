@@ -292,6 +292,16 @@ export interface QuizViewQuestion {
   correctAnswer: number
 }
 
+// STUDENT COURSE SCORE ITEMS
+export interface MyScoreItem {
+  title: string
+  score: number
+  total: number
+  percent: number
+  due: string
+  status: 'Answered' | 'Unanswered'
+}
+
 // ANALYTICS INTERFACES
 export interface LogEntry {
   id: string

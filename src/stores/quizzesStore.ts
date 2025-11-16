@@ -211,6 +211,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   const quizAttemptHistory = ref<QuizAttemptHistory[]>([])
   const quizDoneMap = ref<Record<string, boolean>>({})
   let quizDoneLoaded = false
+  let attemptHistoryLoaded = false
 
   const auth = useAuthStore()
 
@@ -811,14 +812,17 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function loadAttemptHistoryFromStorage() {
+    if (attemptHistoryLoaded) return
     try {
       const stored = localStorage.getItem('quizAttemptHistory')
       if (stored) {
         quizAttemptHistory.value = JSON.parse(stored)
       }
+      attemptHistoryLoaded = true
     } catch (e) {
       console.error('Failed to load attempt history from localStorage:', e)
       quizAttemptHistory.value = []
+      attemptHistoryLoaded = true
     }
   }
 
