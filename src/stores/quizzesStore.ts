@@ -129,6 +129,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         total: 28, 
         color: 'red',
         status: 'published',
+        archived: true,
         questions: [
           { id: 1, type: 'multiple-choice', text: 'Which scheduling algorithm can cause starvation?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Round Robin', isCorrect: false }, { text: 'Priority Scheduling', isCorrect: true }, { text: 'FCFS', isCorrect: false }, { text: 'SJF', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'A process in the ready state is currently executing on the CPU.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
@@ -234,7 +235,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       const teacherQuizzes = teacherQuizzesByUser.value[enrollment.teacherUsername] || []
       
       teacherQuizzes.forEach(quiz => {
-        if (enrollment.subjects.includes(quiz.subject)) {
+        if (enrollment.subjects.includes(quiz.subject) && !quiz.archived) {
           let maxAttempts = 3
           if (quiz.id === 1) maxAttempts = 2
           else if (quiz.id === 2) maxAttempts = 1

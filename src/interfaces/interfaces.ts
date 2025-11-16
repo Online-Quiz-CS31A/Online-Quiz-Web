@@ -46,6 +46,7 @@ export interface ClassItem {
   students: number
   color: string
   studentUsernames?: string[]
+  status?: 'Active' | 'Archived'
 }
 
 export interface ClassSection {
@@ -108,6 +109,7 @@ export interface TeacherQuizItem {
   createdAt?: string
   updatedAt?: string
   ownerUsername?: string
+  archived?: boolean
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS

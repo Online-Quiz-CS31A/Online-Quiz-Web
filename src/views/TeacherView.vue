@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
@@ -15,10 +16,12 @@ const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQu
 const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
 const showImport = ref(false)
-const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
+const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
+const archivedTab = ref<'courses' | 'quizzes'>('courses')
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
+const coursesStore = useCoursesStore()
 const route = useRoute()
 const refreshTrigger = ref(0)
 
@@ -27,7 +30,7 @@ const activeQuizzes = computed(() => {
   refreshTrigger.value
   
   const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
-  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
+  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes].filter(q => !q.archived)
   
   return allQuizzes.sort((a, b) => {
     const aStatus = a.status || 'published'
@@ -42,12 +45,22 @@ const activeQuizzes = computed(() => {
   })
 })
 
+const archivedCourses = computed(() => {
+  return coursesStore.allCourses.filter(c => c.status === 'Archived')
+})
+
+const archivedQuizzes = computed(() => {
+  const storedQuizzes = quizzesStore.getAllQuizzes()
+  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
+  return allQuizzes.filter(q => q.archived)
+})
+
 // WATCHERS
 watch(
   () => route.query.section,
   (val) => {
     const section = (val as string) || ''
-    if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home') {
+    if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
       currentSection.value = section as typeof currentSection.value
     }
     if (section === 'home' || !section) {
@@ -96,6 +109,11 @@ const navigateToCalendar = () => {
   closeSidebar()
 }
 
+const navigateToArchived = () => {
+  currentSection.value = 'archived'
+  closeSidebar()
+}
+
 const navigateToHome = () => {
   currentSection.value = 'home'
   closeSidebar()
@@ -115,7 +133,7 @@ const handleClickOutside = (e: Event) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   const section = (route.query.section as string) || ''
-  if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home') {
+  if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
     currentSection.value = section as typeof currentSection.value
   }
 })
@@ -144,6 +162,7 @@ onUnmounted(() => {
       @nav-home="navigateToHome"
       @nav-quizzes="navigateToQuizzes"
       @nav-calendar="navigateToCalendar"
+      @nav-archived="navigateToArchived"
     />
 
     <!-- Main Content -->
@@ -164,6 +183,31 @@ onUnmounted(() => {
         <ViewAllQuizzes v-else-if="currentSection === 'quizzes'" />
         <!-- Calendar Section -->
         <SchoolCalendar v-else-if="currentSection === 'calendar'" />
+        <!-- Archived Section -->
+        <div v-else-if="currentSection === 'archived'" class="space-y-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-semibold text-gray-800">Archived</h2>
+            <select
+              v-model="archivedTab"
+              class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="courses">Courses</option>
+              <option value="quizzes">Quizzes</option>
+            </select>
+          </div>
+
+          <div v-if="archivedTab === 'courses'">
+            <TeacherClasses :classes="archivedCourses" />
+          </div>
+
+          <div v-else>
+            <ActiveQuizzes
+              :quizzes="archivedQuizzes"
+              :hide-header="true"
+              :show-filters="false"
+            />
+          </div>
+        </div>
         <!-- Courses Section (View All) -->
         <ViewAllCourses v-else />
       </main>

@@ -29,7 +29,8 @@ const isTeacher = computed(() => auth.userRole === 'teacher')
 const quizzes = computed<(TeacherQuizItem | StudentQuizItem)[]>(() => {
   if (isTeacher.value) {
     const stored = quizzesStore.loadQuizzesFromStorage()
-    return [...stored, ...quizzesStore.myTeacherQuizzes]
+    const combined = [...stored, ...quizzesStore.myTeacherQuizzes]
+    return combined.filter((q) => !(q as TeacherQuizItem).archived)
   }
   return quizzesStore.myStudentQuizzes
 })

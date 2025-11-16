@@ -10,7 +10,7 @@ const ImportQuestionsModal = defineAsyncComponent(() => import('@/components/mod
 // TYPES
 interface Props {
   isActive: boolean
-  activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses'
+  activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'
 }
 type ImportedQuestion = {
   id: number
@@ -45,6 +45,7 @@ defineEmits<{
   'nav-home': []
   'nav-quizzes': []
   'nav-calendar': []
+  'nav-archived': []
 }>()
 
 // COMPUTED
@@ -60,6 +61,7 @@ const isHomeActive = computed(() => route.name === 'home')
 const activeSection = computed(() => props.activeSection)
 const isQuizzesActive = computed(() => activeSection.value === 'quizzes')
 const isCalendarActive = computed(() => activeSection.value === 'calendar')
+const isArchivedActive = computed(() => activeSection.value === 'archived')
 const isTeacher = computed(() => auth.userRole === 'teacher')
 const isStudent = computed(() => auth.userRole === 'student')
 const myClasses = computed(() => classesStore.myClasses)
@@ -208,6 +210,12 @@ async function handleImport(file: File) {
             <button @click="$emit('nav-calendar')" class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" :class="isCalendarActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'">
               <i class="fas fa-calendar-alt mr-3"></i>
               <span>Calendar</span>
+            </button>
+          </li>
+          <li class="mb-1" v-if="isTeacher">
+            <button @click="$emit('nav-archived')" class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" :class="isArchivedActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'">
+              <i class="fas fa-box-archive mr-3"></i>
+              <span>Archived</span>
             </button>
           </li>
         </ul>

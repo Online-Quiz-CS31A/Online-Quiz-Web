@@ -26,7 +26,7 @@ const isTeacher = computed(() => auth.userRole === 'teacher')
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const list = classesStore.myClasses
-  let result = list
+  let result = list.filter(c => c.status !== 'Archived')
   if (filter.value && filter.value !== 'All') {
   }
   if (!q) return result
