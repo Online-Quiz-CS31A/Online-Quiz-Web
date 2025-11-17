@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { TeacherQuizItem } from '@/interfaces/interfaces'
+import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
+import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
@@ -41,6 +43,9 @@ const emit = defineEmits<{
 // REFS
 const openMenuId = ref<number | null>(null)
 const statusFilter = ref<'all' | 'draft' | 'published'>(props.initialFilter)
+const quizPendingDeletion = ref<TeacherQuizItem | null>(null)
+const showDraftDeleteModal = ref(false)
+const showPublishedDeleteModal = ref(false)
  
 // COMPUTED
 const filteredQuizzes = computed(() => {
@@ -111,10 +116,28 @@ const handleEditQuiz = (quiz: TeacherQuizItem) => {
 }
 
 const handleDeleteQuiz = (quiz: TeacherQuizItem) => {
-  if (confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
-    console.log(`Deleting quiz: ${quiz.title}`)
+  quizPendingDeletion.value = quiz
+  if ((quiz.status || 'published') === 'draft') {
+    showDraftDeleteModal.value = true
+  } else {
+    showPublishedDeleteModal.value = true
   }
   closeMenu()
+}
+
+const handleCancelDelete = () => {
+  showDraftDeleteModal.value = false
+  showPublishedDeleteModal.value = false
+  quizPendingDeletion.value = null
+}
+
+const handleConfirmDelete = () => {
+  if (!quizPendingDeletion.value) {
+    handleCancelDelete()
+    return
+  }
+  quizzesStore.archiveQuiz(quizPendingDeletion.value.id)
+  handleCancelDelete()
 }
 
 const handleQuizClick = (quiz: TeacherQuizItem) => {
@@ -339,6 +362,20 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
         </div>
       </div>
     </div>
+
+    <QuizDeleteDraftModal
+      :open="showDraftDeleteModal"
+      :quiz-title="quizPendingDeletion?.title"
+      @cancel="handleCancelDelete"
+      @confirm="handleConfirmDelete"
+    />
+
+    <QuizDeletePublishedModal
+      :open="showPublishedDeleteModal"
+      :quiz-title="quizPendingDeletion?.title"
+      @cancel="handleCancelDelete"
+      @confirm="handleConfirmDelete"
+    />
   </div>
 </template>
 

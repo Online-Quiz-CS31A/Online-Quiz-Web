@@ -211,10 +211,14 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
   const quizAttemptHistory = ref<QuizAttemptHistory[]>([])
   const quizDoneMap = ref<Record<string, boolean>>({})
+  const quizzesVersion = ref(0)
+  const archivedSeedQuizIds = ref<number[]>([])
   let quizDoneLoaded = false
   let attemptHistoryLoaded = false
 
   const auth = useAuthStore()
+
+  loadArchivedSeedQuizzesFromStorage()
 
   const myTeacherQuizzes = computed<TeacherQuizItem[]>(() => {
     const uname = auth.currentUser?.username
@@ -258,6 +262,35 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     
     return studentQuizzes
   })
+
+  function loadArchivedSeedQuizzesFromStorage() {
+    try {
+      const stored = localStorage.getItem('archivedSeedQuizzes')
+      const ids = stored ? (JSON.parse(stored) as number[]) : []
+      archivedSeedQuizIds.value = ids
+
+      if (ids.length > 0) {
+        Object.values(teacherQuizzesByUser.value).forEach(list => {
+          list.forEach(q => {
+            if (ids.includes(q.id)) {
+              ;(q as any).archived = true
+            }
+          })
+        })
+      }
+    } catch (e) {
+      console.error('Failed to load archivedSeedQuizzes from localStorage:', e)
+      archivedSeedQuizIds.value = []
+    }
+  }
+
+  function saveArchivedSeedQuizzesToStorage() {
+    try {
+      localStorage.setItem('archivedSeedQuizzes', JSON.stringify(archivedSeedQuizIds.value))
+    } catch (e) {
+      console.error('Failed to save archivedSeedQuizzes to localStorage:', e)
+    }
+  }
 
   function loadQuizDoneFromStorage() {
     if (quizDoneLoaded) return
@@ -460,6 +493,37 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     saveQuizzesToStorage(filtered)
   }
 
+  function archiveQuiz(quizId: number) {
+    const stored = getAllQuizzes()
+    let mutated = false
+    stored.forEach(q => {
+      if (q.id === quizId) {
+        ;(q as any).archived = true
+        mutated = true
+      }
+    })
+    if (mutated) {
+      saveQuizzesToStorage(stored)
+    }
+
+    let seedMutated = false
+    Object.values(teacherQuizzesByUser.value).forEach(list => {
+      list.forEach(q => {
+        if (q.id === quizId) {
+          ;(q as any).archived = true
+          if (!archivedSeedQuizIds.value.includes(quizId)) {
+            archivedSeedQuizIds.value.push(quizId)
+            seedMutated = true
+          }
+        }
+      })
+    })
+    if (seedMutated) {
+      saveArchivedSeedQuizzesToStorage()
+      quizzesVersion.value++
+    }
+  }
+
   function loadQuizForEditing(quizId: number) {
     let quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
     
@@ -522,6 +586,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function saveQuizzesToStorage(quizzes: TeacherQuizItem[]) {
     try {
       localStorage.setItem('quizzes', JSON.stringify(quizzes))
+      quizzesVersion.value++
     } catch (error) {
       console.error('Error saving quizzes to localStorage:', error)
       throw new Error('Failed to save quizzes')
@@ -874,11 +939,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     updateCurrentQuestionType,
     saveQuiz,
     deleteQuiz,
+    archiveQuiz,
     loadQuizForEditing,
     resetCurrentQuiz,
     getAllQuizzes,
     loadQuizzesFromStorage,
     saveQuizzesToStorage,
+    quizzesVersion,
     getStudentQuizQuestions,
     startAttempt,
     markAnswered,

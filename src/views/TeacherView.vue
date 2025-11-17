@@ -32,7 +32,8 @@ const refreshTrigger = ref(0)
 // COMPUTED
 const activeQuizzes = computed(() => {
   refreshTrigger.value
-  
+  quizzesStore.quizzesVersion
+
   const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
   const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes].filter(q => !q.archived)
   
