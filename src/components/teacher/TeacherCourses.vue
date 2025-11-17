@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem } from '@/interfaces/interfaces'
+import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -31,6 +32,8 @@ const sectionsStore = useSectionsStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
+const coursePendingDeletion = ref<ClassItem | null>(null)
+const showCourseDeleteModal = ref(false)
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -56,11 +59,23 @@ const handleEnterClass = (classItem: ClassItem) => {
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
-  const ok = confirm(`Leave class ${classItem.name}?`)
-  if (ok) {
-    emit('leave-class', classItem)
-  }
+  coursePendingDeletion.value = classItem
+  showCourseDeleteModal.value = true
   menuOpenForId.value = null
+}
+
+const handleCancelDelete = () => {
+  showCourseDeleteModal.value = false
+  coursePendingDeletion.value = null
+}
+
+const handleConfirmDelete = () => {
+  if (!coursePendingDeletion.value) {
+    handleCancelDelete()
+    return
+  }
+  classesStore.archiveCourse(coursePendingDeletion.value.id)
+  handleCancelDelete()
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -202,6 +217,13 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+
+  <CourseDeleteModal
+    :open="showCourseDeleteModal"
+    :course-name="coursePendingDeletion?.name"
+    @cancel="handleCancelDelete"
+    @confirm="handleConfirmDelete"
+  />
 </template>
 
 <style scoped>
