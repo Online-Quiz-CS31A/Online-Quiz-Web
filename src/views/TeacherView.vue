@@ -35,7 +35,21 @@ const activeQuizzes = computed(() => {
   quizzesStore.quizzesVersion
 
   const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
-  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes].filter(q => !q.archived)
+  const seedQuizzes = quizzesStore.myTeacherQuizzes
+
+  const byId = new Map<number, any>()
+  seedQuizzes.forEach((q) => {
+    if (!(q as any).archived) {
+      byId.set(q.id, q)
+    }
+  })
+  storedQuizzes.forEach((q) => {
+    if (!(q as any).archived) {
+      byId.set(q.id, q)
+    }
+  })
+
+  const allQuizzes = Array.from(byId.values())
   
   return allQuizzes.sort((a, b) => {
     const aStatus = a.status || 'published'

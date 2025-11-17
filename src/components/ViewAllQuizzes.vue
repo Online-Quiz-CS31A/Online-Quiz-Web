@@ -29,8 +29,21 @@ const isTeacher = computed(() => auth.userRole === 'teacher')
 const quizzes = computed<(TeacherQuizItem | StudentQuizItem)[]>(() => {
   if (isTeacher.value) {
     const stored = quizzesStore.loadQuizzesFromStorage()
-    const combined = [...stored, ...quizzesStore.myTeacherQuizzes]
-    return combined.filter((q) => !(q as TeacherQuizItem).archived)
+    const seed = quizzesStore.myTeacherQuizzes
+
+    const byId = new Map<number, TeacherQuizItem>()
+    seed.forEach((q) => {
+      if (!(q as any).archived) {
+        byId.set(q.id, q)
+      }
+    })
+    stored.forEach((q) => {
+      if (!(q as any).archived) {
+        byId.set(q.id, q)
+      }
+    })
+
+    return Array.from(byId.values())
   }
   return quizzesStore.myStudentQuizzes
 })

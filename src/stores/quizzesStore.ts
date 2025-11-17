@@ -487,8 +487,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       saveQuizzesToStorage(quizzes)
       return quizzes[existingIndex]
     } else {
+      const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
       const quizItem: TeacherQuizItem = {
-        id: Date.now(),
+        id,
         title: currentQuiz.title,
         subject: currentQuiz.subject,
         description: currentQuiz.description,
@@ -548,13 +549,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function loadQuizForEditing(quizId: number) {
-    let quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
-    
+    const quizzes = getAllQuizzes()
+    let quiz = quizzes.find(q => q.id === quizId)
+
     if (!quiz) {
-      const quizzes = getAllQuizzes()
-      quiz = quizzes.find(q => q.id === quizId)
+      quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
     }
-    
+
     if (!quiz) return false
 
     currentQuiz.id = quiz.id
@@ -617,16 +618,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function getStudentQuizQuestions(quizId: number): QuizQuestion[] {
-    const auth = useAuthStore()
-    const username = auth.currentUser?.username
-    
-    const allTeacherQuizzes = Object.values(teacherQuizzesByUser.value).flat()
-    const quiz = allTeacherQuizzes.find(q => q.id === quizId)
-    
-    if (quiz && quiz.questions) {
-      return JSON.parse(JSON.stringify(quiz.questions))
+    const stored = getAllQuizzes().find(q => q.id === quizId)
+    if (stored && stored.questions) {
+      return JSON.parse(JSON.stringify(stored.questions))
     }
-    
+
+    const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
+    const seedQuiz = allSeedQuizzes.find(q => q.id === quizId)
+
+    if (seedQuiz && seedQuiz.questions) {
+      return JSON.parse(JSON.stringify(seedQuiz.questions))
+    }
+
     return []
   }
 
