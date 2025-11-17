@@ -80,6 +80,20 @@ export const useCoursesStore = defineStore('classes', () => {
     }
   })
 
+  const mySubjects = computed<string[]>(() => {
+    const user = auth.currentUser
+    if (!user || user.role !== 'teacher') return []
+
+    const subjects = new Set<string>()
+    allCourses.value.forEach(course => {
+      if (course.teacher === (user.username || '') && course.status !== 'Archived') {
+        subjects.add(course.name)
+      }
+    })
+
+    return Array.from(subjects)
+  })
+
   function addClass(newClass: Omit<ClassItem, 'id'>) {
     const last = allCourses.value.length ? allCourses.value[allCourses.value.length - 1] : undefined
     const nextId = ((last?.id) || 0) + 1
@@ -99,6 +113,7 @@ export const useCoursesStore = defineStore('classes', () => {
   return {
     allCourses: allCoursesWithCounts,
     myClasses,
+    mySubjects,
     addClass,
     archiveCourse,
   }

@@ -226,6 +226,29 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return teacherQuizzesByUser.value[uname] || []
   })
 
+  const myTeacherSubjects = computed<string[]>(() => {
+    const uname = auth.currentUser?.username
+    if (!uname) return []
+
+    const subjects = new Set<string>()
+
+    const defaultQuizzes = teacherQuizzesByUser.value[uname] || []
+    defaultQuizzes.forEach(q => {
+      if (q.subject) {
+        subjects.add(q.subject)
+      }
+    })
+
+    const storedQuizzes = loadQuizzesFromStorage()
+    storedQuizzes.forEach(q => {
+      if ((q as any).ownerUsername === uname && q.subject) {
+        subjects.add(q.subject)
+      }
+    })
+
+    return Array.from(subjects)
+  })
+
   const myStudentQuizzes = computed<StudentQuizItem[]>(() => {
     const uname = auth.currentUser?.username
     if (!uname) return []
@@ -924,6 +947,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
   return {
     myTeacherQuizzes,
+    myTeacherSubjects,
     myStudentQuizzes,
     currentQuiz,
     currentAttempt,

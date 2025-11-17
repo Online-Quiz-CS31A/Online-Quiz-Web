@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useQuizEditor } from '@/composables/useQuizEditor'
 import { useQuestionSettings } from '@/composables/useQuestionSettings'
 import { useMediaUpload } from '@/composables/useMediaUpload'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 
 import SidebarQuestions from './SidebarQuestions.vue'
@@ -13,6 +14,7 @@ import SettingsPanel from './SettingsPanel.vue'
 const AddQuestionModal = defineAsyncComponent(() => import('@/components/modals/AddQuestionModal.vue'))
 
 const quizzesStore = useQuizzesStore()
+const coursesStore = useCoursesStore()
 
 const {
   showAddQuestionModal,
@@ -33,6 +35,7 @@ const {
 
 const quiz = quizzesStore.currentQuiz
 const currentQuestion = computed(() => quizzesStore.currentQuestion)
+const teacherSubjects = computed(() => coursesStore.mySubjects)
 
 const { questionSettings, questionTypes, syncSettings } = useQuestionSettings(currentQuestion)
 const { showMediaUpload, onQuestionMediaChange, clearQuestionMedia } = useMediaUpload(
@@ -53,6 +56,10 @@ function saveQuiz() {
 }
 
 onMounted(() => {
+  if (currentQuestion.value) {
+    syncSettings()
+  }
+
   const importedQuestions = history.state?.importedQuestions
   if (importedQuestions && Array.isArray(importedQuestions)) {
     importedQuestions.forEach((q: any, index: number) => {
@@ -79,6 +86,12 @@ onMounted(() => {
     })
     
     useToast().success(`Successfully imported ${importedQuestions.length} question${importedQuestions.length > 1 ? 's' : ''}!`)
+  }
+})
+
+watch(currentQuestion, (newQuestion) => {
+  if (newQuestion) {
+    syncSettings()
   }
 })
 
@@ -131,9 +144,9 @@ defineExpose({
                   <select v-model="quiz.subject" 
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Select Course</option>
-                    <option value="math">Information Assurance</option>
-                    <option value="science">Automata</option>
-                    <option value="history">Computer Architecture</option>
+                    <option v-for="subject in teacherSubjects" :key="subject" :value="subject">
+                      {{ subject }}
+                    </option>
                   </select>
                 </div>
               </div>
