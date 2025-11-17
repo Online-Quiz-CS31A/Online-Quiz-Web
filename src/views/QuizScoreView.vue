@@ -2,17 +2,22 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
-import type { QuizViewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 // CONSTANTS
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
 
-interface ReviewQuestion extends QuizViewQuestion {
-  userAnswer: number | null
+interface ReviewQuestion {
+  question: string
+  options: string[]
+  correctAnswer: number
+  userAnswer: any
   isCorrect: boolean
   points: number
+  questionType?: string
+  correctAnswerText?: string
+  userAnswerText?: string
 }
 
 const questions: ReviewQuestion[] = quizzesStore.getScoreItems() as ReviewQuestion[]
@@ -196,41 +201,91 @@ const isCorrectOption = (optionIndex: number) => {
             </div>
             
             <div class="space-y-3">
-              <div 
-                v-for="(option, index) in questions[currentQuestion].options" 
-                :key="index"
-                :class="[
-                  'relative flex items-center p-2 rounded-xl transition-all border-1',
-                  getOptionClass(index)
-                ]"
-              >
+              <!-- Multiple Choice / True-False Rendering -->
+              <template v-if="questions[currentQuestion].questionType === 'multiple-choice' || questions[currentQuestion].questionType === 'true-false' || !questions[currentQuestion].questionType">
                 <div 
-                  v-if="isCorrectOption(index) && questions[currentQuestion].userAnswer !== index" 
-                  class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
-                >
-                  Correct
-                </div>
-                <div class="mr-4 flex items-center justify-center w-8 h-8">
-                  <div 
-                    :class="[
-                      'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
-                      getOptionIconClass(index)
-                    ]"
-                  >
-                    <i 
-                      v-if="showIcon(index)" 
-                      :class="['fas', `fa-${getIconType(index)}`, 'text-xs']"
-                    ></i>
-                    <span v-else>{{ String.fromCharCode(65 + index) }}</span>
-                  </div>
-                </div>
-                <span 
+                  v-for="(option, index) in questions[currentQuestion].options" 
+                  :key="index"
                   :class="[
-                    'text-base font-medium',
-                    questions[currentQuestion].userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
+                    'relative flex items-center p-2 rounded-xl transition-all border-1',
+                    getOptionClass(index)
                   ]"
-                >{{ option }}</span>
-              </div>
+                >
+                  <div 
+                    v-if="isCorrectOption(index) && questions[currentQuestion].userAnswer !== index" 
+                    class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
+                  >
+                    Correct
+                  </div>
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div 
+                      :class="[
+                        'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                        getOptionIconClass(index)
+                      ]"
+                    >
+                      <i 
+                        v-if="showIcon(index)" 
+                        :class="['fas', `fa-${getIconType(index)}`,'text-xs']"
+                      ></i>
+                      <span v-else>{{ String.fromCharCode(65 + index) }}</span>
+                    </div>
+                  </div>
+                  <span 
+                    :class="[
+                      'text-base font-medium',
+                      questions[currentQuestion].userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
+                    ]"
+                  >{{ option }}</span>
+                </div>
+              </template>
+
+              <!-- Fill in the Blank Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'fill-blank'">
+                <div
+                  :class="[
+                    'flex items-center p-2 rounded-xl transition-all border-1',
+                    questions[currentQuestion].isCorrect
+                      ? 'bg-[#86efac] border-[#4ade80]'
+                      : 'bg-[#fca5a5] border-[#f87171]'
+                  ]"
+                >
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div
+                      :class="[
+                        'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                        questions[currentQuestion].isCorrect
+                          ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                          : 'bg-[#f87171] border-[#f87171] text-white'
+                      ]"
+                    >
+                      <i
+                        :class="[
+                          'fas',
+                          questions[currentQuestion].isCorrect ? 'fa-check' : 'fa-times',
+                          'text-xs'
+                        ]"
+                      ></i>
+                    </div>
+                  </div>
+                  <span class="text-base font-medium text-gray-800">
+                    {{ questions[currentQuestion].userAnswerText || questions[currentQuestion].userAnswer || '\u2014' }}
+                  </span>
+                </div>
+
+                <div class="mt-3 text-sm font-semibold text-[#16a34a]">
+                  CORRECT ANSWER: {{ questions[currentQuestion].correctAnswerText || '' }}
+                </div>
+              </template>
+
+              <!-- Fallback for other types -->
+              <template v-else>
+                <div class="flex items-center p-2 rounded-xl transition-all border-1 bg-[#F4F7F9] border-[#7B90DF]">
+                  <span class="text-base font-medium text-gray-800">
+                    {{ questions[currentQuestion].options[0] || 'Answer not displayed in quiz view' }}
+                  </span>
+                </div>
+              </template>
             </div>
           </div>
           

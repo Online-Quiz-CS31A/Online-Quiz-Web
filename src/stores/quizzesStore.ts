@@ -713,27 +713,77 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function getScoreItems() {
-    if (currentAttempt.quizId == null) return [] as { question: string; options: string[]; correctAnswer: number; userAnswer: number | null; isCorrect: boolean }[]
+    if (currentAttempt.quizId == null) {
+      return [] as {
+        question: string
+        options: string[]
+        correctAnswer: number
+        userAnswer: any
+        isCorrect: boolean
+        points: number
+        questionType?: string
+        correctAnswerText?: string
+        userAnswerText?: string
+      }[]
+    }
+
     const quizQuestions = getStudentQuizQuestions(currentAttempt.quizId)
+
     return quizQuestions.map((q, i) => {
-      let options: string[] = []
-      let correctIndex = 0
+      const rawUserAnswer = (i in currentAttempt.answers) ? currentAttempt.answers[i] : null
+
       if ((q.type === 'multiple-choice' || q.type === 'true-false') && q.options && q.options.length > 0) {
-        options = q.options.map(opt => opt.text)
+        const options = q.options.map(opt => opt.text)
         const idx = q.options.findIndex(opt => opt.isCorrect)
-        correctIndex = idx >= 0 ? idx : 0
-      } else {
-        options = ['Answer not displayed in quiz view']
-        correctIndex = 0
+        const correctIndex = idx >= 0 ? idx : 0
+        const isCorrect = rawUserAnswer !== null && rawUserAnswer === correctIndex
+
+        return {
+          question: q.text,
+          options,
+          correctAnswer: correctIndex,
+          userAnswer: rawUserAnswer,
+          isCorrect,
+          points: q.points ?? 0,
+          questionType: q.type
+        }
       }
-      const userAnswer = (i in currentAttempt.answers) ? currentAttempt.answers[i] : null
+
+      if (q.type === 'fill-blank') {
+        const correctTextRaw = q.correctAnswer || ''
+        const correctText = correctTextRaw.trim().toLowerCase()
+
+        let userText = ''
+        if (Array.isArray(rawUserAnswer) && rawUserAnswer.length > 0) {
+          userText = String(rawUserAnswer[0] ?? '')
+        } else if (typeof rawUserAnswer === 'string') {
+          userText = rawUserAnswer
+        }
+
+        const normalizedUser = userText.trim().toLowerCase()
+        const isCorrect = !!correctText && normalizedUser === correctText
+
+        return {
+          question: q.text,
+          options: [],
+          correctAnswer: 0,
+          userAnswer: userText,
+          isCorrect,
+          points: q.points ?? 0,
+          questionType: q.type,
+          correctAnswerText: correctTextRaw,
+          userAnswerText: userText
+        }
+      }
+
       return {
         question: q.text,
-        options,
-        correctAnswer: correctIndex,
-        userAnswer,
-        isCorrect: userAnswer !== null && userAnswer === correctIndex,
-        points: q.points ?? 0
+        options: ['Answer not displayed in quiz view'],
+        correctAnswer: 0,
+        userAnswer: rawUserAnswer,
+        isCorrect: false,
+        points: q.points ?? 0,
+        questionType: q.type
       }
     })
   }
@@ -812,12 +862,24 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     quizQuestions.forEach((q, i) => {
       totalPoints += q.points || 0
-      
+
+      const userAnswer = currentAttempt.answers[i]
+
       if ((q.type === 'multiple-choice' || q.type === 'true-false') && q.options && q.options.length > 0) {
         const correctIndex = q.options.findIndex(opt => opt.isCorrect)
-        const userAnswer = currentAttempt.answers[i]
-        
         if (userAnswer !== undefined && userAnswer === correctIndex) {
+          score += q.points || 0
+        }
+      } else if (q.type === 'fill-blank') {
+        const correctText = (q.correctAnswer || '').trim().toLowerCase()
+        let userText = ''
+        if (Array.isArray(userAnswer) && userAnswer.length > 0) {
+          userText = String(userAnswer[0] ?? '')
+        } else if (typeof userAnswer === 'string') {
+          userText = userAnswer
+        }
+        const normalizedUser = userText.trim().toLowerCase()
+        if (correctText && normalizedUser === correctText) {
           score += q.points || 0
         }
       }
