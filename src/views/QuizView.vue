@@ -328,23 +328,38 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             <!-- Matching Type -->
             <div v-else-if="questions[currentQuestion].type === 'matching'" class="space-y-3">
               <div class="grid grid-cols-2 gap-6">
+                <!-- Column A -->
                 <div>
                   <h3 class="font-semibold text-gray-700 mb-3">Column A</h3>
-                  <div v-for="(left, index) in (((questions[currentQuestion] as any)?.leftColumn) || [])" :key="index" class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg">
-                    {{ index + 1 }}. {{ left }}
+                  <div
+                    v-for="(pair, index) in ((questions[currentQuestion] as any).pairs || [])"
+                    :key="index"
+                    class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg"
+                  >
+                    {{ index + 1 }}. {{ pair.left }}
                   </div>
                 </div>
+
+                <!-- Column B -->
                 <div>
-                  <h3 class="font-semibold text-gray-700 mb-3">Match with</h3>
-                  <div v-for="(left, leftIndex) in (((questions[currentQuestion] as any)?.leftColumn) || [])" :key="leftIndex" class="mb-2">
+                  <h3 class="font-semibold text-gray-700 mb-3">Column B</h3>
+                  <div
+                    v-for="(pair, leftIndex) in ((questions[currentQuestion] as any).pairs || [])"
+                    :key="leftIndex"
+                    class="mb-2"
+                  >
                     <select
                       v-model="matchingAnswers[leftIndex]"
                       @change="updateMatchingAnswer(leftIndex, matchingAnswers[leftIndex])"
                       class="w-full p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
                     >
                       <option value="">Select answer...</option>
-                      <option v-for="(right, rightIndex) in (((questions[currentQuestion] as any)?.rightColumn) || [])" :key="rightIndex" :value="rightIndex">
-                        {{ String.fromCharCode(65 + rightIndex) }}. {{ right }}
+                      <option
+                        v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as any).pairs || [])"
+                        :key="rightIndex"
+                        :value="rightIndex"
+                      >
+                        {{ String.fromCharCode(65 + rightIndex) }}. {{ rightPair.right }}
                       </option>
                     </select>
                   </div>
