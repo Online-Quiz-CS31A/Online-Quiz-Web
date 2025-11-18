@@ -977,6 +977,21 @@ export const useQuizzesStore = defineStore('quizzes', () => {
             score += q.points || 0
           }
         }
+      } else if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
+        const pairs = q.pairs
+        const userMap: Record<number, number> =
+          userAnswer && typeof userAnswer === 'object' && !Array.isArray(userAnswer)
+            ? (userAnswer as Record<number, number>)
+            : {}
+
+        const allCorrect = pairs.length > 0 && pairs.every((_, leftIndex) => {
+          const selectedIndex = userMap[leftIndex]
+          return selectedIndex !== undefined && selectedIndex === leftIndex
+        })
+
+        if (allCorrect) {
+          score += q.points || 0
+        }
       }
     })
 
