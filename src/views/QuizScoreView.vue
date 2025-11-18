@@ -133,6 +133,16 @@ const isCorrectOption = (optionIndex: number) => {
   return question.correctAnswer === optionIndex
 }
 
+const isShortAnswerCorrect = (answer: any) => {
+  if (!answer) return false
+  const text = String(answer).trim()
+  if (!text) return false
+  const sentences = text
+    .split(/[.!?\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+  return sentences.length >= 2 && sentences.length <= 3
+}
 </script>
 
 <template>
@@ -231,9 +241,11 @@ const isCorrectOption = (optionIndex: number) => {
               </template>
 
               <!-- Fill in the Blank Rendering -->
-              
               <template v-else-if="questions[currentQuestion].questionType === 'fill-blank'">
-                  <div class="mt-3 text-sm">
+                <div
+                  v-if="!questions[currentQuestion].isCorrect"
+                  class="mt-3 text-sm"
+                >
                   <span class="font-semibold text-[#16a34a]">Correct answer: </span>
                   <span class="font-semibold text-gray-800">
                     {{ questions[currentQuestion].correctAnswerText || '' }}
@@ -268,6 +280,57 @@ const isCorrectOption = (optionIndex: number) => {
                   </div>
 
                   
+                  <span class="text-base font-medium text-gray-800">
+                    {{
+                      questions[currentQuestion].userAnswer &&
+                      String(questions[currentQuestion].userAnswer).trim() !== ''
+                        ? questions[currentQuestion].userAnswer
+                        : '(unanswered)'
+                    }}
+                  </span>
+                </div>
+              </template>
+
+              <!-- Short Answer Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'short-answer'">
+                <div
+                  v-if="!isShortAnswerCorrect(questions[currentQuestion].userAnswer)"
+                  class="mb-2 text-sm"
+                >
+                  <span class="font-semibold text-[#16a34a]">Correct answer:</span>
+                  <span class="font-semibold text-gray-800">
+                    answer must be 2-3 sentences
+                  </span>
+                </div>
+
+                <div
+                  :class="[
+                    'flex items-center p-2 rounded-xl transition-all border-1',
+                    isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                      ? 'bg-[#86efac] border-[#4ade80]'
+                      : 'bg-[#fca5a5] border-[#f87171]'
+                  ]"
+                >
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div
+                      :class="[
+                        'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                        isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                          ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                          : 'bg-[#f87171] border-[#f87171] text-white'
+                      ]"
+                    >
+                      <i
+                        :class="[
+                          'fas',
+                          isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                            ? 'fa-check'
+                            : 'fa-times',
+                          'text-xs'
+                        ]"
+                      ></i>
+                    </div>
+                  </div>
                   <span class="text-base font-medium text-gray-800">
                     {{
                       questions[currentQuestion].userAnswer &&

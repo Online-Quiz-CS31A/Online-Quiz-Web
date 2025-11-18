@@ -776,6 +776,30 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
       }
 
+      if (q.type === 'short-answer') {
+        const userText = rawUserAnswer != null ? String(rawUserAnswer) : ''
+        const trimmed = userText.trim()
+        const sentences = trimmed
+          ? trimmed
+              .split(/[.!?\n]+/)
+              .map(s => s.trim())
+              .filter(Boolean)
+          : []
+
+        const isCorrect = sentences.length >= 2 && sentences.length <= 3
+
+        return {
+          question: q.text,
+          options: [],
+          correctAnswer: 0,
+          userAnswer: userText,
+          isCorrect,
+          points: q.points ?? 0,
+          questionType: q.type,
+          correctAnswerText: 'answer must be 2-3 sentences'
+        }
+      }
+
       return {
         question: q.text,
         options: ['Answer not displayed in quiz view'],
@@ -880,6 +904,19 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
         const normalizedUser = userText.trim().toLowerCase()
         if (correctText && normalizedUser === correctText) {
+          score += q.points || 0
+        }
+      } else if (q.type === 'short-answer') {
+        const userText = userAnswer != null ? String(userAnswer) : ''
+        const trimmed = userText.trim()
+        const sentences = trimmed
+          ? trimmed
+              .split(/[.!?\n]+/)
+              .map(s => s.trim())
+              .filter(Boolean)
+          : []
+
+        if (sentences.length >= 2 && sentences.length <= 3) {
           score += q.points || 0
         }
       }
