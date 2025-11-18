@@ -353,6 +353,17 @@ export interface ReviewQuestion {
   answered: boolean
 }
 
+export interface ScoreReviewQuestion {
+  question: string
+  options: string[]
+  correctAnswer: number
+  userAnswer: any
+  isCorrect: boolean
+  points: number
+  questionType?: string
+  correctAnswerText?: string
+}
+
 export interface Notification {
   id: number
   title: string

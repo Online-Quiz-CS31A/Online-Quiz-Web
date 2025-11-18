@@ -2,25 +2,14 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
+import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 // CONSTANTS
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
 
-interface ReviewQuestion {
-  question: string
-  options: string[]
-  correctAnswer: number
-  userAnswer: any
-  isCorrect: boolean
-  points: number
-  questionType?: string
-  correctAnswerText?: string
-  userAnswerText?: string
-}
-
-const questions: ReviewQuestion[] = quizzesStore.getScoreItems() as ReviewQuestion[]
+const questions: ScoreReviewQuestion[] = quizzesStore.getScoreItems() as ScoreReviewQuestion[]
 
 // REFS
 const currentQuestion = ref(0)
@@ -143,6 +132,7 @@ const isCorrectOption = (optionIndex: number) => {
   const question = questions[currentQuestion.value]
   return question.correctAnswer === optionIndex
 }
+
 </script>
 
 <template>
@@ -241,7 +231,14 @@ const isCorrectOption = (optionIndex: number) => {
               </template>
 
               <!-- Fill in the Blank Rendering -->
+              
               <template v-else-if="questions[currentQuestion].questionType === 'fill-blank'">
+                  <div class="mt-3 text-sm">
+                  <span class="font-semibold text-[#16a34a]">Correct answer: </span>
+                  <span class="font-semibold text-gray-800">
+                    {{ questions[currentQuestion].correctAnswerText || '' }}
+                  </span>
+                </div>
                 <div
                   :class="[
                     'flex items-center p-2 rounded-xl transition-all border-1',
@@ -250,6 +247,7 @@ const isCorrectOption = (optionIndex: number) => {
                       : 'bg-[#fca5a5] border-[#f87171]'
                   ]"
                 >
+                
                   <div class="mr-4 flex items-center justify-center w-8 h-8">
                     <div
                       :class="[
@@ -268,13 +266,16 @@ const isCorrectOption = (optionIndex: number) => {
                       ></i>
                     </div>
                   </div>
-                  <span class="text-base font-medium text-gray-800">
-                    {{ questions[currentQuestion].userAnswerText || questions[currentQuestion].userAnswer || '\u2014' }}
-                  </span>
-                </div>
 
-                <div class="mt-3 text-sm font-semibold text-[#16a34a]">
-                  CORRECT ANSWER: {{ questions[currentQuestion].correctAnswerText || '' }}
+                  
+                  <span class="text-base font-medium text-gray-800">
+                    {{
+                      questions[currentQuestion].userAnswer &&
+                      String(questions[currentQuestion].userAnswer).trim() !== ''
+                        ? questions[currentQuestion].userAnswer
+                        : '(unanswered)'
+                    }}
+                  </span>
                 </div>
               </template>
 
