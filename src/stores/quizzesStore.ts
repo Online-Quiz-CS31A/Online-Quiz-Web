@@ -786,7 +786,17 @@ export const useQuizzesStore = defineStore('quizzes', () => {
               .filter(Boolean)
           : []
 
-        const isCorrect = sentences.length >= 2 && sentences.length <= 3
+        let isCorrect = false
+        if (sentences.length >= 2 && sentences.length <= 3) {
+          const allSentencesLongEnough = sentences.every(sentence => {
+            const words = sentence
+              .split(/\s+/)
+              .map(w => w.trim())
+              .filter(Boolean)
+            return words.length >= 3
+          })
+          isCorrect = allSentencesLongEnough
+        }
 
         return {
           question: q.text,
@@ -917,7 +927,17 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           : []
 
         if (sentences.length >= 2 && sentences.length <= 3) {
-          score += q.points || 0
+          const allSentencesLongEnough = sentences.every(sentence => {
+            const words = sentence
+              .split(/\s+/)
+              .map(w => w.trim())
+              .filter(Boolean)
+            return words.length >= 3
+          })
+
+          if (allSentencesLongEnough) {
+            score += q.points || 0
+          }
         }
       }
     })

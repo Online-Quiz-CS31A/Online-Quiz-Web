@@ -141,7 +141,18 @@ const isShortAnswerCorrect = (answer: any) => {
     .split(/[.!?\n]+/)
     .map(s => s.trim())
     .filter(Boolean)
-  return sentences.length >= 2 && sentences.length <= 3
+
+  if (sentences.length < 2 || sentences.length > 3) return false
+
+  const allSentencesLongEnough = sentences.every(sentence => {
+    const words = sentence
+      .split(/\s+/)
+      .map(w => w.trim())
+      .filter(Boolean)
+    return words.length >= 3
+  })
+
+  return allSentencesLongEnough
 }
 </script>
 
