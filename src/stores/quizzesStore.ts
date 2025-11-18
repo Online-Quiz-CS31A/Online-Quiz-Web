@@ -842,7 +842,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           correctAnswer: 0,
           userAnswer: userMap,
           isCorrect,
-          points: q.points ?? 0,
+          points: (q.points ?? 0) * pairs.length,
           questionType: q.type,
           matchingPairs
         }
@@ -933,7 +933,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     let totalPoints = 0
 
     quizQuestions.forEach((q, i) => {
-      totalPoints += q.points || 0
+      const basePoints = q.points || 0
+
+      if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
+        totalPoints += basePoints * q.pairs.length
+      } else {
+        totalPoints += basePoints
+      }
 
       const userAnswer = currentAttempt.answers[i]
 
@@ -984,13 +990,16 @@ export const useQuizzesStore = defineStore('quizzes', () => {
             ? (userAnswer as Record<number, number>)
             : {}
 
-        const allCorrect = pairs.length > 0 && pairs.every((_, leftIndex) => {
+        const correctPairCount = pairs.reduce((count, _pair, leftIndex) => {
           const selectedIndex = userMap[leftIndex]
-          return selectedIndex !== undefined && selectedIndex === leftIndex
-        })
+          if (selectedIndex !== undefined && selectedIndex === leftIndex) {
+            return count + 1
+          }
+          return count
+        }, 0)
 
-        if (allCorrect) {
-          score += q.points || 0
+        if (correctPairCount > 0) {
+          score += basePoints * correctPairCount
         }
       }
     })

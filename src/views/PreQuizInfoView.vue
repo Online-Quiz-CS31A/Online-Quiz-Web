@@ -71,7 +71,13 @@ const quiz = computed(() => {
     ? history[history.length - 1].percentage - history[0].percentage 
     : 0
   
-  const overallTotalPoints = quizQuestions.reduce((sum: number, q: any) => sum + (typeof q.points === 'number' ? q.points : 1), 0)
+  const overallTotalPoints = quizQuestions.reduce((sum: number, q: any) => {
+    const base = typeof q.points === 'number' ? q.points : 1
+    if (q.type === 'matching' && Array.isArray((q as any).pairs) && (q as any).pairs.length > 0) {
+      return sum + base * (q as any).pairs.length
+    }
+    return sum + base
+  }, 0)
   const basePoints = overallTotalPoints
   const passingScore = Math.ceil(basePoints * 0.5)
   
