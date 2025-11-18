@@ -362,6 +362,14 @@ export interface ScoreReviewQuestion {
   points: number
   questionType?: string
   correctAnswerText?: string
+  userAnswerText?: string
+  matchingPairs?: {
+    left: string
+    right: string
+    userIndex?: number
+    userRight?: string
+    isCorrect: boolean
+  }[]
 }
 
 export interface Notification {

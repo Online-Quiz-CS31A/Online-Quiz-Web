@@ -353,6 +353,73 @@ const isShortAnswerCorrect = (answer: any) => {
                 </div>
               </template>
 
+              <!-- Matching Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'matching'">
+                <div>
+                  <div class="grid grid-cols-2 gap-6 mb-3">
+                    <h3 class="font-semibold text-gray-700">Column A</h3>
+                    <h3 class="font-semibold text-gray-700">Match with</h3>
+                  </div>
+
+                  <div
+                    v-for="(pair, index) in (questions[currentQuestion].matchingPairs || [])"
+                    :key="index"
+                    class="grid grid-cols-2 gap-6 mb-2 items-stretch"
+                  >
+                    <!-- Column A -->
+                    <div class="h-full">
+                      <div class="h-full flex items-center p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg">
+                        {{ index + 1 }}. {{ pair.left }}
+                      </div>
+                    </div>
+
+                    <!-- Column B -->
+                    <div class="h-full">
+                      <div
+                        :class="[
+                          'h-full flex items-center p-2 rounded-xl transition-all border-1',
+                          pair.isCorrect
+                            ? 'bg-[#86efac] border-[#4ade80]'
+                            : 'bg-[#fca5a5] border-[#f87171]'
+                        ]"
+                      >
+                        <div class="mr-4 flex items-center justify-center w-8 h-8">
+                          <div
+                            :class="[
+                              'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                              pair.isCorrect
+                                ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                                : 'bg-[#f87171] border-[#f87171] text-white'
+                            ]"
+                          >
+                            <i
+                              :class="[
+                                'fas',
+                                pair.isCorrect ? 'fa-check' : 'fa-times',
+                                'text-xs'
+                              ]"
+                            ></i>
+                          </div>
+                        </div>
+
+                        <div class="flex flex-col text-sm">
+                          <span class="font-medium text-gray-800">
+                            Your answer:
+                            <span v-if="pair.userRight && pair.userRight.trim() !== ''">
+                              {{ pair.userRight }}
+                            </span>
+                            <span v-else>(unanswered)</span>
+                          </span>
+                          <span v-if="!pair.isCorrect" class="text-xs text-[#16a34a] mt-1">
+                            Correct: {{ pair.right }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
               <!-- Fallback for other types -->
               <template v-else>
                 <div class="flex items-center p-2 rounded-xl transition-all border-1 bg-[#F4F7F9] border-[#7B90DF]">

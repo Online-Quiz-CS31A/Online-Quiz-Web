@@ -810,6 +810,44 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
       }
 
+      if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
+        const pairs = q.pairs
+        const userMap: Record<number, number> =
+          rawUserAnswer && typeof rawUserAnswer === 'object' && !Array.isArray(rawUserAnswer)
+            ? (rawUserAnswer as Record<number, number>)
+            : {}
+
+        const matchingPairs = pairs.map((pair, leftIndex) => {
+          const userIndex = userMap[leftIndex]
+          const isPairCorrect = userIndex !== undefined && userIndex === leftIndex
+          const userRight =
+            userIndex !== undefined && userIndex >= 0 && userIndex < pairs.length
+              ? pairs[userIndex].right
+              : ''
+
+          return {
+            left: pair.left,
+            right: pair.right,
+            userIndex,
+            userRight,
+            isCorrect: isPairCorrect
+          }
+        })
+
+        const isCorrect = matchingPairs.length > 0 && matchingPairs.every(p => p.isCorrect)
+
+        return {
+          question: q.text,
+          options: [],
+          correctAnswer: 0,
+          userAnswer: userMap,
+          isCorrect,
+          points: q.points ?? 0,
+          questionType: q.type,
+          matchingPairs
+        }
+      }
+
       return {
         question: q.text,
         options: ['Answer not displayed in quiz view'],
