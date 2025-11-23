@@ -86,7 +86,12 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     } else if (q.type === 'short-answer' || q.type === 'essay') {
       textAnswer.value = typeof answer === 'string' ? answer : ''
     } else if (q.type === 'enumeration') {
-      enumerationAnswers.value = Array.isArray(answer) ? answer : []
+      if (Array.isArray(answer)) {
+        enumerationAnswers.value = answer
+      } else {
+        const items = ((q as any)?.items || []) as string[]
+        enumerationAnswers.value = Array(items.length).fill('')
+      }
     } else if (q.type === 'matching') {
       matchingAnswers.value = (typeof answer === 'object' && !Array.isArray(answer)) ? answer : {}
     } else if (q.type === 'fill-blank') {
@@ -313,14 +318,18 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
 
             <!-- Enumeration -->
             <div v-else-if="questions[currentQuestion].type === 'enumeration'" class="space-y-3">
-              <div v-for="i in Number(((questions[currentQuestion] as any)?.expectedItems) || 5)" :key="i" class="flex items-center gap-3">
-                <span class="text-gray-600 font-medium">{{ i }}.</span>
+              <div
+                v-for="(item, index) in (((questions[currentQuestion] as any)?.items) || [])"
+                :key="index"
+                class="flex items-center gap-3"
+              >
+                <span class="text-gray-600 font-medium">{{ index + 1 }}.</span>
                 <input
                   type="text"
-                  v-model="enumerationAnswers[i - 1]"
-                  @input="updateEnumerationAnswer(i - 1, enumerationAnswers[i - 1])"
+                  v-model="enumerationAnswers[index]"
+                  @input="updateEnumerationAnswer(index, enumerationAnswers[index])"
                   class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
-                  :placeholder="`Item ${i}`"
+                  :placeholder="`Item ${index + 1}`"
                 />
               </div>
             </div>

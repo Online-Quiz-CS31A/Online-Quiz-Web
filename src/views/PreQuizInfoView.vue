@@ -76,9 +76,13 @@ const quiz = computed(() => {
     if (q.type === 'matching' && Array.isArray((q as any).pairs) && (q as any).pairs.length > 0) {
       return sum + base * (q as any).pairs.length
     }
+    if (q.type === 'enumeration' && Array.isArray((q as any).items) && (q as any).items.length > 0) {
+      return sum + base * (q as any).items.length
+    }
     return sum + base
   }, 0)
-  const basePoints = overallTotalPoints
+
+  const basePoints = bestAttempt ? bestAttempt.totalPoints : overallTotalPoints
   const passingScore = Math.ceil(basePoints * 0.5)
   
   return {

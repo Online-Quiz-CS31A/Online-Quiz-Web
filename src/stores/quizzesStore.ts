@@ -848,6 +848,39 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
       }
 
+      if (q.type === 'enumeration') {
+        const items = Array.isArray((q as any).items) ? ((q as any).items as string[]) : []
+        const userItems = Array.isArray(rawUserAnswer)
+          ? (rawUserAnswer as any[]).map(v => (v != null ? String(v) : ''))
+          : Array(items.length).fill('')
+
+        const normalize = (text: string) => text.trim().toLowerCase()
+        const correctNormalized = items.map(i => normalize(String(i || ''))).filter(Boolean)
+        const userNormalized = userItems.map(i => normalize(String(i || ''))).filter(Boolean)
+
+        const correctSet = new Set(correctNormalized)
+        const userSet = new Set(userNormalized)
+
+        let allCorrect = correctSet.size > 0
+        correctSet.forEach(val => {
+          if (!userSet.has(val)) {
+            allCorrect = false
+          }
+        })
+
+        return {
+          question: q.text,
+          options: items,
+          correctAnswer: 0,
+          userAnswer: userItems,
+          isCorrect: allCorrect,
+          points: q.points ?? 0,
+          questionType: q.type,
+          correctAnswerText: undefined,
+          userAnswerText: undefined
+        }
+      }
+
       return {
         question: q.text,
         options: ['Answer not displayed in quiz view'],
@@ -937,6 +970,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
       if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
         totalPoints += basePoints * q.pairs.length
+      } else if (q.type === 'enumeration' && Array.isArray(q.items) && q.items.length > 0) {
+        totalPoints += basePoints * q.items.length
       } else {
         totalPoints += basePoints
       }
@@ -982,6 +1017,30 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           if (allSentencesLongEnough) {
             score += q.points || 0
           }
+        }
+      } else if (q.type === 'enumeration' && Array.isArray(q.items) && q.items.length > 0) {
+        const items = q.items
+        const userItems: string[] = Array.isArray(userAnswer)
+          ? userAnswer.map((v: any) => (v != null ? String(v) : ''))
+          : []
+
+        const normalize = (text: string) => text.trim().toLowerCase()
+        const correctNormalized = items.map(item => normalize(String(item || ''))).filter(Boolean)
+        const userNormalized = userItems.map(item => normalize(String(item || ''))).filter(Boolean)
+
+        const userSet = new Set(userNormalized)
+
+        let correctItemCount = 0
+        const counted = new Set<string>()
+        correctNormalized.forEach(val => {
+          if (userSet.has(val) && !counted.has(val)) {
+            correctItemCount += 1
+            counted.add(val)
+          }
+        })
+
+        if (correctItemCount > 0) {
+          score += basePoints * correctItemCount
         }
       } else if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
         const pairs = q.pairs
