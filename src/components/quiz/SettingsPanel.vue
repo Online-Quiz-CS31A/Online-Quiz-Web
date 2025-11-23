@@ -90,24 +90,20 @@ function updateMediaType(value: string) {
         >
           <option value="none">None</option>
           <option value="image">Image</option>
-          <option value="video">Video</option>
         </select>
         <div v-if="showMediaUpload" class="">
           <div v-if="question?.mediaUrl" class="mb-3">
-            <div v-if="questionSettings.mediaType === 'image'" class="relative">
-              <img :src="question.mediaUrl" alt="question media" class="w-full h-40 object-cover rounded-md border" />
+            <div class="relative">
+              <img :src="question.mediaUrl" alt="question image" class="w-full h-40 object-cover rounded-md border" />
             </div>
-            <div v-else-if="questionSettings.mediaType === 'video'" class="relative">
-              <video :src="question.mediaUrl" controls class="w-full h-40 object-cover rounded-md border"></video>
-            </div>
-            <button @click="emit('clearMedia')" class="mt-2 text-red-600 text-sm hover:underline">Remove media</button>
+            <button @click="emit('clearMedia')" class="mt-2 text-red-600 text-sm hover:underline">Remove image</button>
           </div>
-          <label class="block w-full">
+          <label v-else class="block w-full">
             <div class="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-300 transition">
               <i class="fas fa-cloud-upload-alt text-3xl text-blue-300 mb-2"></i>
-              <p class="text-sm text-gray-500">Click to upload or drag and drop</p>
+              <p class="text-sm text-gray-500">Click to upload or drag and drop (image only)</p>
             </div>
-            <input type="file" accept="image/*,video/*" class="hidden" @change="emit('mediaChange', $event)" />
+            <input type="file" accept="image/*" class="hidden" @change="emit('mediaChange', $event)" />
           </label>
         </div>
       </div>

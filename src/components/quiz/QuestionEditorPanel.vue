@@ -50,6 +50,13 @@ function autoResizeTextarea(e: Event) {
               rows="1"
               placeholder="Type your question here..."
             ></textarea>
+            <div v-if="question.mediaUrl" class="mt-4">
+              <img
+                :src="question.mediaUrl"
+                alt="Question image"
+                class="w-full max-h-64 object-contain rounded-lg border border-gray-200"
+              />
+            </div>
           </div>
 
           <!-- Question Type Editors -->

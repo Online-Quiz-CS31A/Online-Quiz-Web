@@ -254,6 +254,13 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
               <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text }}</p>
+              <div v-if="questions[currentQuestion].mediaUrl" class="mb-6">
+                <img
+                  :src="questions[currentQuestion].mediaUrl"
+                  alt="Question image"
+                  class="w-full max-h-80 object-contain rounded-2xl border border-gray-200"
+                />
+              </div>
             </div>
             
             <!-- Multiple Choice / True-False -->
@@ -411,14 +418,13 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
         <div class="col-span-1">
           <div class="bg-[#F4F7F9] rounded-xl shadow-sm p-4">
             <div class="mb-4">
-                   <p class="text-sm text-gray-600 mb-2 text-right font-medium">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
+              <p class="text-sm text-gray-600 mb-2 text-right font-medium">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
               <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
                 <div 
                   class="h-full bg-[#4285f4] rounded-full transition-all duration-300" 
                   :style="{ width: progress + '%' }"
                 ></div>
               </div>
-         
             </div>
             <div class="grid grid-cols-5 gap-3">
               <button 
@@ -435,6 +441,17 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
                 @click="goToQuestion(questionIndex - 1)"
               >
                 {{ questionIndex }}
+              </button>
+            </div>
+
+            <!-- Finish Attempt Button -->
+            <div class="mt-6 pt-4 border-t border-gray-300">
+              <button 
+                @click="finishQuiz"
+                class="w-full px-4 py-2 bg-white border border-[#7B90DF] text-[#4285f4] rounded-xl font-medium hover:bg-[#F4F7F9] transition-all flex items-center justify-center gap-2"
+              >
+                <span>Finish Attempt</span>
+                <i class="fas fa-arrow-right text-sm"></i>
               </button>
             </div>
           </div>
