@@ -21,11 +21,9 @@ function getQuestionIcon(type: string) {
     'multiple-choice': 'fas fa-list-ul',
     'true-false': 'fas fa-check',
     'fill-blank': 'fas fa-pencil-alt',
-    'short-answer': 'fas fa-align-left',
+    'text': 'fas fa-align-left',
     'matching': 'fas fa-random',
     'enumeration': 'fas fa-list-ol',
-    'image-question': 'fas fa-image',
-    'essay': 'fas fa-pen-fancy',
   }
   return map[type] || 'fas fa-question'
 }

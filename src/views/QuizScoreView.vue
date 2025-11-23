@@ -143,7 +143,7 @@ const isShortAnswerCorrect = (answer: any) => {
     .map(s => s.trim())
     .filter(Boolean)
 
-  if (sentences.length < 2 || sentences.length > 3) return false
+  if (sentences.length < 3) return false
 
   const allSentencesLongEnough = sentences.every(sentence => {
     const words = sentence
@@ -206,7 +206,7 @@ const getQuestionScore = (index: number) => {
     return { earned, total }
   }
 
-  if (q.questionType === 'short-answer') {
+  if (q.questionType === 'text') {
     total = basePoints
     earned = isShortAnswerCorrect(q.userAnswer) ? basePoints : 0
     return { earned, total }
@@ -463,15 +463,15 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                 </div>
               </template>
 
-              <!-- Short Answer Rendering -->
-              <template v-else-if="questions[currentQuestion].questionType === 'short-answer'">
+              <!-- Text Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'text'">
                 <div
                   v-if="!isShortAnswerCorrect(questions[currentQuestion].userAnswer)"
                   class="mb-2 text-sm"
                 >
                   <span class="font-semibold text-[#16a34a]">Correct answer:</span>
                   <span class="font-semibold text-gray-800">
-                    answer must be 2-3 sentences
+                    answer must be at least 3 sentences
                   </span>
                 </div>
 

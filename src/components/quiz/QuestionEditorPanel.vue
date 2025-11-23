@@ -69,9 +69,9 @@ function autoResizeTextarea(e: Event) {
             v-else-if="question.type === 'fill-blank'"
             v-model:correctAnswer="question.correctAnswer"
           />
-          
-          <ShortAnswerEditor 
-            v-else-if="question.type === 'short-answer'"
+
+          <EssayEditor 
+            v-else-if="question.type === 'text'"
             v-model:correctAnswer="question.correctAnswer"
           />
           
@@ -83,11 +83,6 @@ function autoResizeTextarea(e: Event) {
           <EnumerationEditor 
             v-else-if="question.type === 'enumeration'"
             v-model:items="question.items"
-          />
-          
-          <EssayEditor 
-            v-else-if="question.type === 'essay'"
-            v-model:correctAnswer="question.correctAnswer"
           />
         </div>
       </div>

@@ -83,7 +83,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     
     if (q.type === 'multiple-choice' || q.type === 'true-false') {
       selectedOption.value = typeof answer === 'number' ? answer : null
-    } else if (q.type === 'short-answer' || q.type === 'essay') {
+    } else if (q.type === 'text') {
       textAnswer.value = typeof answer === 'string' ? answer : ''
     } else if (q.type === 'enumeration') {
       if (Array.isArray(answer)) {
@@ -174,7 +174,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
         if (typeof answer === 'number') {
           selectedOption.value = answer
         }
-      } else if (q.type === 'short-answer' || q.type === 'essay') {
+      } else if (q.type === 'text') {
         if (typeof answer === 'string') {
           textAnswer.value = answer
         }
@@ -294,25 +294,14 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
               </div>
             </div>
 
-            <!-- Short Answer -->
-            <div v-else-if="questions[currentQuestion].type === 'short-answer'" class="space-y-3">
+            <!-- Text -->
+            <div v-else-if="questions[currentQuestion].type === 'text'" class="space-y-3">
               <textarea
                 v-model="textAnswer"
                 @input="updateTextAnswer"
                 class="w-full p-4 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none resize-none"
-                rows="4"
-                placeholder="Type your answer here..."
-              ></textarea>
-            </div>
-
-            <!-- Essay -->
-            <div v-else-if="questions[currentQuestion].type === 'essay'" class="space-y-3">
-              <textarea
-                v-model="textAnswer"
-                @input="updateTextAnswer"
-                class="w-full p-4 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none resize-none"
-                rows="8"
-                placeholder="Write your essay here..."
+                rows="6"
+                placeholder="Type your answer here... (minimum 3 sentences)"
               ></textarea>
             </div>
 

@@ -15,11 +15,9 @@ export function useQuestionSettings(currentQuestion: ComputedRef<QuizQuestion | 
     { value: 'multiple-choice', label: 'Multiple Choice' },
     { value: 'true-false', label: 'True/False' },
     { value: 'fill-blank', label: 'Fill in the Blank' },
-    { value: 'short-answer', label: 'Short Answer' },
+    { value: 'text', label: 'Text' },
     { value: 'matching', label: 'Matching' },
-    { value: 'enumeration', label: 'Enumeration' },
-    { value: 'image-question', label: 'Image Question' },
-    { value: 'essay', label: 'Essay' }
+    { value: 'enumeration', label: 'Enumeration' }
   ]
 
   function updateQuestionType() {

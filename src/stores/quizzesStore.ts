@@ -449,9 +449,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       case 'enumeration':
         currentQuestion.value.items = ['Item 1', 'Item 2']
         break
-      case 'image-question':
-        currentQuestion.value.mediaType = 'image'
-        break
     }
   }
 
@@ -776,7 +773,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
       }
 
-      if (q.type === 'short-answer') {
+      if (q.type === 'text') {
         const userText = rawUserAnswer != null ? String(rawUserAnswer) : ''
         const trimmed = userText.trim()
         const sentences = trimmed
@@ -785,9 +782,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
               .map(s => s.trim())
               .filter(Boolean)
           : []
-
         let isCorrect = false
-        if (sentences.length >= 2 && sentences.length <= 3) {
+        if (sentences.length >= 3) {
           const allSentencesLongEnough = sentences.every(sentence => {
             const words = sentence
               .split(/\s+/)
@@ -805,8 +801,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           userAnswer: userText,
           isCorrect,
           points: q.points ?? 0,
-          questionType: q.type,
-          correctAnswerText: 'answer must be 2-3 sentences'
+          questionType: 'text',
+          correctAnswerText: 'answer must be at least 3 sentences'
         }
       }
 
@@ -995,7 +991,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         if (correctText && normalizedUser === correctText) {
           score += q.points || 0
         }
-      } else if (q.type === 'short-answer') {
+      } else if (q.type === 'text') {
         const userText = userAnswer != null ? String(userAnswer) : ''
         const trimmed = userText.trim()
         const sentences = trimmed

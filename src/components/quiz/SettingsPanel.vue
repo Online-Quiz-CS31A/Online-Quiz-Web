@@ -68,6 +68,12 @@ function updateMediaType(value: string) {
               min="1" 
               class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+            <p
+              v-if="questionSettings.type === 'enumeration' || questionSettings.type === 'matching'"
+              class="mt-1 text-xs text-gray-500"
+            >
+              Points per item
+            </p>
           </div>
         </div>
       </div>
