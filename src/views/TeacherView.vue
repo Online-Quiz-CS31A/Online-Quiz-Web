@@ -12,6 +12,7 @@ const TeacherClasses = defineAsyncComponent(() => import('@/components/teacher/T
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
 const ArchivedCourses = defineAsyncComponent(() => import('@/components/teacher/ArchivedCourses.vue'))
+const ArchivedClasses = defineAsyncComponent(() => import('@/components/teacher/ArchivedClasses.vue'))
 const ArchivedQuizzes = defineAsyncComponent(() => import('@/components/teacher/ArchivedQuizzes.vue'))
 
 // REFS
@@ -19,7 +20,7 @@ const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
 const showImport = ref(false)
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
-const archivedView = ref<'courses' | 'quizzes'>('courses')
+const archivedView = ref<'courses' | 'classes' | 'quizzes'>('courses')
 const archivedQuizzesTab = ref<'published' | 'draft'>('published')
 
 // REACTIVE
@@ -129,6 +130,11 @@ const navigateToArchivedCourses = () => {
   archivedView.value = 'courses'
 }
 
+const navigateToArchivedClasses = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'classes'
+}
+
 const navigateToArchivedQuizzes = () => {
   currentSection.value = 'archived'
   archivedView.value = 'quizzes'
@@ -196,6 +202,7 @@ onUnmounted(() => {
       @nav-calendar="navigateToCalendar"
       @nav-archived="navigateToArchived"
       @nav-archived-courses="navigateToArchivedCourses"
+      @nav-archived-classes="navigateToArchivedClasses"
       @nav-archived-quizzes="navigateToArchivedQuizzes"
       @nav-archived-quizzes-published="navigateToArchivedQuizzesPublished"
       @nav-archived-quizzes-draft="navigateToArchivedQuizzesDraft"
@@ -222,6 +229,7 @@ onUnmounted(() => {
         <!-- Archived Section -->
         <div v-else-if="currentSection === 'archived'" class="space-y-6">
           <ArchivedCourses v-if="archivedView === 'courses'" />
+          <ArchivedClasses v-else-if="archivedView === 'classes'" />
           <ArchivedQuizzes v-else :tab="archivedQuizzesTab" @update:tab="value => (archivedQuizzesTab = value)" />
         </div>
         <!-- Courses Section (View All) -->

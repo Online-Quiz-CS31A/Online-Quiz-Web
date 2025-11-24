@@ -10,7 +10,9 @@ import bg5 from '@/assets/image/bg5.jpg'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
+import ClassSectionCard from '@/components/teacher/ClassSectionCard.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const SectionDeleteModal = defineAsyncComponent(() => import('@/components/modals/SectionDeleteModal.vue'))
 
 // CONSTANTS
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
@@ -27,11 +29,14 @@ const newClass = reactive({ name: '', description: '', students: 1 })
 
 // REFS
 const showCreateClass = ref(false)
+const showDeleteSectionModal = ref(false)
 const showDetails = ref(false)
 const selectedClassId = ref<string | null>(null)
 const openMenuId = ref<number | null>(null)
 const isEditing = ref(false)
 const editingId = ref<number | null>(null)
+const sectionToDeleteId = ref<number | null>(null)
+const sectionToDeleteName = ref('')
 
 // COMPUTED
 const sections = computed(() => {
@@ -109,10 +114,31 @@ function openEditClass(id: number) {
 }
 
 function deleteClass(id: number) {
-  sectionsStore.removeSectionFromCourse(id, Number(props.id))
+  sectionsStore.archiveSection(id, Number(props.id))
   if (selectedClassId.value === String(id)) {
     closeDetails()
   }
+}
+
+function openDeleteSectionModal(id: number, name: string) {
+  sectionToDeleteId.value = id
+  sectionToDeleteName.value = name
+  showDeleteSectionModal.value = true
+}
+
+function handleConfirmDeleteSection() {
+  if (sectionToDeleteId.value != null) {
+    deleteClass(sectionToDeleteId.value)
+  }
+  showDeleteSectionModal.value = false
+  sectionToDeleteId.value = null
+  sectionToDeleteName.value = ''
+}
+
+function handleCancelDeleteSection() {
+  showDeleteSectionModal.value = false
+  sectionToDeleteId.value = null
+  sectionToDeleteName.value = ''
 }
 
 function closeDetails() {
@@ -196,81 +222,38 @@ function openDashboard(id: number) {
 
         <!-- Classes Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="section in sectionsWithSchedule" :key="section.id"
-            class="rounded-xl shadow-md overflow-hidden class-card transition-all duration-300 text-white"
-            @click="openDashboard(section.id)">
-            <div class="p-6 relative cursor-pointer">
-              <div class="relative z-10">
-                <div class="flex justify-between items-start">
-                  <h3 class="text-lg font-bold text-white">{{ section.name }}</h3>
-                  <div class="relative">
-                    <button @click.stop="toggleMenu(section.id)" 
-                      class="text-white hover:text-gray-200 text-lg" 
-                      aria-label="More options" 
-                      :aria-expanded="openMenuId === section.id">
-                      <i class="fas fa-ellipsis-vertical cursor-pointer"></i>
-                    </button>
-                    <!-- Dropdown menu -->
-                    <div v-if="openMenuId === section.id" @click.stop 
-                      class="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10">
-                      <!-- Edit button -->
-                      <button @click="openEditClass(section.id)" 
-                        class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                        <span>Edit</span>
-                      </button>
-                      <!-- Delete button -->
-                      <button @click="deleteClass(section.id); openMenuId = null" 
-                        class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div class="mt-3 space-y-1">
-                  <div class="flex items-center text-white/90 text-sm">
-                    <i class="fas fa-calendar-day w-5 mr-2"></i>
-                    <span>{{ section.scheduleDay }} {{ section.scheduleTime }}</span>
-                  </div>
-                  <div class="flex items-center text-white/90 text-sm">
-                    <i class="fas fa-door-open w-5 mr-2"></i>
-                    <span>{{ section.classroom }}</span>
-                  </div>
-                </div>
-                <span class="inline-block mt-3 bg-white/20 text-white text-xs px-2 py-1 rounded-full">
-                  {{ section.students }} students
-                </span>
-              </div>
-            </div>
-            <div class="px-6 py-3 border-t border-gray-100 bg-white">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">
-                  <i class="fas fa-tasks mr-1"></i> Course Details
-                </span>
-              </div>
-            </div>
-          </div>
+          <ClassSectionCard
+            v-for="section in sectionsWithSchedule"
+            :key="section.id"
+            :section="{
+              id: section.id,
+              name: section.name,
+              scheduleDay: section.scheduleDay,
+              scheduleTime: section.scheduleTime,
+              classroom: section.classroom,
+              students: section.students,
+            }"
+            :show-menu="true"
+            :is-menu-open="openMenuId === section.id"
+            @card-click="openDashboard(section.id)"
+            @toggle-menu="toggleMenu(section.id)"
+            @edit="openEditClass(section.id)"
+            @delete="openDeleteSectionModal(section.id, section.name); openMenuId = null"
+          />
         </div>
       </div>
     </main>
+
+    <SectionDeleteModal
+      :open="showDeleteSectionModal"
+      :section-name="sectionToDeleteName"
+      @cancel="handleCancelDeleteSection"
+      @confirm="handleConfirmDeleteSection"
+    />
 
   </div>
 </template>
 
 <style scoped>
-
-.class-card > .p-6.relative {
-  background-image: url('https://img.pikbest.com/background/20180829/blue-cartoon-school-season-classroom-background-design_2745940.jpg!bw700');
-  background-size: cover;
-  background-position: center;
-  position: relative;
-}
-
-.class-card > .p-6.relative::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(30, 58, 138, 0.7), rgba(30, 58, 138, 0.7));
-  pointer-events: none;
-}
 
 </style>

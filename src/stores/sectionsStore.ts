@@ -57,12 +57,43 @@ export const useSectionsStore = defineStore('sections', () => {
 
   const auth = useAuthStore()
 
+  const archivedSectionMappings = ref<{ sectionId: number; courseId: number }[]>([])
+
+  function loadArchivedSectionsFromStorage() {
+    try {
+      const stored = localStorage.getItem('archivedSections')
+      if (stored) {
+        const parsed = JSON.parse(stored) as { sectionId: number; courseId: number }[]
+        if (Array.isArray(parsed)) {
+          archivedSectionMappings.value = parsed
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load archived sections from localStorage:', e)
+      archivedSectionMappings.value = []
+    }
+  }
+
+  function saveArchivedSectionsToStorage() {
+    try {
+      localStorage.setItem('archivedSections', JSON.stringify(archivedSectionMappings.value))
+    } catch (e) {
+      console.error('Failed to save archived sections to localStorage:', e)
+    }
+  }
+
+  loadArchivedSectionsFromStorage()
+
   function getSectionsByCourse(courseId: number): ClassSection[] {
     const sectionIds = courseSectionMappings.value
       .filter(m => m.courseId === courseId)
       .map(m => m.sectionId)
+
+    const archivedIdsForCourse = archivedSectionMappings.value
+      .filter(m => m.courseId === courseId)
+      .map(m => m.sectionId)
     
-    return allSections.value.filter(s => sectionIds.includes(s.id))
+    return allSections.value.filter(s => sectionIds.includes(s.id) && !archivedIdsForCourse.includes(s.id))
   }
 
   function addSection(newSection: Omit<ClassSection, 'id'>, courseId: number) {
@@ -93,6 +124,17 @@ export const useSectionsStore = defineStore('sections', () => {
     courseSectionMappings.value = courseSectionMappings.value.filter(
       m => !(m.courseId === courseId && m.sectionId === sectionId)
     )
+  }
+
+  function archiveSection(sectionId: number, courseId: number) {
+    const exists = archivedSectionMappings.value.some(
+      m => m.sectionId === sectionId && m.courseId === courseId
+    )
+    if (!exists) {
+      archivedSectionMappings.value.push({ sectionId, courseId })
+      saveArchivedSectionsToStorage()
+    }
+    removeSectionFromCourse(sectionId, courseId)
   }
 
   function deleteSection(id: number) {
@@ -129,11 +171,13 @@ export const useSectionsStore = defineStore('sections', () => {
     allSections,
     courseSectionMappings,
     courseSectionSchedules,
+    archivedSectionMappings,
     getSectionsByCourse,
     addSection,
     addSectionToCourse,
     updateSection,
     removeSectionFromCourse,
+    archiveSection,
     deleteSection,
     getSchedule,
     setSchedule,

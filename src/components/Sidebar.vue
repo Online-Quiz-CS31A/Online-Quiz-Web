@@ -49,6 +49,7 @@ defineEmits<{
   'nav-calendar': []
   'nav-archived': []
   'nav-archived-courses': []
+  'nav-archived-classes': []
   'nav-archived-quizzes': []
   'nav-archived-quizzes-published': []
   'nav-archived-quizzes-draft': []
@@ -274,6 +275,15 @@ async function handleImport(file: File) {
                     </button>
                   </li>
                 </ul>
+              </li>
+              <li class="mb-1">
+                <button 
+                  @click="$emit('nav-archived-classes')"
+                  class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                >
+                  <i class="fas fa-users mr-3"></i>
+                  <span>Classes</span>
+                </button>
               </li>
               <li class="mb-1">
                 <button 
