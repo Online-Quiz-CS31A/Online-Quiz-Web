@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useStudentsStore } from '@/stores/studentsStore'
-import type { QuizResultQuestion, Participant } from '@/interfaces/interfaces'
+import type { QuizResultQuestion, QuizResultChoice, Participant } from '@/interfaces/interfaces'
 
 // CONSTANTS
 const TOTAL_SEGMENTS = 5
@@ -57,27 +57,124 @@ const totalSubmissions = computed(() => {
 
 const totalStudents = computed(() => quizSection.value?.studentUsernames.length || 0)
 
+const latestAttemptsByStudent = computed(() => {
+  const attempts = allAttempts.value
+  const latest = new Map<string, any>()
+
+  attempts.forEach(attempt => {
+    const existing = latest.get(attempt.studentUsername)
+    if (!existing || attempt.attemptNumber > existing.attemptNumber) {
+      latest.set(attempt.studentUsername, attempt)
+    }
+  })
+
+  return Array.from(latest.values())
+})
+
+function isAnswerCorrectForQuestion(q: any, rawAnswer: any): boolean {
+  if (rawAnswer === undefined || rawAnswer === null) return false
+
+  if ((q.type === 'multiple-choice' || q.type === 'true-false') && Array.isArray(q.options) && q.options.length > 0) {
+    const correctIndex = q.options.findIndex((opt: any) => opt.isCorrect)
+    const safeCorrectIndex = correctIndex >= 0 ? correctIndex : 0
+    return rawAnswer === safeCorrectIndex
+  }
+
+  if (q.type === 'fill-blank') {
+    const correctTextRaw = q.correctAnswer || ''
+    const correctText = String(correctTextRaw).trim().toLowerCase()
+
+    let userText = ''
+    if (Array.isArray(rawAnswer) && rawAnswer.length > 0) {
+      userText = String(rawAnswer[0] ?? '')
+    } else if (typeof rawAnswer === 'string') {
+      userText = rawAnswer
+    }
+
+    const normalizedUser = userText.trim().toLowerCase()
+    return !!correctText && normalizedUser === correctText
+  }
+
+  if (q.type === 'text') {
+    const userText = rawAnswer != null ? String(rawAnswer) : ''
+    const trimmed = userText.trim()
+    const sentences = trimmed
+      ? trimmed
+          .split(/[.!?\n]+/)
+          .map(s => s.trim())
+          .filter(Boolean)
+      : []
+
+    if (sentences.length < 2 || sentences.length > 3) return false
+
+    const allSentencesLongEnough = sentences.every(sentence => {
+      const words = sentence
+        .split(/\s+/)
+        .map(w => w.trim())
+        .filter(Boolean)
+      return words.length >= 3
+    })
+
+    return allSentencesLongEnough
+  }
+
+  if (q.type === 'enumeration' && Array.isArray((q as any).items)) {
+    const items = (q as any).items as string[]
+    const userItems = Array.isArray(rawAnswer)
+      ? (rawAnswer as any[]).map(v => (v != null ? String(v) : ''))
+      : []
+
+    const normalize = (text: string) => text.trim().toLowerCase()
+    const correctNormalized = items.map(i => normalize(String(i || ''))).filter(Boolean)
+    const userNormalized = userItems.map(i => normalize(String(i || ''))).filter(Boolean)
+
+    const correctSet = new Set(correctNormalized)
+    const userSet = new Set(userNormalized)
+
+    if (correctSet.size === 0) return false
+
+    let allCorrect = true
+    correctSet.forEach(val => {
+      if (!userSet.has(val)) {
+        allCorrect = false
+      }
+    })
+
+    return allCorrect
+  }
+
+  if (q.type === 'matching' && Array.isArray((q as any).pairs) && (q as any).pairs.length > 0) {
+    const pairs = (q as any).pairs as { left: string; right: string }[]
+    const userMap: Record<number, number> =
+      rawAnswer && typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)
+        ? (rawAnswer as Record<number, number>)
+        : {}
+
+    if (pairs.length === 0) return false
+
+    return pairs.every((_pair, leftIndex) => {
+      const userIndex = userMap[leftIndex]
+      return userIndex !== undefined && userIndex === leftIndex
+    })
+  }
+
+  return false
+}
+
 const questions = computed<QuizResultQuestion[]>(() => {
   const baseQuestions = quizQuestions.value
-  const attempts = allAttempts.value
+  const attempts = latestAttemptsByStudent.value
 
   return baseQuestions.map((q, index) => {
-    const isChoiceType = q.type === 'multiple-choice' || q.type === 'true-false'
-
     let correctResponses = 0
     let incorrectResponses = 0
 
-    if (isChoiceType && Array.isArray(q.options) && q.options.length > 0) {
-      const correctIndex = q.options.findIndex(opt => opt.isCorrect)
-      const safeCorrectIndex = correctIndex >= 0 ? correctIndex : 0
-
-      attempts.forEach(attempt => {
-        const rawAnswer = attempt.answers[index]
-        if (rawAnswer === undefined || rawAnswer === null) return
-        if (rawAnswer === safeCorrectIndex) correctResponses++
-        else incorrectResponses++
-      })
-    }
+    attempts.forEach(attempt => {
+      const rawAnswer = attempt.answers[index]
+      const isCorrect = isAnswerCorrectForQuestion(q, rawAnswer)
+      if (isCorrect) correctResponses++
+      else incorrectResponses++
+    })
 
     const totalAnswers = correctResponses + incorrectResponses
     const totalParticipants = totalStudents.value || 0
@@ -89,27 +186,51 @@ const questions = computed<QuizResultQuestion[]>(() => {
 
     const correctPercentage = `${correctPercentageNum}%`
 
-    const choices = isChoiceType && Array.isArray(q.options)
-      ? q.options.map((opt, optIndex) => {
-          let choiceCount = 0
-          attempts.forEach(attempt => {
-            const rawAnswer = attempt.answers[index]
-            if (rawAnswer === optIndex) {
-              choiceCount++
-            }
-          })
+    let choices: QuizResultChoice[] = []
 
-          const percentage = percentDenominator > 0
-            ? Math.round((choiceCount / percentDenominator) * 100)
-            : 0
-
-          return {
-            text: opt.text,
-            correct: !!opt.isCorrect,
-            percentage,
+    if ((q.type === 'multiple-choice' || q.type === 'true-false') && Array.isArray(q.options)) {
+      choices = q.options.map((opt, optIndex) => {
+        let choiceCount = 0
+        attempts.forEach(attempt => {
+          const rawAnswer = attempt.answers[index]
+          if (rawAnswer === optIndex) {
+            choiceCount++
           }
         })
-      : []
+
+        const percentage = percentDenominator > 0
+          ? Math.round((choiceCount / percentDenominator) * 100)
+          : 0
+
+        return {
+          text: opt.text,
+          correct: !!opt.isCorrect,
+          percentage,
+        }
+      })
+    } else if (q.type === 'enumeration' && Array.isArray((q as any).items)) {
+      const items = (q as any).items as string[]
+      choices = items.map(item => ({
+        text: item,
+        correct: true,
+        percentage: 0,
+      }))
+    } else if (q.type === 'matching' && Array.isArray((q as any).pairs)) {
+      const pairs = (q as any).pairs as { left: string; right: string }[]
+      choices = pairs.map(pair => ({
+        text: `${pair.left} → ${pair.right}`,
+        correct: true,
+        percentage: 0,
+      }))
+    } else if (q.type === 'text' && typeof (q as any).correctAnswer === 'string' && (q as any).correctAnswer.trim()) {
+      choices = [
+        {
+          text: (q as any).correctAnswer as string,
+          correct: true,
+          percentage: 0,
+        },
+      ]
+    }
 
     return {
       id: index + 1,
@@ -314,7 +435,7 @@ function segmentize(ratio: number): number[] {
             <div class="p-4 border-b border-gray-200">
               <h2 class="text-lg font-medium text-gray-900">Questions</h2>
             </div>
-            <div class="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+            <div class="divide-y divide-gray-200 max-h-[600px] overflow-y-auto questions-scroll">
               <div
                 v-for="q in questions"
                 :key="q.id"
@@ -571,5 +692,28 @@ function segmentize(ratio: number): number[] {
   height: 100%;
   width: 0%;
   transition: width 0.3s ease;
+}
+
+.questions-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.questions-scroll::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 9999px;
+}
+
+.questions-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
+  border-radius: 9999px;
+}
+
+.questions-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #2563eb, #1d4ed8);
+}
+
+.questions-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #e5e7eb;
 }
 </style>
