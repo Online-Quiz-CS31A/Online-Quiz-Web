@@ -102,15 +102,7 @@ function openCreateClass() {
 }
 
 function openEditClass(id: number) {
-  const section = sectionsStore.allSections.find((s: ClassSection) => s.id === id)
-  if (!section) return
-  isEditing.value = true
-  editingId.value = id
-  newClass.name = section.name
-  newClass.description = '' 
-  newClass.students = section.students
-  showCreateClass.value = true
-  openMenuId.value = null
+  router.push({ name: 'class-management', params: { id: props.id }, query: { sectionId: String(id) } })
 }
 
 function deleteClass(id: number) {

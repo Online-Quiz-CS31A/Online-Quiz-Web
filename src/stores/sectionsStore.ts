@@ -102,6 +102,7 @@ export const useSectionsStore = defineStore('sections', () => {
     allSections.value.push({ id: nextId, ...newSection })
     
     courseSectionMappings.value.push({ courseId, sectionId: nextId })
+    return nextId
   }
 
   function addSectionToCourse(sectionId: number, courseId: number) {

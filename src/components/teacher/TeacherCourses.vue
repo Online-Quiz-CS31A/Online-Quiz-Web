@@ -68,6 +68,11 @@ const handleLeaveClass = (classItem: ClassItem) => {
   menuOpenForId.value = null
 }
 
+const handleEditClass = (classItem: ClassItem) => {
+  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  menuOpenForId.value = null
+}
+
 const handleCancelDelete = () => {
   showCourseDeleteModal.value = false
   coursePendingDeletion.value = null
@@ -211,7 +216,7 @@ onBeforeUnmount(() => {
               </template>
               <template v-else>
                 <button 
-                  @click.stop="handleLeaveClass(classItem)"
+                  @click.stop="handleEditClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
                   Edit 
