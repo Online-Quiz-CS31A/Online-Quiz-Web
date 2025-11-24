@@ -7,6 +7,7 @@ const props = defineProps<{
   students: StudentItem[],
   currentPage: number,
   totalPages: number,
+  isArchived?: boolean,
 }>()
 
 const emit = defineEmits<{
@@ -30,7 +31,16 @@ const emit = defineEmits<{
             <input :value="props.searchTerm" @input="$emit('update:searchTerm', ($event.target as HTMLInputElement).value)" type="text" placeholder="Search students..." class="pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64" />
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
-          <button class="px-3 py-2 bg-blue-50 text-blue-700 rounded-md border border-blue-200 hover:bg-blue-100 cursor-pointer">Add</button>
+          <button
+            :disabled="props.isArchived"
+            :title="props.isArchived ? `Can't edit archived` : 'Add student to this class'"
+            :class="[
+              'px-3 py-2 rounded-md border',
+              props.isArchived
+                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
+            ]"
+          >Add</button>
         </div>
       </div>
       <div class="divide-y divide-gray-100">
@@ -43,7 +53,17 @@ const emit = defineEmits<{
             </div>
           </div>
           <div class="hidden md:flex items-center">
-            <button @click="$emit('remove', s)" class="px-3 py-1.5 border border-red-300 text-red-700 rounded-md hover:bg-red-50 cursor-pointer">Remove</button>
+            <button
+              @click="!props.isArchived && $emit('remove', s)"
+              :disabled="props.isArchived"
+              :title="props.isArchived ? `Can't edit archived` : 'Remove student from this class'"
+              :class="[
+                'px-3 py-1.5 border rounded-md',
+                props.isArchived
+                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'border-red-300 text-red-700 hover:bg-red-50 cursor-pointer'
+              ]"
+            >Remove</button>
           </div>
         </div>
       </div>

@@ -43,8 +43,10 @@ const currentSection = computed(() => {
 })
 
 const currentCourseId = computed(() => {
-  const mapping = sectionsStore.courseSectionMappings.find(m => m.sectionId === sectionId.value)
-  return mapping?.courseId
+  const active = sectionsStore.courseSectionMappings.find(m => m.sectionId === sectionId.value)
+  if (active) return active.courseId
+  const archived = sectionsStore.archivedSectionMappings.find(m => m.sectionId === sectionId.value)
+  return archived?.courseId
 })
 
 const currentCourse = computed(() => {
@@ -55,6 +57,16 @@ const currentCourse = computed(() => {
 const schedule = computed(() => {
   if (!currentCourseId.value || !sectionId.value) return null
   return sectionsStore.getSchedule(currentCourseId.value, sectionId.value)
+})
+
+const isArchivedSection = computed(() => {
+  return sectionsStore.archivedSectionMappings.some(m => m.sectionId === sectionId.value)
+})
+
+const isArchivedCourse = computed(() => currentCourse.value?.status === 'Archived')
+
+const isArchivedForQuizzes = computed(() => {
+  return !!isArchivedCourse.value || !!isArchivedSection.value
 })
 
 const professorInitials = computed(() => {
@@ -444,6 +456,7 @@ function cancelRemove() {
         <ClassDashboardTab
           :quizzes="activeQuizzes"
           :viewMode="quizViewMode"
+          :isArchived="isArchivedForQuizzes"
           @update:viewMode="(v) => (quizViewMode = v)"
           @create-quiz="navigateToQuizCreator"
         />
@@ -456,6 +469,7 @@ function cancelRemove() {
           :students="paginatedStudents"
           :currentPage="currentPage"
           :totalPages="totalPages"
+          :isArchived="isArchivedSection"
           @update:searchTerm="(v) => (searchTerm = v)"
           @prev-page="prevPage"
           @next-page="nextPage"

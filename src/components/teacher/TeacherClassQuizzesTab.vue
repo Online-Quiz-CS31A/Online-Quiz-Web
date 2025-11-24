@@ -7,7 +7,8 @@ const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/Te
 
 const props = defineProps<{ 
   quizzes: TeacherQuizItem[],
-  viewMode: 'cards' | 'rows'
+  viewMode: 'cards' | 'rows',
+  isArchived?: boolean,
 }>()
 
 const emit = defineEmits<{ 
@@ -41,7 +42,17 @@ const emit = defineEmits<{
             <i class="fas fa-list"></i>
           </button>
         </div>
-        <button @click="$emit('create-quiz')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer transition-colors duration-200">
+        <button
+          @click="$emit('create-quiz')"
+          :disabled="props.isArchived"
+          :title="props.isArchived ? `Can't edit archived` : 'Create a new quiz'"
+          :class="[
+            'px-4 py-2 rounded-lg flex items-center transition-colors duration-200',
+            props.isArchived
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+          ]"
+        >
           <i class="fas fa-plus mr-2"></i> Create Quiz
         </button>
       </div>
@@ -58,11 +69,20 @@ const emit = defineEmits<{
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">No Quizzes Created Yet</h3>
         <p class="text-gray-500 max-w-md mb-6">
-          You haven't created any quizzes for this class yet. Click the "Create Quiz" button above to get started and engage your students.
+          You haven't created any quizzes for this class yet.
+          <span v-if="!props.isArchived"> Click the "Create Quiz" button above to get started and engage your students.</span>
+          <span v-else> This class is archived, so new quizzes can no longer be created.</span>
         </p>
         <button 
           @click="$emit('create-quiz')"
-          class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 cursor-pointer"
+          :disabled="props.isArchived"
+          :title="props.isArchived ? `Can't edit archived` : 'Create a new quiz'"
+          :class="[
+            'px-6 py-3 rounded-lg transition-colors font-medium flex items-center gap-2',
+            props.isArchived
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+          ]"
         >
           <i class="fas fa-plus"></i>
           <span>Create Your First Quiz</span>

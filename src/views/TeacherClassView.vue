@@ -65,6 +65,8 @@ const current = computed<ClassItem>(() => {
   )
 })
 
+const isCourseArchived = computed(() => current.value.status === 'Archived')
+
 const professorName = computed(() => current.value.teacher || '—') 
 const totalClasses = computed(() => sections.value.length)
 const totalStudents = computed(() => sections.value.reduce((sum, s) => sum + s.students, 0))
@@ -183,8 +185,17 @@ function openDashboard(id: number) {
       <div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800">Your Classes</h2>
-          <button @click="openCreateClass"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer">
+          <button
+            @click="openCreateClass"
+            :disabled="isCourseArchived"
+            :title="isCourseArchived ? `Can't edit archived course` : 'Create a new class'"
+            :class="[
+              'px-4 py-2 rounded-lg flex items-center',
+              isCourseArchived
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+            ]"
+          >
             <i class="fas fa-plus mr-2"></i> New Class
           </button>
         </div>
@@ -201,11 +212,20 @@ function openDashboard(id: number) {
           </div>
           <h3 class="text-xl font-semibold text-gray-800 mb-2">No Classes Yet</h3>
           <p class="text-gray-500 max-w-md mb-6">
-            You haven't created any classes for this course yet. Click the "New Class" button above to get started!
+            You haven't created any classes for this course yet.
+            <span v-if="!isCourseArchived"> Click the "New Class" button above to get started!</span>
+            <span v-else> This course is archived, so classes can no longer be created.</span>
           </p>
           <button 
             @click="openCreateClass"
-            class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 cursor-pointer"
+            :disabled="isCourseArchived"
+            :title="isCourseArchived ? `Can't edit archived course` : 'Create a new class'"
+            :class="[
+              'px-6 py-3 rounded-lg transition-colors font-medium flex items-center gap-2',
+              isCourseArchived
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer'
+            ]"
           >
             <i class="fas fa-plus"></i>
             <span>Create Your First Class</span>
