@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSectionsStore } from '@/stores/sectionsStore'
@@ -43,10 +43,11 @@ const currentSection = computed(() => {
 })
 
 const currentCourseId = computed(() => {
-  const active = sectionsStore.courseSectionMappings.find(m => m.sectionId === sectionId.value)
-  if (active) return active.courseId
   const archived = sectionsStore.archivedSectionMappings.find(m => m.sectionId === sectionId.value)
-  return archived?.courseId
+  if (archived) return archived.courseId
+
+  const active = sectionsStore.courseSectionMappings.find(m => m.sectionId === sectionId.value)
+  return active?.courseId
 })
 
 const currentCourse = computed(() => {
@@ -255,6 +256,10 @@ const classMeta = reactive({
   professor: currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown',
   term: 'Academic Year 2024-2025',
   code: currentCourse.value?.code || '',
+})
+
+onMounted(() => {
+  sectionsStore.loadArchivedSectionsFromStorage()
 })
 
 // WATCHERS

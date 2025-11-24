@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
@@ -62,6 +62,10 @@ const archivedSections = computed(() => {
         students: number
       } => x !== null,
     )
+})
+
+onMounted(() => {
+  sectionsStore.loadArchivedSectionsFromStorage()
 })
 
 function toggleMenu(id: number) {

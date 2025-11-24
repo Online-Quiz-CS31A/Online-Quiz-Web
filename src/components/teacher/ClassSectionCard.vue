@@ -48,6 +48,12 @@ const emit = defineEmits<{
             >
               <template v-if="props.menuMode === 'archive'">
                 <button
+                  @click="emit('card-click')"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <span>View</span>
+                </button>
+                <button
                   @click="emit('unarchive')"
                   class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
                 >

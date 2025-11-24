@@ -181,6 +181,7 @@ export const useSectionsStore = defineStore('sections', () => {
     courseSectionMappings,
     courseSectionSchedules,
     archivedSectionMappings,
+    loadArchivedSectionsFromStorage,
     getSectionsByCourse,
     addSection,
     addSectionToCourse,

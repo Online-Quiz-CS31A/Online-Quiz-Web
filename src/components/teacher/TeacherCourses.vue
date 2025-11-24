@@ -212,6 +212,12 @@ onBeforeUnmount(() => {
             >
               <template v-if="props.mode === 'archived'">
                 <button 
+                  @click.stop="handleEnterClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                >
+                  View
+                </button>
+                <button 
                   @click.stop="handleUnarchiveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
                 >

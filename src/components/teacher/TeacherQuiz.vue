@@ -115,8 +115,18 @@ const closeMenu = () => {
   openMenuId.value = null
 }
 
+const openQuizInBuilder = (quiz: TeacherQuizItem) => {
+  quizzesStore.loadQuizForEditing(quiz.id)
+  router.push({ name: 'quiz-builder', params: { id: quiz.class || 'default' } })
+}
+
 const handleEditQuiz = (quiz: TeacherQuizItem) => {
-  console.log(`Editing quiz: ${quiz.title}`)
+  openQuizInBuilder(quiz)
+  closeMenu()
+}
+
+const handleViewQuiz = (quiz: TeacherQuizItem) => {
+  openQuizInBuilder(quiz)
   closeMenu()
 }
 
@@ -166,8 +176,7 @@ const handleConfirmUnarchive = () => {
 }
 
 const handleQuizClick = (quiz: TeacherQuizItem) => {
-  quizzesStore.loadQuizForEditing(quiz.id)
-  router.push({ name: 'quiz-builder', params: { id: quiz.class || 'default' } })
+  openQuizInBuilder(quiz)
 }
 
 const getSubmissionStats = (quiz: TeacherQuizItem) => {
@@ -282,7 +291,13 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                 class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
                 @click.stop
               >
-                <template v-if="(props as any).archivedMode">
+                <template v-if="quiz.archived">
+                  <button
+                    class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                    @click="handleViewQuiz(quiz)"
+                  >
+                    View
+                  </button>
                   <button
                     class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
                     @click="handleUnarchiveQuiz(quiz)"
@@ -294,12 +309,14 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                   <button
                     class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                     @click="handleEditQuiz(quiz)"
-                  >Edit 
+                  >
+                    Edit
                   </button>
                   <button
                     class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                     @click="handleDeleteQuiz(quiz)"
-                  >Delete
+                  >
+                    Delete
                   </button>
                 </template>
               </div>
@@ -388,12 +405,33 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                   class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
                   @click.stop
                 >
-                  <template v-if="(props as any).archivedMode">
-                    <button class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50" @click="handleUnarchiveQuiz(quiz)">Unarchive</button>
+                  <template v-if="quiz.archived">
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      @click="handleViewQuiz(quiz)"
+                    >
+                      View
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                      @click="handleUnarchiveQuiz(quiz)"
+                    >
+                      Unarchive
+                    </button>
                   </template>
                   <template v-else>
-                    <button class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="handleEditQuiz(quiz)">Edit</button>
-                    <button class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="handleDeleteQuiz(quiz)">Delete</button>
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      @click="handleEditQuiz(quiz)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      @click="handleDeleteQuiz(quiz)"
+                    >
+                      Delete
+                    </button>
                   </template>
                 </div>
               </div>
