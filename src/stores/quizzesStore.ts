@@ -11,12 +11,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Web Development', 
         title: 'HTML & CSS Fundamentals', 
         description: 'Basic HTML structure and CSS styling', 
-        dueDate: 'June 1', 
-        class: 'WD101', 
+        dueDate: '2025-06-01 23:59', 
+        class: 'CS22A', 
         submitted: 5, 
         total: 15, 
         color: 'purple',
         status: 'published',
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'What does HTML stand for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Hyper Text Markup Language', isCorrect: true }, { text: 'High Tech Modern Language', isCorrect: false }, { text: 'Home Tool Markup Language', isCorrect: false }, { text: 'Hyperlinks and Text Markup Language', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'CSS stands for Cascading Style Sheets.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
@@ -33,12 +34,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Data Structures', 
         title: 'Arrays and Linked Lists', 
         description: 'Fundamental data structures and their operations', 
-        dueDate: 'June 5', 
-        class: 'CS201', 
+        dueDate: '2025-06-05 23:59', 
+        class: 'CS33A', 
         submitted: 8, 
         total: 20, 
         color: 'orange',
         status: 'published',
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'What is the time complexity of accessing an element in an array by index?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'O(1)', isCorrect: true }, { text: 'O(n)', isCorrect: false }, { text: 'O(log n)', isCorrect: false }, { text: 'O(n²)', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'A linked list requires contiguous memory allocation.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
@@ -57,12 +59,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Information Assurance', 
         title: 'Week 1 Quiz', 
         description: 'Fundamentals of Information Security', 
-        dueDate: 'May 15', 
+        dueDate: '2025-05-15 23:59', 
         class: 'CS31A', 
         submitted: 12, 
         total: 24, 
         color: 'blue',
         status: 'published',
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'What is the CIA triad in information security?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Confidentiality, Integrity, Availability', isCorrect: true }, { text: 'Control, Integration, Authentication', isCorrect: false }, { text: 'Cryptography, Identity, Authorization', isCorrect: false }, { text: 'Code, Implementation, Access', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'Encryption is the process of converting plaintext to ciphertext.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
@@ -79,12 +82,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Information Assurance', 
         title: 'Week 2 Quiz', 
         description: 'Cryptography and Network Security', 
-        dueDate: 'May 18', 
+        dueDate: '2025-05-18 23:59', 
         class: 'CS31A', 
         submitted: 8, 
         total: 24, 
         color: 'green',
         status: 'published',
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'Which encryption algorithm is symmetric?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'RSA', isCorrect: false }, { text: 'AES', isCorrect: true }, { text: 'ECC', isCorrect: false }, { text: 'DSA', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'Public key cryptography uses the same key for encryption and decryption.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
@@ -101,12 +105,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Computer Architecture', 
         title: 'Week 5 Quiz', 
         description: 'Memory Hierarchy and Cache', 
-        dueDate: 'May 20', 
+        dueDate: '2025-05-20 23:59', 
         class: 'CS31A', 
         submitted: 3, 
         total: 24, 
         color: 'purple',
         status: 'published',
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'Which memory is fastest?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Hard Disk', isCorrect: false }, { text: 'RAM', isCorrect: false }, { text: 'Cache', isCorrect: true }, { text: 'ROM', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'Cache memory is located between CPU and RAM.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
@@ -123,13 +128,14 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Operating Systems', 
         title: 'Process Management Quiz', 
         description: 'Process Scheduling and Synchronization', 
-        dueDate: 'May 25', 
-        class: 'CS31B', 
+        dueDate: '2025-05-25 23:59', 
+        class: 'IT22A', 
         submitted: 17, 
         total: 28, 
         color: 'red',
         status: 'published',
         archived: true,
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'Which scheduling algorithm can cause starvation?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Round Robin', isCorrect: false }, { text: 'Priority Scheduling', isCorrect: true }, { text: 'FCFS', isCorrect: false }, { text: 'SJF', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'A process in the ready state is currently executing on the CPU.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
@@ -146,12 +152,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         subject: 'Automata', 
         title: 'PDA and CFG Quiz', 
         description: 'Pushdown Automata and Context-Free Grammars', 
-        dueDate: 'May 28', 
-        class: 'CS31C', 
+        dueDate: '2025-05-28 23:59', 
+        class: 'IT11B', 
         submitted: 9, 
         total: 22, 
         color: 'yellow',
         status: 'published',
+        timeLimit: '30 min',
         questions: [
           { id: 1, type: 'multiple-choice', text: 'What type of language does a PDA accept?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Regular', isCorrect: false }, { text: 'Context-Free', isCorrect: true }, { text: 'Context-Sensitive', isCorrect: false }, { text: 'Recursive', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'A context-free grammar can generate any regular language.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
@@ -559,7 +566,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.title = quiz.title
     currentQuiz.subject = quiz.subject
     currentQuiz.description = quiz.description || ''
-    currentQuiz.timeLimit = ''
+    currentQuiz.timeLimit = (quiz as any).timeLimit || ''
     currentQuiz.questions = quiz.questions ? JSON.parse(JSON.stringify(quiz.questions)) : []
     currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
 

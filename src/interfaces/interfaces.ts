@@ -110,6 +110,7 @@ export interface TeacherQuizItem {
   updatedAt?: string
   ownerUsername?: string
   archived?: boolean
+  timeLimit?: string
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS

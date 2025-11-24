@@ -1,6 +1,20 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import { useStudentsStore } from '@/stores/studentsStore'
+import { useRoute } from 'vue-router'
+
+// STORES
+const quizzesStore = useQuizzesStore()
+const coursesStore = useCoursesStore()
+const sectionsStore = useSectionsStore()
+const studentsStore = useStudentsStore()
+
+// ROUTE
+const route = useRoute()
 
 // REFS
 const saving = ref(false)
@@ -11,49 +25,21 @@ const searchStudent = ref('')
 
 // REACTIVE
 const quizDetails = reactive({
-  title: 'Mathematics Midterm Exam',
-  createdAt: 'May 15, 2023',
+  title: '',
+  createdAt: '',
   type: 'Graded Quiz',
-  points: 100,
+  points: 0,
 })
 
-const classes = reactive([
-  { id: '3rdyear-a', name: '3rd Year - CS22A', students: 32, selected: false },
-  { id: '3rdyear-b', name: '3rd Year - CS22B', students: 28, selected: false },
-  { id: '4thyear-a', name: '4th Year - IT11B', students: 24, selected: false },
-  { id: '4thyear-b', name: '4th Year - IT12C', students: 18, selected: false },
-])
+const classes = reactive<{ id: string; name: string; students: number; selected: boolean }[]>([])
 
-const individuals = reactive([
-  { 
-    id: 's1', 
-    name: 'Neil Vallecer', 
-    section: '3rd Year - CS22A', 
-    selected: false,
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  { 
-    id: 's2', 
-    name: 'Edrian Mangubat', 
-    section: '3rd Year - CS22B', 
-    selected: false,
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  { 
-    id: 's3', 
-    name: 'Uzziah Lanz', 
-    section: '4th Year - IT11B', 
-    selected: false,
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  { 
-    id: 's4', 
-    name: 'Jan Rosa', 
-    section: '4th Year - IT12C', 
-    selected: false,
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-])
+const individuals = reactive<{
+  id: string
+  name: string
+  section: string
+  selected: boolean
+  avatar: string
+}[]>([])
 
 const deadline = reactive({
   date: '',
@@ -65,6 +51,167 @@ const options = reactive({
   attempts: 1,
   shuffle: false,
   showResults: true,
+})
+
+// LIFECYCLE
+onMounted(() => {
+  const current = quizzesStore.currentQuiz
+
+  quizDetails.title = current.title || 'Untitled Quiz'
+
+  const allStored = quizzesStore.getAllQuizzes()
+  const fromDefaults = quizzesStore.myTeacherQuizzes.find(q => q.id === current.id)
+  const fromStorage = allStored.find(q => q.id === current.id)
+  const meta = fromStorage || fromDefaults
+
+  if (meta && meta.createdAt) {
+    quizDetails.createdAt = new Date(meta.createdAt).toLocaleDateString()
+  } else {
+    quizDetails.createdAt = new Date().toLocaleDateString()
+  }
+
+  if (Array.isArray(current.questions)) {
+    quizDetails.points = current.questions.reduce((total, q: any) => {
+      const basePoints = q.points || 0
+
+      if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
+        return total + basePoints * q.pairs.length
+      }
+
+      if (q.type === 'enumeration' && Array.isArray(q.items) && q.items.length > 0) {
+        return total + basePoints * q.items.length
+      }
+
+      return total + basePoints
+    }, 0)
+  } else {
+    quizDetails.points = 0
+  }
+
+  if (meta && typeof meta.dueDate === 'string' && meta.dueDate.trim()) {
+    const raw = meta.dueDate.trim()
+    let parsed: Date | null = null
+
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?:\s*(am|pm))?)?/i)
+    if (isoMatch) {
+      const year = Number(isoMatch[1])
+      const month = Number(isoMatch[2]) - 1
+      const day = Number(isoMatch[3])
+      let hours = isoMatch[4] != null ? Number(isoMatch[4]) : 23
+      const minutes = isoMatch[5] != null ? Number(isoMatch[5]) : 59
+      const ampm = isoMatch[6]
+      if (ampm) {
+        const lower = ampm.toLowerCase()
+        if (lower === 'pm' && hours < 12) hours += 12
+        if (lower === 'am' && hours === 12) hours = 0
+      }
+      parsed = new Date(year, month, day, hours, minutes)
+    } else {
+      const tryParsed = new Date(raw)
+      if (!Number.isNaN(tryParsed.getTime())) {
+        parsed = tryParsed
+      }
+    }
+
+    if (parsed) {
+      const yyyy = String(parsed.getFullYear()).padStart(4, '0')
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0')
+      const dd = String(parsed.getDate()).padStart(2, '0')
+      deadline.date = `${yyyy}-${mm}-${dd}`
+
+      const hasExplicitTime = /(\d{1,2}:\d{2})|\b(am|pm)\b/i.test(raw)
+      if (hasExplicitTime) {
+        const h = String(parsed.getHours()).padStart(2, '0')
+        const m = String(parsed.getMinutes()).padStart(2, '0')
+        deadline.time = `${h}:${m}`
+      } else {
+        deadline.time = '23:59'
+      }
+    }
+  }
+
+  let timeLimitMinutes = 60
+  if (current.timeLimit && typeof current.timeLimit === 'string') {
+    const match = current.timeLimit.match(/(\d+)/)
+    if (match) {
+      const parsed = Number(match[1])
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        timeLimitMinutes = parsed
+      }
+    }
+  }
+  options.timeLimit = timeLimitMinutes
+
+  let attempts = 3
+  if (typeof current.id === 'number') {
+    if (current.id === 1) attempts = 2
+    else if (current.id === 2) attempts = 1
+  }
+  options.attempts = attempts
+
+  const rawId = route.params.id as string | string[] | undefined
+  let courseId = 0
+
+  if (typeof rawId === 'string') {
+    const numericId = Number(rawId)
+    if (!Number.isNaN(numericId) && numericId > 0) {
+      courseId = numericId
+    }
+  }
+
+  if (!courseId) {
+    const subject = current.subject || ''
+    if (subject) {
+      const course = coursesStore.allCourses.find(c => c.name === subject)
+      if (course) {
+        courseId = course.id
+      }
+    }
+  }
+
+  const sections = sectionsStore.allSections
+
+  sections.forEach(section => {
+    classes.push({
+      id: String(section.id),
+      name: section.name,
+      students: section.studentUsernames.length || section.students,
+      selected: false,
+    })
+  })
+
+  const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+
+  sections.forEach(section => {
+    section.studentUsernames.forEach(username => {
+      const profile = studentsStore.profiles[username]
+      const fullName = profile ? `${profile.firstName} ${profile.lastName}` : username
+
+      individuals.push({
+        id: username,
+        name: fullName,
+        section: section.name,
+        selected: false,
+        avatar: profile?.photoUrl || defaultAvatar,
+      })
+    })
+  })
+
+  const assignedSectionName = (meta && (meta as any).class) || ''
+
+  if (assignedSectionName) {
+    classes.forEach(c => {
+      if (c.name === assignedSectionName) {
+        c.selected = true
+      }
+    })
+
+    individuals.forEach(student => {
+      if (student.section === assignedSectionName) {
+        student.selected = true
+      }
+    })
+  }
 })
 
 // COMPUTED
@@ -82,8 +229,15 @@ const summaryRecipients = computed(() => {
 
 const filteredClasses = computed(() => {
   const term = searchClass.value.toLowerCase().trim()
-  if (!term) return classes
-  return classes.filter(c => c.name.toLowerCase().includes(term))
+  const base = term
+    ? classes.filter(c => c.name.toLowerCase().includes(term))
+    : [...classes]
+
+  // Ensure already-assigned (selected) sections appear at the top
+  return base.sort((a, b) => {
+    if (a.selected === b.selected) return 0
+    return a.selected ? -1 : 1
+  })
 })
 
 const filteredIndividuals = computed(() => {
