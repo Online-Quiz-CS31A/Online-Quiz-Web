@@ -38,6 +38,6 @@ const archivedQuizzes = computed(() => {
         </button>
       </div>
     </div>
-    <TeacherQuiz :quizzes="archivedQuizzes" :hide-header="true" :show-filters="false" />
+    <TeacherQuiz :quizzes="archivedQuizzes" :hide-header="true" :show-filters="false" :archived-mode="true" />
   </div>
 </template>

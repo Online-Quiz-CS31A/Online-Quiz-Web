@@ -101,6 +101,15 @@ export const useCoursesStore = defineStore('classes', () => {
     saveCoursesToStorage()
   }
 
+  function unarchiveCourse(courseId: number) {
+    allCourses.value = allCourses.value.map(course =>
+      course.id === courseId
+        ? { ...course, status: 'Active' }
+        : course
+    )
+    saveCoursesToStorage()
+  }
+
   function archiveCourse(courseId: number) {
     allCourses.value = allCourses.value.map(course =>
       course.id === courseId
@@ -116,5 +125,6 @@ export const useCoursesStore = defineStore('classes', () => {
     mySubjects,
     addClass,
     archiveCourse,
+    unarchiveCourse,
   }
 })

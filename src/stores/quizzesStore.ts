@@ -299,6 +299,14 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       const ids = stored ? (JSON.parse(stored) as number[]) : []
       archivedSeedQuizIds.value = ids
 
+      Object.values(teacherQuizzesByUser.value).forEach(list => {
+        list.forEach(q => {
+          if ((q as any).archived) {
+            ;(q as any).archived = false
+          }
+        })
+      })
+
       if (ids.length > 0) {
         Object.values(teacherQuizzesByUser.value).forEach(list => {
           list.forEach(q => {
@@ -591,6 +599,40 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
       })
     })
+    if (seedMutated) {
+      saveArchivedSeedQuizzesToStorage()
+      quizzesVersion.value++
+    }
+  }
+
+  function unarchiveQuiz(quizId: number) {
+    const stored = getAllQuizzes()
+    let mutated = false
+    stored.forEach(q => {
+      if (q.id === quizId && (q as any).archived) {
+        ;(q as any).archived = false
+        mutated = true
+      }
+    })
+    if (mutated) {
+      saveQuizzesToStorage(stored)
+    }
+
+    let seedMutated = false
+    Object.values(teacherQuizzesByUser.value).forEach(list => {
+      list.forEach(q => {
+        if (q.id === quizId && (q as any).archived) {
+          ;(q as any).archived = false
+          seedMutated = true
+        }
+      })
+    })
+
+    if (archivedSeedQuizIds.value.includes(quizId)) {
+      archivedSeedQuizIds.value = archivedSeedQuizIds.value.filter(id => id !== quizId)
+      seedMutated = true
+    }
+
     if (seedMutated) {
       saveArchivedSeedQuizzesToStorage()
       quizzesVersion.value++
@@ -1262,6 +1304,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     saveQuiz,
     deleteQuiz,
     archiveQuiz,
+    unarchiveQuiz,
     loadQuizForEditing,
     resetCurrentQuiz,
     getAllQuizzes,

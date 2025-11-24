@@ -34,6 +34,7 @@ const archivedSections = computed(() => {
 
       return {
         id: section.id,
+        courseId: m.courseId,
         sectionName: section.name,
         courseName: course.name,
         courseCode: (course as any).code || '',
@@ -48,6 +49,7 @@ const archivedSections = computed(() => {
         x,
       ): x is {
         id: number
+        courseId: number
         sectionName: string
         courseName: string
         courseCode: string
@@ -65,6 +67,14 @@ function toggleMenu(id: number) {
 
 function openDashboard(id: number) {
   router.push({ name: 'teacher-class-dashboard', params: { id: String(id) } })
+}
+
+function handleUnarchive(item: {
+  id: number
+  courseId: number
+}) {
+  sectionsStore.unarchiveSection(item.id, item.courseId)
+  openMenuId.value = null
 }
 </script>
 
@@ -91,10 +101,10 @@ function openDashboard(id: number) {
           }"
           :show-menu="true"
           :is-menu-open="openMenuId === item.id"
+          menu-mode="archive"
           @card-click="openDashboard(item.id)"
           @toggle-menu="toggleMenu(item.id)"
-          @edit="openMenuId = null"
-          @delete="openMenuId = null"
+          @unarchive="handleUnarchive(item)"
         />
       </div>
     </div>

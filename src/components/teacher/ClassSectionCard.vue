@@ -12,6 +12,7 @@ const props = defineProps<{
   section: SectionCardData
   showMenu?: boolean
   isMenuOpen?: boolean
+  menuMode?: 'default' | 'archive'
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
   (e: 'toggle-menu'): void
   (e: 'edit'): void
   (e: 'delete'): void
+  (e: 'unarchive'): void
 }>()
 </script>
 
@@ -44,18 +46,28 @@ const emit = defineEmits<{
               @click.stop
               class="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10"
             >
-              <button
-                @click="emit('edit')"
-                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-              >
-                <span>Edit</span>
-              </button>
-              <button
-                @click="emit('delete')"
-                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                <span>Delete</span>
-              </button>
+              <template v-if="props.menuMode === 'archive'">
+                <button
+                  @click="emit('unarchive')"
+                  class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                >
+                  <span>Unarchive</span>
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  @click="emit('edit')"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <span>Edit</span>
+                </button>
+                <button
+                  @click="emit('delete')"
+                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <span>Delete</span>
+                </button>
+              </template>
             </div>
           </div>
         </div>

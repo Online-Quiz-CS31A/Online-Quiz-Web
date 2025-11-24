@@ -16,8 +16,9 @@ const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const router = useRouter()
 
 // PROPS
-const props = withDefaults(defineProps<{ classes?: ClassItem[]; maxItems?: number; showHeader?: boolean }>(), {
+const props = withDefaults(defineProps<{ classes?: ClassItem[]; maxItems?: number; showHeader?: boolean; mode?: 'default' | 'archived' }>(), {
   showHeader: true,
+  mode: 'default',
 })
 
 // EMITS
@@ -76,6 +77,11 @@ const handleConfirmDelete = () => {
   }
   classesStore.archiveCourse(coursePendingDeletion.value.id)
   handleCancelDelete()
+}
+
+const handleUnarchiveClass = (classItem: ClassItem) => {
+  classesStore.unarchiveCourse(classItem.id)
+  menuOpenForId.value = null
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -177,19 +183,29 @@ onBeforeUnmount(() => {
               v-if="menuOpenForId === classItem.id" 
               class="absolute right-0 top-7 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20"
             >
-              <button 
-                @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-              >
-                Edit 
-              </button>
-              
-              <button 
-                @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-              >
-                Leave
-              </button>
+              <template v-if="props.mode === 'archived'">
+                <button 
+                  @click.stop="handleUnarchiveClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
+                >
+                  Unarchive
+                </button>
+              </template>
+              <template v-else>
+                <button 
+                  @click.stop="handleLeaveClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                >
+                  Edit 
+                </button>
+                
+                <button 
+                  @click.stop="handleLeaveClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                >
+                  Leave
+                </button>
+              </template>
             </div>
           </div>
 

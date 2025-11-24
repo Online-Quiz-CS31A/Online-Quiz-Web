@@ -137,6 +137,14 @@ export const useSectionsStore = defineStore('sections', () => {
     removeSectionFromCourse(sectionId, courseId)
   }
 
+  function unarchiveSection(sectionId: number, courseId: number) {
+    archivedSectionMappings.value = archivedSectionMappings.value.filter(
+      m => !(m.sectionId === sectionId && m.courseId === courseId)
+    )
+    saveArchivedSectionsToStorage()
+    addSectionToCourse(sectionId, courseId)
+  }
+
   function deleteSection(id: number) {
     allSections.value = allSections.value.filter(s => s.id !== id)
     courseSectionMappings.value = courseSectionMappings.value.filter(m => m.sectionId !== id)
@@ -178,6 +186,7 @@ export const useSectionsStore = defineStore('sections', () => {
     updateSection,
     removeSectionFromCourse,
     archiveSection,
+    unarchiveSection,
     deleteSection,
     getSchedule,
     setSchedule,

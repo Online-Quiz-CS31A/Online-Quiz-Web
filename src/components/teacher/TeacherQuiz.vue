@@ -19,6 +19,7 @@ interface Props {
   viewMode?: 'cards' | 'rows'
   showFilters?: boolean
   initialFilter?: 'all' | 'draft' | 'published'
+  archivedMode?: boolean
 }
 
 // CONSTANTS
@@ -33,6 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
   viewMode: 'cards',
   showFilters: false,
   initialFilter: 'all',
+  archivedMode: false,
 })
 
 // EMITS
@@ -138,6 +140,11 @@ const handleConfirmDelete = () => {
   }
   quizzesStore.archiveQuiz(quizPendingDeletion.value.id)
   handleCancelDelete()
+}
+
+const handleUnarchiveQuiz = (quiz: TeacherQuizItem) => {
+  quizzesStore.unarchiveQuiz(quiz.id)
+  closeMenu()
 }
 
 const handleQuizClick = (quiz: TeacherQuizItem) => {
@@ -257,16 +264,26 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                 class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
                 @click.stop
               >
-                <button
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                  @click="handleEditQuiz(quiz)"
-                >Edit 
-                </button>
-                <button
-                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                  @click="handleDeleteQuiz(quiz)"
-                >Delete
-                </button>
+                <template v-if="(props as any).archivedMode">
+                  <button
+                    class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
+                    @click="handleUnarchiveQuiz(quiz)"
+                  >
+                    Unarchive
+                  </button>
+                </template>
+                <template v-else>
+                  <button
+                    class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                    @click="handleEditQuiz(quiz)"
+                  >Edit 
+                  </button>
+                  <button
+                    class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                    @click="handleDeleteQuiz(quiz)"
+                  >Delete
+                  </button>
+                </template>
               </div>
             </div>
           </div>
@@ -353,8 +370,13 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                   class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
                   @click.stop
                 >
-                  <button class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="handleEditQuiz(quiz)">Edit</button>
-                  <button class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="handleDeleteQuiz(quiz)">Delete</button>
+                  <template v-if="(props as any).archivedMode">
+                    <button class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50" @click="handleUnarchiveQuiz(quiz)">Unarchive</button>
+                  </template>
+                  <template v-else>
+                    <button class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="handleEditQuiz(quiz)">Edit</button>
+                    <button class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="handleDeleteQuiz(quiz)">Delete</button>
+                  </template>
                 </div>
               </div>
             </div>

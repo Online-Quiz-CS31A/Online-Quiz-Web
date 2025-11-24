@@ -13,6 +13,6 @@ const archivedCourses = computed(() => coursesStore.allCourses.filter(c => c.sta
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-2xl font-semibold text-gray-800">Archived Courses</h2>
     </div>
-    <TeacherCourses :classes="archivedCourses" :show-header="false" />
+    <TeacherCourses :classes="archivedCourses" :show-header="false" mode="archived" />
   </div>
 </template>
