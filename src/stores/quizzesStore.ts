@@ -1138,6 +1138,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return submitters.size
   }
 
+  function getAllQuizAttemptHistory(quizId: number): QuizAttemptHistory[] {
+    loadAttemptHistoryFromStorage()
+    return quizAttemptHistory.value
+      .filter(a => a.quizId === quizId)
+      .sort((a, b) => a.completedAt.localeCompare(b.completedAt))
+  }
+
   function saveAttemptHistoryToStorage() {
     try {
       localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
@@ -1239,6 +1246,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     loadAttemptForReview,
     getQuizAttemptHistoryForStudent,
     getQuizUniqueSubmitterCount,
+    getAllQuizAttemptHistory,
     isQuizMarkedDone,
     toggleQuizDone,
     loadQuizDoneFromStorage

@@ -1,121 +1,187 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useSectionsStore } from '@/stores/sectionsStore'
+import { useStudentsStore } from '@/stores/studentsStore'
 import type { QuizResultQuestion, Participant } from '@/interfaces/interfaces'
-
 
 // CONSTANTS
 const TOTAL_SEGMENTS = 5
-const sections = ['IT11A', 'IT11B', 'CS22A', 'CS22B', 'CS23A']
-const names = [
-  'Neil Vallecer', 'Jose Betonio', 'James Maguinda', 'Jan Rosalijos', 'John Cez Casupanan',
-  'Nicole Inot', 'Uzziah Lanz', 'Weah Jacionto', 'Elian Inot', 'Chitoge Kirisaki'
-]
 
-// REACTIVE
-const questions = reactive<QuizResultQuestion[]>([
-  {
-    id: 1,
-    title: 'Question #1',
-    text: 'John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?',
-    points: 3,
-    correctPercentage: '45%',
-    correctPercentageNum: 45,
-    choices: [
-      { text: '6.75', correct: true, percentage: 45 },
-      { text: '8', correct: false, percentage: 20 },
-      { text: '11.25', correct: false, percentage: 25 },
-      { text: '720', correct: false, percentage: 10 },
-    ],
-    correctResponses: 58,
-    incorrectResponses: 70,
-  },
-  {
-    id: 2,
-    title: 'Question #2',
-    text: 'What is 25% of 80?',
-    points: 2,
-    correctPercentage: '75%',
-    correctPercentageNum: 75,
-    choices: [
-      { text: '15', correct: false, percentage: 15 },
-      { text: '20', correct: true, percentage: 75 },
-      { text: '25', correct: false, percentage: 5 },
-      { text: '30', correct: false, percentage: 5 },
-    ],
-    correctResponses: 96,
-    incorrectResponses: 32,
-  },
-  {
-    id: 3,
-    title: 'Question #3',
-    text: 'If a shirt costs $45 and is discounted by 20%, what is the final price?',
-    points: 2,
-    correctPercentage: '68%',
-    correctPercentageNum: 68,
-    choices: [
-      { text: '$9', correct: false, percentage: 10 },
-      { text: '$36', correct: true, percentage: 68 },
-      { text: '$54', correct: false, percentage: 15 },
-      { text: '$45', correct: false, percentage: 7 },
-    ],
-    correctResponses: 87,
-    incorrectResponses: 41,
-  },
-  {
-    id: 4,
-    title: 'Question #4',
-    text: 'What is the sum of 1/4 + 1/3?',
-    points: 2,
-    correctPercentage: '52%',
-    correctPercentageNum: 52,
-    choices: [
-      { text: '2/7', correct: false, percentage: 20 },
-      { text: '7/12', correct: true, percentage: 52 },
-      { text: '1/2', correct: false, percentage: 18 },
-      { text: '2/3', correct: false, percentage: 10 },
-    ],
-    correctResponses: 67,
-    incorrectResponses: 61,
-  },
-  {
-    id: 5,
-    title: 'Question #5',
-    text: 'If 3x + 7 = 22, what is the value of x?',
-    points: 2,
-    correctPercentage: '81%',
-    correctPercentageNum: 81,
-    choices: [
-      { text: '3', correct: false, percentage: 10 },
-      { text: '5', correct: true, percentage: 81 },
-      { text: '7', correct: false, percentage: 6 },
-      { text: '15', correct: false, percentage: 3 },
-    ],
-    correctResponses: 100,
-    incorrectResponses: 28,
-  },
-])
-
-const participants = reactive<Participant[]>(names.map((name, index) => ({
-  name,
-  email: `${name.split(' ')[0].toLowerCase()}.${name.split(' ')[1].toLowerCase()}@gmail.com`,
-  avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
-  section: sections[Math.floor(Math.random() * sections.length)],
-  score: Math.floor(Math.random() * 21), // Random score between 0-20
-  percentage: Math.floor(Math.random() * 101), // Random percentage between 0-100
-  time: Math.random() > 0.3 ? `${Math.floor(Math.random() * 24).toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}` : '--:--'
-})))
+// STORES
+const quizzesStore = useQuizzesStore()
+const sectionsStore = useSectionsStore()
+const studentsStore = useStudentsStore()
 
 // REFS
 const activeTab = ref<'questions' | 'participants'>('questions')
-const totalStudents = ref(142)
-const totalSubmissions = ref(128)
-const selectedQuestionId = ref<number>(questions[0]?.id ?? 1)
+const selectedQuestionId = ref<number>(1)
 const selectedSection = ref('All Sections')
 const search = ref('')
 
+const currentQuizId = computed(() => quizzesStore.currentQuiz.id ?? null)
+
+const quizMeta = computed(() => {
+  const id = currentQuizId.value
+  if (id == null) return null
+  const fromDefaults = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
+  const fromStorage = quizzesStore.getAllQuizzes().find(q => q.id === id)
+  return fromStorage || fromDefaults || null
+})
+
+const quizSectionName = computed(() => quizMeta.value?.class || '')
+
+const quizSection = computed(() => {
+  const name = quizSectionName.value
+  if (!name) return null
+  return sectionsStore.allSections.find(s => s.name === name) || null
+})
+
+const quizQuestions = computed(() => {
+  const id = currentQuizId.value
+  if (id == null) return []
+  return quizzesStore.getStudentQuizQuestions(id)
+})
+
+const allAttempts = computed(() => {
+  const id = currentQuizId.value
+  if (id == null) return []
+  return quizzesStore.getAllQuizAttemptHistory(id)
+})
+
+const totalSubmissions = computed(() => {
+  const id = currentQuizId.value
+  if (id == null) return 0
+  return quizzesStore.getQuizUniqueSubmitterCount(id)
+})
+
+const totalStudents = computed(() => quizSection.value?.studentUsernames.length || 0)
+
+const questions = computed<QuizResultQuestion[]>(() => {
+  const baseQuestions = quizQuestions.value
+  const attempts = allAttempts.value
+
+  return baseQuestions.map((q, index) => {
+    const isChoiceType = q.type === 'multiple-choice' || q.type === 'true-false'
+
+    let correctResponses = 0
+    let incorrectResponses = 0
+
+    if (isChoiceType && Array.isArray(q.options) && q.options.length > 0) {
+      const correctIndex = q.options.findIndex(opt => opt.isCorrect)
+      const safeCorrectIndex = correctIndex >= 0 ? correctIndex : 0
+
+      attempts.forEach(attempt => {
+        const rawAnswer = attempt.answers[index]
+        if (rawAnswer === undefined || rawAnswer === null) return
+        if (rawAnswer === safeCorrectIndex) correctResponses++
+        else incorrectResponses++
+      })
+    }
+
+    const totalAnswers = correctResponses + incorrectResponses
+    const totalParticipants = totalStudents.value || 0
+    const percentDenominator = totalParticipants > 0 ? totalParticipants : totalAnswers
+
+    const correctPercentageNum = percentDenominator > 0
+      ? Math.round((correctResponses / percentDenominator) * 100)
+      : 0
+
+    const correctPercentage = `${correctPercentageNum}%`
+
+    const choices = isChoiceType && Array.isArray(q.options)
+      ? q.options.map((opt, optIndex) => {
+          let choiceCount = 0
+          attempts.forEach(attempt => {
+            const rawAnswer = attempt.answers[index]
+            if (rawAnswer === optIndex) {
+              choiceCount++
+            }
+          })
+
+          const percentage = percentDenominator > 0
+            ? Math.round((choiceCount / percentDenominator) * 100)
+            : 0
+
+          return {
+            text: opt.text,
+            correct: !!opt.isCorrect,
+            percentage,
+          }
+        })
+      : []
+
+    return {
+      id: index + 1,
+      title: `Question #${index + 1}`,
+      text: q.text,
+      points: q.points || 0,
+      correctPercentage,
+      correctPercentageNum,
+      choices,
+      correctResponses,
+      incorrectResponses,
+    }
+  })
+})
+
+const participants = computed<Participant[]>(() => {
+  const section = quizSection.value
+  const id = currentQuizId.value
+  if (!section || id == null) return []
+
+  const usernames = section.studentUsernames || []
+  const attempts = allAttempts.value
+
+  const latestByStudent = new Map<string, { score: number; totalPoints: number; percentage: number; completedAt: string }>()
+
+  usernames.forEach(username => {
+    const history = attempts.filter(a => a.studentUsername === username)
+    if (history.length === 0) return
+    const latest = history.reduce((best, cur) =>
+      cur.attemptNumber > best.attemptNumber ? cur : best
+    )
+    latestByStudent.set(username, {
+      score: latest.score,
+      totalPoints: latest.totalPoints,
+      percentage: latest.percentage,
+      completedAt: latest.completedAt,
+    })
+  })
+
+  return usernames.map(username => {
+    const profile = studentsStore.profiles[username]
+    const latest = latestByStudent.get(username)
+
+    const name = profile ? `${profile.firstName} ${profile.lastName}` : username
+    const email = profile?.email || `${username}@example.com`
+    const avatar = profile?.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+
+    const score = latest ? latest.score : 0
+    const totalPoints = latest ? latest.totalPoints : 0
+    const percentage = latest ? latest.percentage : 0
+
+    const time = latest
+      ? new Date(latest.completedAt).toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '--:--'
+
+    return {
+      name,
+      email,
+      avatar,
+      section: section.name,
+      score,
+      percentage,
+      time,
+    }
+  })
+})
 
 // COMPUTED
-const currentQuestion = computed(() => questions.find((q) => q.id === selectedQuestionId.value))
+const currentQuestion = computed(() => questions.value.find(q => q.id === selectedQuestionId.value))
 
 const incorrectResponses = computed(() => {
   if (!currentQuestion.value) return 0
@@ -123,27 +189,37 @@ const incorrectResponses = computed(() => {
 })
 
 const correctSegments = computed(() => {
-  const ratio = currentQuestion.value ? currentQuestion.value.correctResponses / totalSubmissions.value : 0
+  const total = totalStudents.value || 0
+  const correct = currentQuestion.value ? currentQuestion.value.correctResponses : 0
+  const ratio = total > 0 ? correct / total : 0
   return segmentize(ratio)
 })
 
 const incorrectSegments = computed(() => {
-  const ratio = currentQuestion.value ? currentQuestion.value.incorrectResponses / totalSubmissions.value : 0
+  const total = totalStudents.value || 0
+  const incorrect = incorrectResponses.value
+  const ratio = total > 0 ? incorrect / total : 0
   return segmentize(ratio)
 })
 
+const availableSections = computed(() => {
+  const unique = new Set<string>()
+  participants.value.forEach(p => {
+    if (p.section) unique.add(p.section)
+  })
+  return ['All Sections', ...Array.from(unique)]
+})
 
 const filteredParticipants = computed(() => {
-  return participants
-    .filter((p) => selectedSection.value === 'All Sections' || p.section === selectedSection.value)
-    .filter((p) =>
+  return participants.value
+    .filter(p => selectedSection.value === 'All Sections' || p.section === selectedSection.value)
+    .filter(p =>
       [p.name, p.email, p.section]
         .join(' ')
         .toLowerCase()
         .includes(search.value.toLowerCase())
     )
 })
-
 
 // METHODS
 function selectQuestion(id: number) {
@@ -348,12 +424,13 @@ function segmentize(ratio: number): number[] {
                   v-model="selectedSection"
                   class="block appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:border-blue-500"
                 >
-                  <option value="All Sections">All Sections</option>
-                  <option value="IT11A">IT11A</option>
-                  <option value="IT11B">IT11B</option>
-                  <option value="CS22A">CS22A</option>
-                  <option value="CS22B">CS22B</option>
-                  <option value="CS23A">CS23A</option>
+                  <option
+                    v-for="section in availableSections"
+                    :key="section"
+                    :value="section"
+                  >
+                    {{ section }}
+                  </option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                   <i class="fas fa-chevron-down h-4 w-4"></i>
