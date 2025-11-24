@@ -35,13 +35,6 @@ const completedAtText = computed(() => {
   return iso ? new Date(iso).toLocaleString() : '-'
 })
 
-// LIFECYCLE
-onMounted(() => {
-  if (!quizzesStore.currentAttempt.isHistoricalReview) {
-    quizzesStore.saveAttemptToHistory()
-  }
-})
-
 // METHODS
 const goToQuestion = (questionIndex: number) => {
   currentQuestion.value = questionIndex

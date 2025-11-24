@@ -59,12 +59,14 @@ const submitQuiz = () => {
     return
   }
   quizzesStore.finishAttempt()
+  quizzesStore.saveAttemptToHistory()
   router.push({ name: 'quiz-score' })
 }
 
 const confirmSubmit = () => {
   showConfirmModal.value = false
   quizzesStore.finishAttempt()
+  quizzesStore.saveAttemptToHistory()
   router.push({ name: 'quiz-score' })
 }
 
