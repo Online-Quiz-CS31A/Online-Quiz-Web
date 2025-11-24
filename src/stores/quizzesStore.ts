@@ -2,6 +2,8 @@ import { ref, computed, reactive } from 'vue'
 import { defineStore } from 'pinia'
 import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, QuizAttemptHistory } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
+import { useCoursesStore } from './coursesStore'
+import { useSectionsStore } from './sectionsStore'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
   const teacherQuizzesByUser = ref<Record<string, TeacherQuizItem[]>>({
@@ -224,6 +226,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   let attemptHistoryLoaded = false
 
   const auth = useAuthStore()
+  const coursesStore = useCoursesStore()
+  const sectionsStore = useSectionsStore()
 
   loadArchivedSeedQuizzesFromStorage()
 
@@ -290,7 +294,36 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       })
     })
     
-    return studentQuizzes
+    const activeSubjects = new Set(
+      coursesStore.allCourses
+        .filter(c => c.status !== 'Archived')
+        .map(c => c.name)
+    )
+
+    return studentQuizzes.filter(q => {
+      if (!activeSubjects.has(q.subject)) return false
+
+      const course = coursesStore.allCourses.find(c => c.name === q.subject)
+      if (!course) return false
+
+      const section = sectionsStore.allSections.find(s => {
+        const inSection = (s.studentUsernames || []).includes(uname)
+        return inSection && s.name === q.class
+      })
+
+      if (!section) return false
+
+      const isArchivedForCourse = sectionsStore.archivedSectionMappings.some(
+        m => m.courseId === course.id && m.sectionId === section.id
+      )
+      if (isArchivedForCourse) return false
+
+      const hasActiveMapping = sectionsStore.courseSectionMappings.some(
+        m => m.courseId === course.id && m.sectionId === section.id
+      )
+
+      return hasActiveMapping
+    })
   })
 
   function loadArchivedSeedQuizzesFromStorage() {

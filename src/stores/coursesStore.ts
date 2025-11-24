@@ -76,7 +76,14 @@ export const useCoursesStore = defineStore('classes', () => {
         })
     } else {
       const uname = user.username
-      return allCoursesWithCounts.value.filter(c => (c.studentUsernames || []).includes(uname) && c.status !== 'Archived')
+      const sectionsStore = useSectionsStore()
+
+      return allCoursesWithCounts.value.filter(c => {
+        if (c.status === 'Archived') return false
+
+        const sections = sectionsStore.getSectionsByCourse(c.id)
+        return sections.some(section => (section.studentUsernames || []).includes(uname))
+      })
     }
   })
 

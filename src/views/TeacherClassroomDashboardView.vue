@@ -240,10 +240,13 @@ const activeQuizzes = computed<TeacherQuizItem[]>(() => {
   const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
   const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
   const courseName = currentCourse.value?.name || ''
+  const sectionName = currentSection.value?.name || ''
 
   return allQuizzes
     .filter(q => (q.status || 'published') !== 'draft')
+    .filter(q => !(q as any).archived)
     .filter(q => (!courseName || q.subject === courseName))
+    .filter(q => (!sectionName || q.class === sectionName))
     .sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime()
       const bDate = new Date(b.createdAt || 0).getTime()
