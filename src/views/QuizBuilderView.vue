@@ -73,7 +73,7 @@ function onResults() {
 }
 
 function onPreview() {
-  console.log('Preview quiz...')
+  router.push({ name: 'quiz-preview' })
 }
 
 // LIFECYCLE
