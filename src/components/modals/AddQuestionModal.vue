@@ -51,10 +51,10 @@ function createQuestion(type: string): QuizQuestion {
   switch(type) {
     case 'multiple-choice':
       newQuestion.options = [
-        { text: 'Option 1', isCorrect: true, imageUrl: '' },
-        { text: 'Option 2', isCorrect: false, imageUrl: '' },
-        { text: 'Option 3', isCorrect: false, imageUrl: '' },
-        { text: 'Option 4', isCorrect: false, imageUrl: '' }
+        { text: '', isCorrect: true, imageUrl: '' },
+        { text: '', isCorrect: false, imageUrl: '' },
+        { text: '', isCorrect: false, imageUrl: '' },
+        { text: '', isCorrect: false, imageUrl: '' }
       ]
       break
     case 'true-false':
@@ -65,12 +65,12 @@ function createQuestion(type: string): QuizQuestion {
       break
     case 'matching':
       newQuestion.pairs = [
-        { left: 'Term 1', right: 'Definition 1' },
-        { left: 'Term 2', right: 'Definition 2' }
+        { left: '', right: '' },
+        { left: '', right: '' }
       ]
       break
     case 'enumeration':
-      newQuestion.items = ['Item 1', 'Item 2']
+      newQuestion.items = ['', '']
       break
     case 'image-question':
       newQuestion.mediaType = 'image'

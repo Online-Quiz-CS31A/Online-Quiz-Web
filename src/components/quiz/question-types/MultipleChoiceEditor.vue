@@ -19,7 +19,7 @@ function getOptionLetter(index: number) {
 
 function addOption() {
   const newOptions = [...props.options, {
-    text: `Option ${props.options.length + 1}`,
+    text: '',
     isCorrect: false,
     imageUrl: ''
   }]

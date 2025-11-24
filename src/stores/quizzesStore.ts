@@ -22,7 +22,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 1, type: 'multiple-choice', text: 'What does HTML stand for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Hyper Text Markup Language', isCorrect: true }, { text: 'High Tech Modern Language', isCorrect: false }, { text: 'Home Tool Markup Language', isCorrect: false }, { text: 'Hyperlinks and Text Markup Language', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'CSS stands for Cascading Style Sheets.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'Which HTML tag is used for the largest heading?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: '<heading>', isCorrect: false }, { text: '<h6>', isCorrect: false }, { text: '<h1>', isCorrect: true }, { text: '<head>', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'short-answer', text: 'What is the purpose of the <div> tag in HTML?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
+          { id: 4, type: 'text', text: 'What is the purpose of the <div> tag in HTML?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'The <div> tag is a generic block-level container used to group content for layout or styling with CSS.', pairs: [], items: [] },
           { id: 5, type: 'multiple-choice', text: 'Which CSS property is used to change text color?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'text-color', isCorrect: false }, { text: 'color', isCorrect: true }, { text: 'font-color', isCorrect: false }, { text: 'text-style', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 6, type: 'enumeration', text: 'List three ways to include CSS in an HTML document.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['Inline CSS', 'Internal CSS', 'External CSS'] }
         ],
@@ -46,8 +46,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 2, type: 'true-false', text: 'A linked list requires contiguous memory allocation.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'Which data structure uses LIFO principle?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Queue', isCorrect: false }, { text: 'Stack', isCorrect: true }, { text: 'Array', isCorrect: false }, { text: 'Linked List', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 4, type: 'matching', text: 'Match the data structure with its primary operation.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [{ left: 'Stack', right: 'Push/Pop' }, { left: 'Queue', right: 'Enqueue/Dequeue' }, { left: 'Array', right: 'Index Access' }], items: [] },
-          { id: 5, type: 'short-answer', text: 'What is the advantage of a doubly linked list over a singly linked list?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'essay', text: 'Compare and contrast arrays and linked lists in terms of memory usage and access time.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] }
+          { id: 5, type: 'text', text: 'What is the advantage of a doubly linked list over a singly linked list?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'A doubly linked list allows traversal in both directions and makes insertion and deletion easier because each node keeps references to both its previous and next nodes.', pairs: [], items: [] },
+          { id: 6, type: 'text', text: 'Compare and contrast arrays and linked lists in terms of memory usage and access time.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Arrays use contiguous memory and provide fast O(1) indexed access but can be expensive to resize, while linked lists use non-contiguous memory with O(n) access time but allow efficient insertions and deletions at arbitrary positions.', pairs: [], items: [] }
         ],
         createdAt: '2024-05-12T10:00:00Z',
         updatedAt: '2024-05-12T10:00:00Z'
@@ -70,7 +70,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 1, type: 'multiple-choice', text: 'What is the CIA triad in information security?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Confidentiality, Integrity, Availability', isCorrect: true }, { text: 'Control, Integration, Authentication', isCorrect: false }, { text: 'Cryptography, Identity, Authorization', isCorrect: false }, { text: 'Code, Implementation, Access', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'Encryption is the process of converting plaintext to ciphertext.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'Which of the following is NOT a type of malware?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Virus', isCorrect: false }, { text: 'Worm', isCorrect: false }, { text: 'Firewall', isCorrect: true }, { text: 'Trojan', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'short-answer', text: 'Define what a firewall is and its primary purpose.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
+          { id: 4, type: 'text', text: 'Define what a firewall is and its primary purpose.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'A firewall is a network security system that monitors and controls incoming and outgoing traffic based on predefined security rules, acting as a barrier between a trusted internal network and untrusted external networks such as the internet.', pairs: [], items: [] },
           { id: 5, type: 'multiple-choice', text: 'What is the primary goal of a DDoS attack?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Steal data', isCorrect: false }, { text: 'Make services unavailable', isCorrect: true }, { text: 'Delete files', isCorrect: false }, { text: 'Install malware', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 6, type: 'enumeration', text: 'List three common authentication factors.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['Something you know', 'Something you have', 'Something you are'] }
         ],
@@ -94,8 +94,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 2, type: 'true-false', text: 'Public key cryptography uses the same key for encryption and decryption.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'What is a digital signature used for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Authentication and non-repudiation', isCorrect: true }, { text: 'Encryption only', isCorrect: false }, { text: 'Compression', isCorrect: false }, { text: 'Storage', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 4, type: 'matching', text: 'Match the security concept with its description.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [{ left: 'Hash Function', right: 'One-way function' }, { left: 'Salt', right: 'Random data for passwords' }, { left: 'SSL/TLS', right: 'Secure communication protocol' }], items: [] },
-          { id: 5, type: 'short-answer', text: 'Explain the difference between symmetric and asymmetric encryption.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'essay', text: 'Discuss the importance of key management in cryptographic systems.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] }
+          { id: 5, type: 'text', text: 'Explain the difference between symmetric and asymmetric encryption.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Symmetric encryption uses the same key for both encryption and decryption, while asymmetric encryption uses a public key to encrypt data and a separate private key to decrypt it.', pairs: [], items: [] },
+          { id: 6, type: 'text', text: 'Discuss the importance of key management in cryptographic systems.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Key management is critical because the security of cryptographic systems depends on generating, distributing, storing, rotating, and revoking keys securely to prevent unauthorized access or key compromise.', pairs: [], items: [] }
         ],
         createdAt: '2024-05-02T10:00:00Z',
         updatedAt: '2024-05-02T10:00:00Z'
@@ -116,7 +116,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 1, type: 'multiple-choice', text: 'Which memory is fastest?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Hard Disk', isCorrect: false }, { text: 'RAM', isCorrect: false }, { text: 'Cache', isCorrect: true }, { text: 'ROM', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'Cache memory is located between CPU and RAM.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'What is the principle of locality?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Programs tend to access same memory locations', isCorrect: true }, { text: 'Memory is organized locally', isCorrect: false }, { text: 'Cache is local to CPU', isCorrect: false }, { text: 'All data is stored locally', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'short-answer', text: 'Explain the difference between temporal and spatial locality.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
+          { id: 4, type: 'text', text: 'Explain the difference between temporal and spatial locality.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Temporal locality means a program tends to reuse the same data or instructions within a short time period, while spatial locality means it tends to access data locations that are close to each other in memory.', pairs: [], items: [] },
           { id: 5, type: 'multiple-choice', text: 'What does a cache miss mean?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Data found in cache', isCorrect: false }, { text: 'Data not found in cache', isCorrect: true }, { text: 'Cache is full', isCorrect: false }, { text: 'Cache error', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 6, type: 'enumeration', text: 'List three cache replacement policies.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['LRU (Least Recently Used)', 'FIFO (First In First Out)', 'LFU (Least Frequently Used)'] }
         ],
@@ -141,8 +141,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 2, type: 'true-false', text: 'A process in the ready state is currently executing on the CPU.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'What is a race condition?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Two processes competing for CPU', isCorrect: false }, { text: 'Multiple processes accessing shared data', isCorrect: true }, { text: 'Fast process execution', isCorrect: false }, { text: 'Process scheduling conflict', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 4, type: 'matching', text: 'Match the process state with its description.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [{ left: 'New', right: 'Process being created' }, { left: 'Running', right: 'Instructions being executed' }, { left: 'Waiting', right: 'Waiting for I/O' }], items: [] },
-          { id: 5, type: 'short-answer', text: 'What is a critical section in process synchronization?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'essay', text: 'Compare and contrast preemptive and non-preemptive scheduling.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] }
+          { id: 5, type: 'text', text: 'What is a critical section in process synchronization?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'A critical section is a part of a program where shared resources are accessed and that must not be executed by more than one process or thread at the same time to avoid data races.', pairs: [], items: [] },
+          { id: 6, type: 'text', text: 'Compare and contrast preemptive and non-preemptive scheduling.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Preemptive scheduling allows the operating system to interrupt and switch out a running process, while non-preemptive scheduling lets a process run until it finishes or blocks; preemptive systems improve responsiveness but add overhead and complexity.', pairs: [], items: [] }
         ],
         createdAt: '2024-05-04T10:00:00Z',
         updatedAt: '2024-05-04T10:00:00Z'
@@ -163,7 +163,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           { id: 1, type: 'multiple-choice', text: 'What type of language does a PDA accept?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Regular', isCorrect: false }, { text: 'Context-Free', isCorrect: true }, { text: 'Context-Sensitive', isCorrect: false }, { text: 'Recursive', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 2, type: 'true-false', text: 'A context-free grammar can generate any regular language.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 3, type: 'multiple-choice', text: 'Which component is NOT part of a PDA?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Input tape', isCorrect: false }, { text: 'Stack', isCorrect: false }, { text: 'Queue', isCorrect: true }, { text: 'States', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'short-answer', text: 'What is the pumping lemma for context-free languages used for?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: [] },
+          { id: 4, type: 'text', text: 'What is the pumping lemma for context-free languages used for?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'The pumping lemma for context-free languages is used to prove that certain languages are not context-free by showing that all sufficiently long strings in the language cannot be pumped while still remaining in the language.', pairs: [], items: [] },
           { id: 5, type: 'multiple-choice', text: 'What does CFG stand for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Context-Free Grammar', isCorrect: true }, { text: 'Computational Finite Grammar', isCorrect: false }, { text: 'Complete Formal Grammar', isCorrect: false }, { text: 'Complex Function Generator', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
           { id: 6, type: 'enumeration', text: 'List the four components of a formal grammar.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['Variables (Non-terminals)', 'Terminals', 'Production Rules', 'Start Symbol'] }
         ],
@@ -435,10 +435,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     switch(newType) {
       case 'multiple-choice':
         currentQuestion.value.options = [
-          { text: 'Option 1', isCorrect: true, imageUrl: '' },
-          { text: 'Option 2', isCorrect: false, imageUrl: '' },
-          { text: 'Option 3', isCorrect: false, imageUrl: '' },
-          { text: 'Option 4', isCorrect: false, imageUrl: '' }
+          { text: '', isCorrect: true, imageUrl: '' },
+          { text: '', isCorrect: false, imageUrl: '' },
+          { text: '', isCorrect: false, imageUrl: '' },
+          { text: '', isCorrect: false, imageUrl: '' }
         ]
         break
       case 'true-false':
@@ -449,12 +449,12 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         break
       case 'matching':
         currentQuestion.value.pairs = [
-          { left: 'Term 1', right: 'Definition 1' },
-          { left: 'Term 2', right: 'Definition 2' }
+          { left: '', right: '' },
+          { left: '', right: '' }
         ]
         break
       case 'enumeration':
-        currentQuestion.value.items = ['Item 1', 'Item 2']
+        currentQuestion.value.items = ['', '']
         break
     }
   }
@@ -465,6 +465,47 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
     if (currentQuiz.questions.length === 0) {
       throw new Error('Quiz must have at least one question')
+    }
+
+    for (let i = 0; i < currentQuiz.questions.length; i++) {
+      const q = currentQuiz.questions[i]
+
+      if (!q.text || !q.text.trim()) {
+        throw new Error(`Question ${i + 1} cannot be empty`)
+      }
+
+      if (q.type === 'multiple-choice') {
+        if (!q.options || q.options.length < 2) {
+          throw new Error(`Multiple choice question ${i + 1} must have at least 2 options`)
+        }
+
+        const hasEmptyOption = q.options.some(opt => !opt.text || !opt.text.trim())
+        if (hasEmptyOption) {
+          throw new Error(`All options in question ${i + 1} must have text`)
+        }
+      }
+
+      if (q.type === 'enumeration') {
+        if (!q.items || q.items.length < 2) {
+          throw new Error(`Enumeration question ${i + 1} must have at least 2 items`)
+        }
+
+        const hasEmptyItem = q.items.some(item => !item || !item.trim())
+        if (hasEmptyItem) {
+          throw new Error(`All items in enumeration question ${i + 1} must have text`)
+        }
+      }
+
+      if (q.type === 'matching') {
+        if (!q.pairs || q.pairs.length < 2) {
+          throw new Error(`Matching question ${i + 1} must have at least 2 pairs`)
+        }
+
+        const hasEmptyPair = q.pairs.some(p => !p.left || !p.left.trim() || !p.right || !p.right.trim())
+        if (hasEmptyPair) {
+          throw new Error(`All pairs in matching question ${i + 1} must have both sides filled`)
+        }
+      }
     }
 
     const auth = useAuthStore()
@@ -492,19 +533,23 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       return quizzes[existingIndex]
     } else {
       const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
+
+      const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
+      const seedQuiz = allSeedQuizzes.find(q => q.id === id)
+
       const quizItem: TeacherQuizItem = {
         id,
         title: currentQuiz.title,
         subject: currentQuiz.subject,
         description: currentQuiz.description,
-        dueDate: '',
-        class: '',
-        submitted: 0,
-        total: 0,
-        color: 'blue',
+        dueDate: seedQuiz ? seedQuiz.dueDate : '',
+        class: seedQuiz ? seedQuiz.class : '',
+        submitted: seedQuiz ? seedQuiz.submitted : 0,
+        total: seedQuiz ? seedQuiz.total : 0,
+        color: seedQuiz ? seedQuiz.color : 'blue',
         status,
         questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-        createdAt: new Date().toISOString(),
+        createdAt: seedQuiz ? seedQuiz.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ownerUsername: username
       }

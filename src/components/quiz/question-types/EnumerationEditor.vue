@@ -15,7 +15,7 @@ function getOptionLetter(index: number) {
 }
 
 function addItem() {
-  const newItems = [...props.items, `Item ${props.items.length + 1}`]
+  const newItems = [...props.items, '']
   emit('update:items', newItems)
 }
 
