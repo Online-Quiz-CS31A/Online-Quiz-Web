@@ -6,6 +6,7 @@ import { useSectionsStore } from '@/stores/sectionsStore'
 import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
 import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
+import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
@@ -46,8 +47,10 @@ const emit = defineEmits<{
 const openMenuId = ref<number | null>(null)
 const statusFilter = ref<'all' | 'draft' | 'published'>(props.initialFilter)
 const quizPendingDeletion = ref<TeacherQuizItem | null>(null)
+const quizPendingUnarchive = ref<TeacherQuizItem | null>(null)
 const showDraftDeleteModal = ref(false)
 const showPublishedDeleteModal = ref(false)
+const showUnarchiveModal = ref(false)
  
 // COMPUTED
 const filteredQuizzes = computed(() => {
@@ -143,8 +146,23 @@ const handleConfirmDelete = () => {
 }
 
 const handleUnarchiveQuiz = (quiz: TeacherQuizItem) => {
-  quizzesStore.unarchiveQuiz(quiz.id)
+  quizPendingUnarchive.value = quiz
+  showUnarchiveModal.value = true
   closeMenu()
+}
+
+const handleCancelUnarchive = () => {
+  showUnarchiveModal.value = false
+  quizPendingUnarchive.value = null
+}
+
+const handleConfirmUnarchive = () => {
+  if (!quizPendingUnarchive.value) {
+    handleCancelUnarchive()
+    return
+  }
+  quizzesStore.unarchiveQuiz(quizPendingUnarchive.value.id)
+  handleCancelUnarchive()
 }
 
 const handleQuizClick = (quiz: TeacherQuizItem) => {
@@ -398,6 +416,14 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
       @cancel="handleCancelDelete"
       @confirm="handleConfirmDelete"
     />
+
+	<ConfirmUnarchiveModal
+	  :open="showUnarchiveModal"
+	  :item-name="quizPendingUnarchive?.title"
+	  title="Unarchive quiz?"
+	  @cancel="handleCancelUnarchive"
+	  @confirm="handleConfirmUnarchive"
+	/>
   </div>
 </template>
 

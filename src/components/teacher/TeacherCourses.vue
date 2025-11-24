@@ -5,6 +5,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem } from '@/interfaces/interfaces'
 import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -35,6 +36,8 @@ const sectionsStore = useSectionsStore()
 const menuOpenForId = ref<number | null>(null)
 const coursePendingDeletion = ref<ClassItem | null>(null)
 const showCourseDeleteModal = ref(false)
+const coursePendingUnarchive = ref<ClassItem | null>(null)
+const showCourseUnarchiveModal = ref(false)
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -80,8 +83,23 @@ const handleConfirmDelete = () => {
 }
 
 const handleUnarchiveClass = (classItem: ClassItem) => {
-  classesStore.unarchiveCourse(classItem.id)
+  coursePendingUnarchive.value = classItem
+  showCourseUnarchiveModal.value = true
   menuOpenForId.value = null
+}
+
+const handleCancelUnarchiveCourse = () => {
+  showCourseUnarchiveModal.value = false
+  coursePendingUnarchive.value = null
+}
+
+const handleConfirmUnarchiveCourse = () => {
+  if (!coursePendingUnarchive.value) {
+    handleCancelUnarchiveCourse()
+    return
+  }
+  classesStore.unarchiveCourse(coursePendingUnarchive.value.id)
+  handleCancelUnarchiveCourse()
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -240,6 +258,14 @@ onBeforeUnmount(() => {
     @cancel="handleCancelDelete"
     @confirm="handleConfirmDelete"
   />
+
+	<ConfirmUnarchiveModal
+	  :open="showCourseUnarchiveModal"
+	  :item-name="coursePendingUnarchive?.name"
+	  title="Unarchive course?"
+	  @cancel="handleCancelUnarchiveCourse"
+	  @confirm="handleConfirmUnarchiveCourse"
+	/>
 </template>
 
 <style scoped>

@@ -4,12 +4,15 @@ import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import ClassSectionCard from '@/components/teacher/ClassSectionCard.vue'
+import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 
 const coursesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const router = useRouter()
 
 const openMenuId = ref<number | null>(null)
+const sectionPendingUnarchive = ref<{ id: number; courseId: number; name: string } | null>(null)
+const showSectionUnarchiveModal = ref(false)
 
 function formatTime(time24: string): string {
   if (!time24 || time24 === '—') return '—'
@@ -73,8 +76,29 @@ function handleUnarchive(item: {
   id: number
   courseId: number
 }) {
-  sectionsStore.unarchiveSection(item.id, item.courseId)
+  const allSections = sectionsStore.allSections
+  const section = allSections.find(s => s.id === item.id)
+  sectionPendingUnarchive.value = {
+    id: item.id,
+    courseId: item.courseId,
+    name: section?.name || 'Section',
+  }
+  showSectionUnarchiveModal.value = true
   openMenuId.value = null
+}
+
+function handleCancelUnarchiveSection() {
+  showSectionUnarchiveModal.value = false
+  sectionPendingUnarchive.value = null
+}
+
+function handleConfirmUnarchiveSection() {
+  if (!sectionPendingUnarchive.value) {
+    handleCancelUnarchiveSection()
+    return
+  }
+  sectionsStore.unarchiveSection(sectionPendingUnarchive.value.id, sectionPendingUnarchive.value.courseId)
+  handleCancelUnarchiveSection()
 }
 </script>
 
@@ -108,5 +132,13 @@ function handleUnarchive(item: {
         />
       </div>
     </div>
+
+	<ConfirmUnarchiveModal
+	  :open="showSectionUnarchiveModal"
+	  :item-name="sectionPendingUnarchive?.name"
+	  title="Unarchive section?"
+	  @cancel="handleCancelUnarchiveSection"
+	  @confirm="handleConfirmUnarchiveSection"
+	/>
   </div>
 </template>
