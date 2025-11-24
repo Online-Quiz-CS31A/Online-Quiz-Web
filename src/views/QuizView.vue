@@ -16,7 +16,10 @@ const quizSubject = ref(history.state?.quizSubject || 'Quiz')
 const hasValidQuestions = computed(() => questions.value.length > 0)
   
   // REFS
-  const currentQuestion = ref(0)
+  const initialQuestionIndex = typeof (history.state as any)?.questionIndex === 'number'
+    ? (history.state as any).questionIndex
+    : 0
+  const currentQuestion = ref(initialQuestionIndex)
   const selectedOption = ref<number | null>(null)
   const textAnswer = ref('')
   const enumerationAnswers = ref<string[]>([])

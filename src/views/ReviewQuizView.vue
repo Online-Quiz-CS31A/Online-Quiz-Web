@@ -46,7 +46,28 @@ const updateDateTime = () => {
 }
 
 const editQuestion = (questionId: number) => {
-  router.push({ name: 'quiz', query: { question: questionId } })
+  const current = quizzesStore.currentAttempt
+  const qid = current.quizId
+
+  if (!qid) {
+    router.push({ name: 'quiz' })
+    return
+  }
+
+  const questions = quizzesStore.getStudentQuizQuestions(qid)
+  const studentQuiz = quizzesStore.myStudentQuizzes.find(q => q.id === qid)
+  const index = Math.max(0, Math.min(questions.length - 1, questionId - 1))
+
+  router.push({
+    name: 'quiz',
+    state: {
+      quizId: qid,
+      quizTitle: current.quizTitle || studentQuiz?.title || 'Quiz',
+      quizSubject: studentQuiz?.subject || 'Quiz',
+      questions,
+      questionIndex: index,
+    },
+  } as any)
 }
 
 const backToQuiz = () => {
