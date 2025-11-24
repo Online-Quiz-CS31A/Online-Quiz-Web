@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
@@ -35,6 +35,13 @@ const completedAtText = computed(() => {
   return iso ? new Date(iso).toLocaleString() : '-'
 })
 
+// LIFECYCLE
+onMounted(() => {
+  if (!quizzesStore.currentAttempt.isHistoricalReview) {
+    quizzesStore.saveAttemptToHistory()
+  }
+})
+
 // METHODS
 const goToQuestion = (questionIndex: number) => {
   currentQuestion.value = questionIndex
@@ -53,7 +60,6 @@ const previousQuestion = () => {
 }
 
 const finishReview = () => {
-  quizzesStore.saveAttemptToHistory()
   quizzesStore.clearAttemptStorage()
   
   const quizId = quizzesStore.currentAttempt.quizId

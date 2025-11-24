@@ -128,6 +128,15 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     quizzesStore.finishAttempt()
     router.push({ name: 'quiz-review' })
   }
+
+  const autoSubmitOnTimeout = () => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+    quizzesStore.finishAttempt()
+    router.push({ name: 'quiz-score' })
+  }
   
   const parseTimeLimitToSeconds = (tl: string | undefined): number => {
     if (!tl) return 0
@@ -202,7 +211,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
         if (timer.value === 0) {
           clearInterval(timerInterval.value as any)
           timerInterval.value = null
-          finishQuiz()
+          autoSubmitOnTimeout()
         }
       }
     }, 1000)
@@ -212,7 +221,12 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   onMounted(() => {
     initDuration()
     loadCurrentQuestionAnswers()
-    startTimer()
+
+    if (durationSeconds.value > 0 && timer.value <= 0) {
+      autoSubmitOnTimeout()
+    } else if (durationSeconds.value > 0) {
+      startTimer()
+    }
   })
   
   onUnmounted(() => {

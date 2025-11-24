@@ -13,6 +13,19 @@ const quizzesStore = useQuizzesStore()
 
 onMounted(() => {
   quizzesStore.loadAttemptFromStorage()
+
+  const current = (quizzesStore as any).currentAttempt
+  const id = Number((route.params as any)?.quizId)
+  
+  if (current && current.isOngoing && current.quizId === id) {
+    const remaining = quizzesStore.getRemainingSeconds()
+    if (remaining <= 0 && current.durationSeconds > 0) {
+      quizzesStore.finishAttempt()
+      quizzesStore.saveAttemptToHistory()
+      quizzesStore.clearAttemptStorage()
+    }
+  }
+
   quizzesStore.loadAttemptHistoryFromStorage()
 })
 
