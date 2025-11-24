@@ -277,6 +277,7 @@ export interface HeaderProps {
   actionButtons?: boolean
   showQuizCreatorControls?: boolean
   published?: boolean
+  archivedQuiz?: boolean
 }
 
 // CLASSROOM DASHBOARD INTERFACES

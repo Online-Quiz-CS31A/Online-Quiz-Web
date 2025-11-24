@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { ClassItem } from '@/interfaces/interfaces'
 import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 // REACTIVE
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
+const quizzesStore = useQuizzesStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
@@ -84,6 +86,7 @@ const handleConfirmDelete = () => {
     return
   }
   classesStore.archiveCourse(coursePendingDeletion.value.id)
+  quizzesStore.archiveQuizzesForCourse(coursePendingDeletion.value.name)
   handleCancelDelete()
 }
 
@@ -104,6 +107,7 @@ const handleConfirmUnarchiveCourse = () => {
     return
   }
   classesStore.unarchiveCourse(coursePendingUnarchive.value.id)
+  quizzesStore.unarchiveQuizzesForCourse(coursePendingUnarchive.value.name)
   handleCancelUnarchiveCourse()
 }
 

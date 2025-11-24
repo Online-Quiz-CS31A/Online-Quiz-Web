@@ -20,12 +20,22 @@ const route = useRoute()
 const showResults = ref(route.name === 'quiz-results')
 const showAssign = ref(route.name === 'quiz-assign')
 const published = ref(false)
+const archivedQuiz = ref(false)
 const creatorRef = ref<InstanceType<typeof QuizContent> | null>(null)
 
 // WATCHERS
 watch(() => route.name, (newRouteName) => {
   showResults.value = newRouteName === 'quiz-results'
   showAssign.value = newRouteName === 'quiz-assign'
+
+  if (archivedQuiz.value
+    && newRouteName !== 'quiz-results'
+    && (newRouteName === 'quiz-builder' || newRouteName === 'quiz-assign' || newRouteName === 'quiz-preview')
+  ) {
+    showResults.value = true
+    showAssign.value = false
+    router.replace({ name: 'quiz-results' })
+  }
 })
 
 
@@ -36,8 +46,12 @@ function syncPublished() {
     const fromDefaults = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
     const fromStorage = quizzesStore.getAllQuizzes().find(q => q.id === id)
     published.value = (fromDefaults?.status === 'published') || (fromStorage?.status === 'published')
+    const archivedFromDefaults = (fromDefaults as any)?.archived === true
+    const archivedFromStorage = (fromStorage as any)?.archived === true
+    archivedQuiz.value = archivedFromDefaults || archivedFromStorage
   } else {
     published.value = false
+    archivedQuiz.value = false
   }
 }
 
@@ -83,10 +97,21 @@ onMounted(() => {
     quizzesStore.resetCurrentQuiz()
   }
   syncPublished()
+
+  if (archivedQuiz.value) {
+    showResults.value = true
+    showAssign.value = false
+    router.replace({ name: 'quiz-results' })
+  }
 })
 
 watch(() => quizzesStore.currentQuiz.id, (id) => {
   syncPublished()
+  if (archivedQuiz.value) {
+    showResults.value = true
+    showAssign.value = false
+    router.replace({ name: 'quiz-results' })
+  }
 })
 </script>
 
@@ -99,6 +124,7 @@ watch(() => quizzesStore.currentQuiz.id, (id) => {
       :action-buttons="true"
       :show-quiz-creator-controls="true"
       :published="published"
+      :archived-quiz="archivedQuiz"
       @content="onContent"
       @save="onSave"
       @publish="onPublish"

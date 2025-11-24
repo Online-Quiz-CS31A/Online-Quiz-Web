@@ -171,9 +171,12 @@ function markAllAsRead() {
       </div>
       
       <!-- Center buttons for quiz creator -->
-      <div v-if="showQuizCreatorControls" class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2">
+      <div
+        v-if="showQuizCreatorControls && !props.archivedQuiz"
+        class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
+      >
         <button 
-          v-if="published"
+          v-if="published && !props.archivedQuiz"
           @click="emit('content')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -211,17 +214,17 @@ function markAllAsRead() {
       <div class="flex items-center space-x-4">
         <!-- Action buttons for quiz creator -->
         <div v-if="actionButtons" class="flex items-center space-x-2">
-          <button @click="emit('save')" 
+          <button v-if="!props.archivedQuiz" @click="emit('save')" 
                   class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Save
           </button>
           
-          <button v-if="!published" @click="openPublishModal"
+          <button v-if="!published && !props.archivedQuiz" @click="openPublishModal"
                   class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Publish
           </button>
           
-          <button v-if="published" @click="emit('preview')"
+          <button v-if="published && !props.archivedQuiz" @click="emit('preview')"
                   class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Preview
           </button>

@@ -605,6 +605,44 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
+  function unarchiveQuizzesForCourse(courseName: string) {
+    if (!courseName) return
+
+    const allStored = getAllQuizzes()
+    const ids = new Set<number>()
+
+    allStored.forEach(q => {
+      if (q.subject === courseName && (q as any).archived) ids.add(q.id)
+    })
+
+    Object.values(teacherQuizzesByUser.value).forEach(list => {
+      list.forEach(q => {
+        if (q.subject === courseName && (q as any).archived) ids.add(q.id)
+      })
+    })
+
+    ids.forEach(id => unarchiveQuiz(id))
+  }
+
+  function archiveQuizzesForCourse(courseName: string) {
+    if (!courseName) return
+
+    const allStored = getAllQuizzes()
+    const ids = new Set<number>()
+
+    allStored.forEach(q => {
+      if (q.subject === courseName) ids.add(q.id)
+    })
+
+    Object.values(teacherQuizzesByUser.value).forEach(list => {
+      list.forEach(q => {
+        if (q.subject === courseName) ids.add(q.id)
+      })
+    })
+
+    ids.forEach(id => archiveQuiz(id))
+  }
+
   function unarchiveQuiz(quizId: number) {
     const stored = getAllQuizzes()
     let mutated = false
@@ -1305,6 +1343,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     deleteQuiz,
     archiveQuiz,
     unarchiveQuiz,
+    archiveQuizzesForCourse,
+    unarchiveQuizzesForCourse,
     loadQuizForEditing,
     resetCurrentQuiz,
     getAllQuizzes,
