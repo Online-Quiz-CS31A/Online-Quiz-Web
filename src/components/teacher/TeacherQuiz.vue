@@ -49,7 +49,7 @@ const showPublishedDeleteModal = ref(false)
  
 // COMPUTED
 const filteredQuizzes = computed(() => {
-  let filtered = props.quizzes
+  let filtered = [...props.quizzes]
   
   if (statusFilter.value !== 'all') {
     filtered = filtered.filter(q => (q.status || 'published') === statusFilter.value)
@@ -62,8 +62,8 @@ const filteredQuizzes = computed(() => {
     if (aStatus === 'draft' && bStatus !== 'draft') return -1
     if (aStatus !== 'draft' && bStatus === 'draft') return 1
     
-    const aDate = new Date(a.createdAt || 0).getTime()
-    const bDate = new Date(b.createdAt || 0).getTime()
+    const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime()
+    const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime()
     return bDate - aDate
   })
 })

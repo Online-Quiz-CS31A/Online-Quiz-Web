@@ -50,7 +50,7 @@ const activeQuizzes = computed(() => {
   })
 
   const allQuizzes = Array.from(byId.values())
-  
+
   return allQuizzes.sort((a, b) => {
     const aStatus = a.status || 'published'
     const bStatus = b.status || 'published'
@@ -58,8 +58,8 @@ const activeQuizzes = computed(() => {
     if (aStatus === 'draft' && bStatus !== 'draft') return -1
     if (aStatus !== 'draft' && bStatus === 'draft') return 1
     
-    const aDate = new Date(a.createdAt || 0).getTime()
-    const bDate = new Date(b.createdAt || 0).getTime()
+    const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime()
+    const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime()
     return bDate - aDate
   })
 })
