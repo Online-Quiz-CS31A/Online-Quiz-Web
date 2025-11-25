@@ -11,9 +11,16 @@ const quizzesStore = useQuizzesStore()
 const archivedQuizzes = computed(() => {
   const stored = quizzesStore.getAllQuizzes()
   const combined = [...stored, ...quizzesStore.myTeacherQuizzes]
+
   let list = combined.filter(q => q.archived)
   list = list.filter(q => (q.status || 'published') === props.tab)
-  return list
+
+  const seen = new Set<number>()
+  return list.filter(q => {
+    if (seen.has(q.id)) return false
+    seen.add(q.id)
+    return true
+  })
 })
 </script>
 
@@ -56,7 +63,13 @@ const archivedQuizzes = computed(() => {
       </p>
     </div>
     <div v-else>
-      <TeacherQuiz :quizzes="archivedQuizzes" :hide-header="true" :show-filters="false" :archived-mode="true" />
+      <TeacherQuiz
+        :quizzes="archivedQuizzes"
+        :hide-header="true"
+        :show-filters="false"
+        :archived-mode="true"
+        archived-context-type="course"
+      />
     </div>
   </div>
 </template>

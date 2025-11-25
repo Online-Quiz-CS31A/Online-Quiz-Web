@@ -9,6 +9,8 @@ const props = defineProps<{
   quizzes: TeacherQuizItem[],
   viewMode: 'cards' | 'rows',
   isArchived?: boolean,
+  archivedContextType?: 'section' | 'course' | null,
+  archivedSectionId?: number | null,
 }>()
 
 const emit = defineEmits<{ 
@@ -93,7 +95,15 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <ActiveQuizzes v-else :quizzes="props.quizzes" :hideHeader="true" :viewMode="props.viewMode" />
+      <ActiveQuizzes
+        v-else
+        :quizzes="props.quizzes"
+        :hideHeader="true"
+        :viewMode="props.viewMode"
+        :archivedMode="props.isArchived"
+        :archivedContextType="props.archivedContextType || null"
+        :archivedSectionId="props.archivedSectionId ?? null"
+      />
     </div>
   </div>
 </template>

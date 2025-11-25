@@ -15,12 +15,22 @@ interface Props extends HeaderProps {}
 const router = useRouter()
 
 // PROPS
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<{
+  breadcrumb?: string
+  showNotification?: boolean
+  actionButtons?: boolean
+  showQuizCreatorControls?: boolean
+  published?: boolean
+  archivedQuiz?: boolean
+  readOnlyResultsOnly?: boolean
+}>(), {
   breadcrumb: '',
   showNotification: true,
   actionButtons: false,
   showQuizCreatorControls: false,
   published: false,
+  archivedQuiz: false,
+  readOnlyResultsOnly: false,
 })
 
 // EMITS
@@ -172,7 +182,7 @@ function markAllAsRead() {
       
       <!-- Center buttons for quiz creator -->
       <div
-        v-if="showQuizCreatorControls && !props.archivedQuiz"
+        v-if="showQuizCreatorControls && !props.archivedQuiz && !props.readOnlyResultsOnly"
         class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
       >
         <button 
@@ -210,21 +220,37 @@ function markAllAsRead() {
         </button>
       </div>
 
+      <div
+        v-else-if="showQuizCreatorControls && props.readOnlyResultsOnly && !props.archivedQuiz && false"
+        class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
+      >
+        <button 
+          @click="emit('results')"
+          class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
+          :class="{
+            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-results',
+            'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-results'
+          }"
+        >
+          Results
+        </button>
+      </div>
+
       <!-- Right side actions -->
       <div class="flex items-center space-x-4">
         <!-- Action buttons for quiz creator -->
         <div v-if="actionButtons" class="flex items-center space-x-2">
-          <button v-if="!props.archivedQuiz" @click="emit('save')" 
+          <button v-if="!props.archivedQuiz && !props.readOnlyResultsOnly" @click="emit('save')" 
                   class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Save
           </button>
           
-          <button v-if="!published && !props.archivedQuiz" @click="openPublishModal"
+          <button v-if="!published && !props.archivedQuiz && !props.readOnlyResultsOnly" @click="openPublishModal"
                   class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Publish
           </button>
           
-          <button v-if="published && !props.archivedQuiz" @click="emit('preview')"
+          <button v-if="published && !props.archivedQuiz && !props.readOnlyResultsOnly" @click="emit('preview')"
                   class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Preview
           </button>

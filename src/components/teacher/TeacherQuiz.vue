@@ -21,6 +21,8 @@ interface Props {
   showFilters?: boolean
   initialFilter?: 'all' | 'draft' | 'published'
   archivedMode?: boolean
+  archivedContextType?: 'section' | 'course' | null
+  archivedSectionId?: number | null
 }
 
 // CONSTANTS
@@ -117,7 +119,17 @@ const closeMenu = () => {
 
 const openQuizInBuilder = (quiz: TeacherQuizItem) => {
   quizzesStore.loadQuizForEditing(quiz.id)
-  router.push({ name: 'quiz-builder', params: { id: quiz.class || 'default' } })
+  router.push({
+    name: 'quiz-builder',
+    params: { id: quiz.class || 'default' },
+    query: {
+      archivedContext: props.archivedContextType || undefined,
+      sectionId:
+        props.archivedContextType === 'section' && props.archivedSectionId != null
+          ? String(props.archivedSectionId)
+          : undefined,
+    },
+  })
 }
 
 const handleEditQuiz = (quiz: TeacherQuizItem) => {

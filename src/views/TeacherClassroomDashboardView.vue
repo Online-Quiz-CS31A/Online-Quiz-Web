@@ -488,6 +488,8 @@ function cancelRemove() {
           :quizzes="activeQuizzes"
           :viewMode="quizViewMode"
           :isArchived="isArchivedForQuizzes"
+          :archivedContextType="isArchivedForQuizzes ? 'section' : null"
+          :archivedSectionId="sectionId"
           @update:viewMode="(v) => (quizViewMode = v)"
           @create-quiz="navigateToQuizCreator"
         />

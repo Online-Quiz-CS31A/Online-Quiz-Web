@@ -27,7 +27,7 @@ const archivedSections = computed(() => {
   const allSections = sectionsStore.allSections
   const allCourses = coursesStore.allCourses
 
-  return mappings
+  const rows = mappings
     .map(m => {
       const section = allSections.find(s => s.id === m.sectionId)
       const primaryCourseId = m.courseIds[0]
@@ -63,6 +63,13 @@ const archivedSections = computed(() => {
         students: number
       } => x !== null,
     )
+
+  const seen = new Set<number>()
+  return rows.filter(row => {
+    if (seen.has(row.id)) return false
+    seen.add(row.id)
+    return true
+  })
 })
 
 onMounted(() => {

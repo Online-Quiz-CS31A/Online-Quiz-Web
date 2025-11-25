@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useStudentsStore } from '@/stores/studentsStore'
-import type { QuizResultQuestion, QuizResultChoice, Participant } from '@/interfaces/interfaces'
+import type { QuizResultQuestion, QuizResultChoice, Participant, ClassSection, QuizAttemptHistory } from '@/interfaces/interfaces'
 
 // CONSTANTS
 const TOTAL_SEGMENTS = 5
@@ -13,6 +14,8 @@ const quizzesStore = useQuizzesStore()
 const sectionsStore = useSectionsStore()
 const studentsStore = useStudentsStore()
 
+const route = useRoute()
+
 // REFS
 const activeTab = ref<'questions' | 'participants'>('questions')
 const selectedQuestionId = ref<number>(1)
@@ -20,6 +23,13 @@ const selectedSection = ref('All Sections')
 const search = ref('')
 
 const currentQuizId = computed(() => quizzesStore.currentQuiz.id ?? null)
+
+const archivedContext = computed(() => route.query.archivedContext as 'section' | 'course' | undefined)
+const archivedSectionId = computed(() => {
+  const raw = route.query.sectionId
+  const num = typeof raw === 'string' ? Number(raw) : NaN
+  return Number.isFinite(num) && num > 0 ? num : null
+})
 
 const quizMeta = computed(() => {
   const id = currentQuizId.value
@@ -35,6 +45,21 @@ const quizSection = computed(() => {
   const name = quizSectionName.value
   if (!name) return null
   return sectionsStore.allSections.find(s => s.name === name) || null
+})
+
+const quizAssignedSections = computed(() => {
+  const meta = quizMeta.value as any
+  if (!meta) return [] as ClassSection[]
+
+  const names: string[] = Array.isArray(meta.assignedSections) && meta.assignedSections.length
+    ? meta.assignedSections
+    : (meta.class ? [meta.class] : [])
+
+  if (!names.length) return [] as ClassSection[]
+
+  const archivedIds = new Set<number>(sectionsStore.archivedSectionMappings.map(m => m.sectionId))
+
+  return sectionsStore.allSections.filter(s => names.includes(s.name) && !archivedIds.has(s.id))
 })
 
 const quizQuestions = computed(() => {
@@ -54,8 +79,6 @@ const totalSubmissions = computed(() => {
   if (id == null) return 0
   return quizzesStore.getQuizUniqueSubmitterCount(id)
 })
-
-const totalStudents = computed(() => quizSection.value?.studentUsernames.length || 0)
 
 const latestAttemptsByStudent = computed(() => {
   const attempts = allAttempts.value
@@ -246,19 +269,17 @@ const questions = computed<QuizResultQuestion[]>(() => {
   })
 })
 
-const participants = computed<Participant[]>(() => {
-  const section = quizSection.value
-  const id = currentQuizId.value
-  if (!section || id == null) return []
-
-  const usernames = section.studentUsernames || []
-  const attempts = allAttempts.value
+function buildParticipantsForSections(sections: ClassSection[], attempts: QuizAttemptHistory[]): Participant[] {
+  const usernames = new Set<string>()
+  sections.forEach(sec => {
+    (sec.studentUsernames || []).forEach(u => usernames.add(u))
+  })
 
   const latestByStudent = new Map<string, { score: number; totalPoints: number; percentage: number; completedAt: string }>()
 
-  usernames.forEach(username => {
+  Array.from(usernames).forEach(username => {
     const history = attempts.filter(a => a.studentUsername === username)
-    if (history.length === 0) return
+    if (!history.length) return
     const latest = history.reduce((best, cur) =>
       cur.attemptNumber > best.attemptNumber ? cur : best
     )
@@ -270,7 +291,7 @@ const participants = computed<Participant[]>(() => {
     })
   })
 
-  return usernames.map(username => {
+  return Array.from(usernames).map(username => {
     const profile = studentsStore.profiles[username]
     const latest = latestByStudent.get(username)
 
@@ -289,16 +310,56 @@ const participants = computed<Participant[]>(() => {
         })
       : '--:--'
 
+    const owningSection = sections.length === 1
+      ? sections[0].name
+      : (sections.find(sec => (sec.studentUsernames || []).includes(username))?.name || 'Multiple')
+
     return {
       name,
       email,
       avatar,
-      section: section.name,
+      section: owningSection,
       score,
       percentage,
       time,
     }
   })
+}
+
+const participants = computed<Participant[]>(() => {
+  const id = currentQuizId.value
+  if (id == null) return []
+
+  const attempts = allAttempts.value
+
+  if (archivedContext.value === 'section' && archivedSectionId.value) {
+    const section = sectionsStore.allSections.find(s => s.id === archivedSectionId.value)
+    if (!section) return []
+    return buildParticipantsForSections([section], attempts)
+  }
+
+  if (archivedContext.value === 'course') {
+    const sections = quizAssignedSections.value
+    if (!sections.length) return []
+    return buildParticipantsForSections(sections, attempts)
+  }
+
+  const sections = quizAssignedSections.value
+  if (sections.length > 0) {
+    return buildParticipantsForSections(sections, attempts)
+  }
+
+  const section = quizSection.value
+  if (!section) return []
+  return buildParticipantsForSections([section], attempts)
+})
+
+const totalStudents = computed(() => {
+  const emails = new Set<string>()
+  participants.value.forEach(p => {
+    if (p.email) emails.add(p.email)
+  })
+  return emails.size
 })
 
 // COMPUTED

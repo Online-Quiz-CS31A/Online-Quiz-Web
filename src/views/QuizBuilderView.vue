@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
@@ -16,6 +16,10 @@ const quizzesStore = useQuizzesStore()
 // REACTIVE
 const route = useRoute()
 
+const archivedContext = computed(() => route.query.archivedContext as 'section' | 'course' | undefined)
+const isArchivedSectionContext = computed(() => archivedContext.value === 'section')
+const isArchivedCourseContext = computed(() => archivedContext.value === 'course')
+
 // REFS
 const showResults = ref(route.name === 'quiz-results')
 const showAssign = ref(route.name === 'quiz-assign')
@@ -28,13 +32,13 @@ watch(() => route.name, (newRouteName) => {
   showResults.value = newRouteName === 'quiz-results'
   showAssign.value = newRouteName === 'quiz-assign'
 
-  if (archivedQuiz.value
+  if ((archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value)
     && newRouteName !== 'quiz-results'
     && (newRouteName === 'quiz-builder' || newRouteName === 'quiz-assign' || newRouteName === 'quiz-preview')
   ) {
     showResults.value = true
     showAssign.value = false
-    router.replace({ name: 'quiz-results' })
+    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
   }
 })
 
@@ -58,7 +62,7 @@ function syncPublished() {
 function onContent() {
   showResults.value = false
   showAssign.value = false
-  router.push({ name: 'quiz-builder' })
+  router.push({ name: 'quiz-builder', params: route.params, query: route.query })
   const el = document.querySelector('#quiz-main-content') as HTMLElement | null
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -71,23 +75,23 @@ function onSave() {
 function onPublish() {
   creatorRef.value?.publishQuiz?.()
   published.value = true
-  router.push({ name: 'quiz-builder' })
+  router.push({ name: 'quiz-builder', params: route.params, query: route.query })
 }
 
 function onAssign() {
   showAssign.value = true
   showResults.value = false
-  router.push({ name: 'quiz-assign' })
+  router.push({ name: 'quiz-assign', params: route.params, query: route.query })
 }
 
 function onResults() {
   showResults.value = true
   showAssign.value = false
-  router.push({ name: 'quiz-results' })
+  router.push({ name: 'quiz-results', params: route.params, query: route.query })
 }
 
 function onPreview() {
-  router.push({ name: 'quiz-preview' })
+  router.push({ name: 'quiz-preview', params: route.params, query: route.query })
 }
 
 // LIFECYCLE
@@ -98,19 +102,19 @@ onMounted(() => {
   }
   syncPublished()
 
-  if (archivedQuiz.value) {
+  if (archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value) {
     showResults.value = true
     showAssign.value = false
-    router.replace({ name: 'quiz-results' })
+    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
   }
 })
 
 watch(() => quizzesStore.currentQuiz.id, (id) => {
   syncPublished()
-  if (archivedQuiz.value) {
+  if (archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value) {
     showResults.value = true
     showAssign.value = false
-    router.replace({ name: 'quiz-results' })
+    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
   }
 })
 </script>
@@ -125,6 +129,7 @@ watch(() => quizzesStore.currentQuiz.id, (id) => {
       :show-quiz-creator-controls="true"
       :published="published"
       :archived-quiz="archivedQuiz"
+      :read-only-results-only="archivedQuiz || isArchivedSectionContext || isArchivedCourseContext"
       @content="onContent"
       @save="onSave"
       @publish="onPublish"
