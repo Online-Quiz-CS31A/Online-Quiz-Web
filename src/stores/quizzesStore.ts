@@ -108,7 +108,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         title: 'Week 5 Quiz', 
         description: 'Memory Hierarchy and Cache', 
         dueDate: '2025-05-20 23:59', 
-        class: 'CS31A', 
+        class: 'CS22A', 
         submitted: 3, 
         total: 24, 
         color: 'purple',
@@ -263,67 +263,80 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   const myStudentQuizzes = computed<StudentQuizItem[]>(() => {
     const uname = auth.currentUser?.username
     if (!uname) return []
-    
+
+    void quizzesVersion.value
+
     const enrollments = studentCourseEnrollments.value[uname] || []
     if (enrollments.length === 0) return []
-    
-    const studentQuizzes: StudentQuizItem[] = []
-    
-    enrollments.forEach(enrollment => {
-      const teacherQuizzes = teacherQuizzesByUser.value[enrollment.teacherUsername] || []
-      
-      teacherQuizzes.forEach(quiz => {
-        if (enrollment.subjects.includes(quiz.subject) && !quiz.archived) {
-          let maxAttempts = 3
-          if (quiz.id === 1) maxAttempts = 2
-          else if (quiz.id === 2) maxAttempts = 1
-          
-          studentQuizzes.push({
-            id: quiz.id,
-            subject: quiz.subject,
-            title: quiz.title,
-            description: quiz.description,
-            dueDate: quiz.dueDate,
-            class: quiz.class,
-            timeLimit: '30 min',
-            status: 'Not Started',
-            color: quiz.color,
-            maxAttempts
-          })
-        }
-      })
+
+    const storedQuizzes = getAllQuizzes()
+    const storedById = new Map<number, TeacherQuizItem>()
+    storedQuizzes.forEach(q => {
+      storedById.set(q.id, q)
     })
-    
+
     const activeSubjects = new Set(
       coursesStore.allCourses
         .filter(c => c.status !== 'Archived')
         .map(c => c.name)
     )
 
-    return studentQuizzes.filter(q => {
-      if (!activeSubjects.has(q.subject)) return false
+    const studentQuizzes: StudentQuizItem[] = []
 
-      const course = coursesStore.allCourses.find(c => c.name === q.subject)
-      if (!course) return false
+    enrollments.forEach(enrollment => {
+      const teacherQuizzes = teacherQuizzesByUser.value[enrollment.teacherUsername] || []
 
-      const section = sectionsStore.allSections.find(s => {
-        const inSection = (s.studentUsernames || []).includes(uname)
-        return inSection && s.name === q.class
+      teacherQuizzes.forEach(seedQuiz => {
+        const override = storedById.get(seedQuiz.id)
+        const quiz = override ? { ...seedQuiz, ...override } : seedQuiz
+
+        if (!(quiz as any).archived && enrollment.subjects.includes(quiz.subject) && activeSubjects.has(quiz.subject)) {
+          const course = coursesStore.allCourses.find(c => c.name === quiz.subject)
+          if (!course) return
+
+          const assignedSections: string[] = (quiz as any).assignedSections && Array.isArray((quiz as any).assignedSections)
+            ? (quiz as any).assignedSections
+            : ((quiz as any).class ? [(quiz as any).class] : [])
+
+          if (assignedSections.length === 0) return
+
+          sectionsStore.allSections.forEach(section => {
+            const inSection = (section.studentUsernames || []).includes(uname)
+            if (!inSection) return
+
+            if (!assignedSections.includes(section.name)) return
+
+            const isArchivedSection = sectionsStore.archivedSectionMappings.some(
+              m => m.sectionId === section.id
+            )
+            if (isArchivedSection) return
+
+            const hasActiveMapping = sectionsStore.courseSectionMappings.some(
+              m => m.courseId === course.id && m.sectionId === section.id
+            )
+            if (!hasActiveMapping) return
+
+            const maxAttempts = (quiz as any).maxAttempts != null ? Number((quiz as any).maxAttempts) || 1 : 3
+            const timeLimitStr = (quiz as any).timeLimit || '30 min'
+
+            studentQuizzes.push({
+              id: quiz.id,
+              subject: quiz.subject,
+              title: quiz.title,
+              description: quiz.description,
+              dueDate: (quiz as any).dueDate,
+              class: section.name,
+              timeLimit: timeLimitStr,
+              status: 'Not Started',
+              color: quiz.color,
+              maxAttempts
+            })
+          })
+        }
       })
-
-      if (!section) return false
-
-      const isArchivedForCourse = sectionsStore.archivedSectionMappings.some(
-        m => m.courseId === course.id && m.sectionId === section.id
-      )
-      if (isArchivedForCourse) return false
-
-      const hasActiveMapping = sectionsStore.courseSectionMappings.some(
-        m => m.courseId === course.id && m.sectionId === section.id
-      )
-
-      return hasActiveMapping
     })
+
+    return studentQuizzes
   })
 
   function loadArchivedSeedQuizzesFromStorage() {
@@ -636,6 +649,131 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       saveArchivedSeedQuizzesToStorage()
       quizzesVersion.value++
     }
+  }
+
+  function saveQuizAssignment(
+    quizId: number,
+    payload: {
+      dueDate?: string
+      sectionName?: string
+      sectionNames?: string[]
+      timeLimitMinutes?: number
+      maxAttempts?: number
+    }
+  ) {
+    if (!quizId) return
+
+    const all = getAllQuizzes()
+    let mutated = false
+
+    all.forEach(q => {
+      if (q.id === quizId) {
+        if (payload.dueDate != null) {
+          ;(q as any).dueDate = payload.dueDate
+        }
+
+        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
+          const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
+          ;(q as any).assignedSections = unique
+          if (unique.length > 0) {
+            ;(q as any).class = unique[0]
+          }
+        } else if (payload.sectionName != null) {
+          ;(q as any).class = payload.sectionName
+          ;(q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+        }
+
+        if (payload.timeLimitMinutes != null) {
+          ;(q as any).timeLimit = `${payload.timeLimitMinutes} min`
+        }
+        if (payload.maxAttempts != null) {
+          ;(q as any).maxAttempts = payload.maxAttempts
+        }
+        mutated = true
+      }
+    })
+
+    if (!mutated) {
+      const allSeed = Object.values(teacherQuizzesByUser.value).flat()
+      const seedQuiz = allSeed.find(q => q.id === quizId)
+
+      if (seedQuiz) {
+        const authLocal = useAuthStore()
+        const username = authLocal.currentUser?.username || (seedQuiz as any).ownerUsername
+
+        const storedCopy: TeacherQuizItem = {
+          id: seedQuiz.id,
+          title: seedQuiz.title,
+          subject: seedQuiz.subject,
+          description: seedQuiz.description,
+          dueDate: payload.dueDate != null ? payload.dueDate : seedQuiz.dueDate,
+          class:
+            payload.sectionNames && payload.sectionNames.length > 0
+              ? payload.sectionNames[0]
+              : payload.sectionName != null
+                ? payload.sectionName
+                : (seedQuiz as any).class,
+          submitted: seedQuiz.submitted,
+          total: seedQuiz.total,
+          color: seedQuiz.color,
+          status: seedQuiz.status || 'published',
+          timeLimit:
+            payload.timeLimitMinutes != null
+              ? `${payload.timeLimitMinutes} min`
+              : (seedQuiz as any).timeLimit || '30 min',
+          questions: JSON.parse(JSON.stringify(seedQuiz.questions || [])),
+          createdAt: seedQuiz.createdAt,
+          updatedAt: new Date().toISOString(),
+          ownerUsername: (seedQuiz as any).ownerUsername || username || ''
+        }
+
+        if (payload.maxAttempts != null) {
+          ;(storedCopy as any).maxAttempts = payload.maxAttempts
+        }
+
+        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
+          ;(storedCopy as any).assignedSections = Array.from(
+            new Set(payload.sectionNames.filter(Boolean))
+          )
+        } else if (payload.sectionName != null) {
+          ;(storedCopy as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+        }
+
+        all.push(storedCopy)
+        mutated = true
+      }
+    }
+
+    if (mutated) {
+      saveQuizzesToStorage(all)
+    }
+
+    const allSeed = Object.values(teacherQuizzesByUser.value).flat()
+    allSeed.forEach(q => {
+      if (q.id === quizId) {
+        if (payload.dueDate != null) {
+          ;(q as any).dueDate = payload.dueDate
+        }
+
+        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
+          const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
+          ;(q as any).assignedSections = unique
+          if (unique.length > 0) {
+            ;(q as any).class = unique[0]
+          }
+        } else if (payload.sectionName != null) {
+          ;(q as any).class = payload.sectionName
+          ;(q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+        }
+
+        if (payload.timeLimitMinutes != null) {
+          ;(q as any).timeLimit = `${payload.timeLimitMinutes} min`
+        }
+        if (payload.maxAttempts != null) {
+          ;(q as any).maxAttempts = payload.maxAttempts
+        }
+      }
+    })
   }
 
   function unarchiveQuizzesForCourse(courseName: string) {
@@ -1378,6 +1516,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     unarchiveQuiz,
     archiveQuizzesForCourse,
     unarchiveQuizzesForCourse,
+    saveQuizAssignment,
     loadQuizForEditing,
     resetCurrentQuiz,
     getAllQuizzes,

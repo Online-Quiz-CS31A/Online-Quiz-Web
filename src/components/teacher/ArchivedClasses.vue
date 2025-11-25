@@ -30,14 +30,15 @@ const archivedSections = computed(() => {
   return mappings
     .map(m => {
       const section = allSections.find(s => s.id === m.sectionId)
-      const course = allCourses.find(c => c.id === m.courseId)
+      const primaryCourseId = m.courseIds[0]
+      const course = allCourses.find(c => c.id === primaryCourseId)
       if (!section || !course) return null
 
-      const schedule = sectionsStore.getSchedule(m.courseId, section.id)
+      const schedule = sectionsStore.getSchedule(primaryCourseId, section.id)
 
       return {
         id: section.id,
-        courseId: m.courseId,
+        courseId: primaryCourseId,
         sectionName: section.name,
         courseName: course.name,
         courseCode: (course as any).code || '',
@@ -76,15 +77,12 @@ function openDashboard(id: number) {
   router.push({ name: 'teacher-class-dashboard', params: { id: String(id) } })
 }
 
-function handleUnarchive(item: {
-  id: number
-  courseId: number
-}) {
+function handleUnarchive(item: { id: number }) {
   const allSections = sectionsStore.allSections
   const section = allSections.find(s => s.id === item.id)
   sectionPendingUnarchive.value = {
     id: item.id,
-    courseId: item.courseId,
+    courseId: 0,
     name: section?.name || 'Section',
   }
   showSectionUnarchiveModal.value = true
@@ -101,7 +99,7 @@ function handleConfirmUnarchiveSection() {
     handleCancelUnarchiveSection()
     return
   }
-  sectionsStore.unarchiveSection(sectionPendingUnarchive.value.id, sectionPendingUnarchive.value.courseId)
+  sectionsStore.unarchiveSection(sectionPendingUnarchive.value.id)
   handleCancelUnarchiveSection()
 }
 </script>

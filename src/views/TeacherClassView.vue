@@ -142,7 +142,11 @@ function closeDetails() {
 
 
 function openDashboard(id: number) {
-  router.push({ name: 'teacher-class-dashboard', params: { id: String(id) } })
+  router.push({
+    name: 'teacher-class-dashboard',
+    params: { id: String(id) },
+    query: { courseId: props.id },
+  })
 }
 </script>
 

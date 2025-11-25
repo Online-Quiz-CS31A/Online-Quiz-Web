@@ -26,7 +26,7 @@ function updateAnswer(e: Event) {
             @input="updateAnswer"
             class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 resize-none"
             rows="5"
-            placeholder="Enter a sample answer"
+            placeholder="Enter a sample answer (minimum 3 sentences)..."
           ></textarea>
         </div>
       </div>

@@ -21,6 +21,7 @@ const saving = ref(false)
 const currentTab = ref<'class' | 'individual'>('class')
 const searchClass = ref('')
 const searchStudent = ref('')
+const courseIdRef = ref<number | null>(null)
 
 
 // REACTIVE
@@ -55,6 +56,8 @@ const options = reactive({
 
 // LIFECYCLE
 onMounted(() => {
+  sectionsStore.loadArchivedSectionsFromStorage()
+
   const current = quizzesStore.currentQuiz
 
   quizDetails.title = current.title || 'Untitled Quiz'
@@ -143,7 +146,13 @@ onMounted(() => {
   options.timeLimit = timeLimitMinutes
 
   let attempts = 3
-  if (typeof current.id === 'number') {
+  const metaMaxAttempts = meta && (meta as any).maxAttempts
+  if (metaMaxAttempts != null) {
+    const parsed = Number(metaMaxAttempts)
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      attempts = parsed
+    }
+  } else if (typeof current.id === 'number') {
     if (current.id === 1) attempts = 2
     else if (current.id === 2) attempts = 1
   }
@@ -169,9 +178,22 @@ onMounted(() => {
     }
   }
 
+  courseIdRef.value = courseId || null
+
   const sections = sectionsStore.allSections
+  const archivedMappings = sectionsStore.archivedSectionMappings
+
+  const globallyArchivedSectionIds = new Set(archivedMappings.map(m => m.sectionId))
 
   sections.forEach(section => {
+    const isArchivedForCourse = courseId
+      ? archivedMappings.some(m => m.courseIds.includes(courseId) && m.sectionId === section.id)
+      : false
+
+    const isGloballyArchived = globallyArchivedSectionIds.has(section.id)
+
+    if (isArchivedForCourse || isGloballyArchived) return
+
     classes.push({
       id: String(section.id),
       name: section.name,
@@ -183,6 +205,12 @@ onMounted(() => {
   const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
   sections.forEach(section => {
+    const isArchivedForCourse = courseId
+      ? archivedMappings.some(m => m.courseIds.includes(courseId) && m.sectionId === section.id)
+      : false
+
+    if (isArchivedForCourse) return
+
     section.studentUsernames.forEach(username => {
       const profile = studentsStore.profiles[username]
       const fullName = profile ? `${profile.firstName} ${profile.lastName}` : username
@@ -197,17 +225,26 @@ onMounted(() => {
     })
   })
 
-  const assignedSectionName = (meta && (meta as any).class) || ''
+  const assignedSections: string[] =
+    (meta && Array.isArray((meta as any).assignedSections)
+      ? (meta as any).assignedSections
+      : []) || []
 
-  if (assignedSectionName) {
+  const fallbackClass = (meta && (meta as any).class) || ''
+
+  const effectiveAssignedSections = assignedSections.length > 0
+    ? assignedSections
+    : (fallbackClass ? [fallbackClass] : [])
+
+  if (effectiveAssignedSections.length > 0) {
     classes.forEach(c => {
-      if (c.name === assignedSectionName) {
+      if (effectiveAssignedSections.includes(c.name)) {
         c.selected = true
       }
     })
 
     individuals.forEach(student => {
-      if (student.section === assignedSectionName) {
+      if (effectiveAssignedSections.includes(student.section)) {
         student.selected = true
       }
     })
@@ -269,8 +306,62 @@ function quickAddDays(days: number) {
 const { success } = useToast()
 
 async function saveAssignment() {
+  if (!quizzesStore.currentQuiz.id) {
+    success('Assignment saved!')
+    return
+  }
+
   saving.value = true
-  await new Promise(r => setTimeout(r, 800))
+
+  const quizId = quizzesStore.currentQuiz.id as number
+
+  const selectedClassNames = selectedClasses.value.map(c => c.name)
+  const primarySectionName = selectedClassNames[0] || ''
+
+  let dueDateStr = ''
+  if (deadline.date) {
+    if (deadline.time) {
+      dueDateStr = `${deadline.date} ${deadline.time}`
+    } else {
+      dueDateStr = `${deadline.date} 23:59`
+    }
+  }
+
+  quizzesStore.saveQuizAssignment(quizId, {
+    dueDate: dueDateStr || undefined,
+    sectionNames: selectedClassNames,
+    sectionName: primarySectionName || undefined,
+    timeLimitMinutes: options.timeLimit,
+    maxAttempts: options.attempts,
+  })
+
+  if (selectedClassNames.length > 0) {
+    let course: any = null
+
+    const cid = courseIdRef.value
+    if (cid) {
+      course = coursesStore.allCourses.find(c => c.id === cid)
+    }
+
+    if (!course) {
+      const current = quizzesStore.currentQuiz
+      const subject = current.subject || ''
+      if (subject) {
+        course = coursesStore.allCourses.find(c => c.name === subject)
+      }
+    }
+
+    if (course) {
+      selectedClassNames.forEach(name => {
+        const section = sectionsStore.allSections.find(s => s.name === name)
+        if (section) {
+          sectionsStore.addSectionToCourse(section.id, course.id)
+        }
+      })
+    }
+  }
+
+  await new Promise(r => setTimeout(r, 400))
   saving.value = false
   success('Assignment saved!')
 }

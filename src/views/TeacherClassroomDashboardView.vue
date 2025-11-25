@@ -43,8 +43,13 @@ const currentSection = computed(() => {
 })
 
 const currentCourseId = computed(() => {
-  const archived = sectionsStore.archivedSectionMappings.find(m => m.sectionId === sectionId.value)
-  if (archived) return archived.courseId
+  const queryCourseId = Number(route.query.courseId || 0)
+  if (queryCourseId) return queryCourseId
+
+  const archivedEntry = sectionsStore.archivedSectionMappings.find(m => m.sectionId === sectionId.value)
+  if (archivedEntry && Array.isArray(archivedEntry.courseIds) && archivedEntry.courseIds.length) {
+    return archivedEntry.courseIds[0]
+  }
 
   const active = sectionsStore.courseSectionMappings.find(m => m.sectionId === sectionId.value)
   return active?.courseId
@@ -77,8 +82,13 @@ const professorInitials = computed(() => {
 })
 
 const breadcrumbText = computed(() => {
-  const courseName = currentCourse.value?.name || 'Course'
   const sectionName = currentSection.value?.name || 'Section'
+
+  if (isArchivedSection.value || isArchivedCourse.value) {
+    return `Dashboard > Archive > Classes > ${sectionName}`
+  }
+
+  const courseName = currentCourse.value?.name || 'Course'
   return `Dashboard > Courses > ${courseName} > ${sectionName}`
 })
 
@@ -239,12 +249,25 @@ const quizzesStore = useQuizzesStore()
 const activeQuizzes = computed<TeacherQuizItem[]>(() => {
   const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
   const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
+
   const courseName = currentCourse.value?.name || ''
   const sectionName = currentSection.value?.name || ''
 
-  return allQuizzes
+  const base = allQuizzes
     .filter(q => (q.status || 'published') !== 'draft')
     .filter(q => !(q as any).archived)
+
+  if (isArchivedForQuizzes.value) {
+    return base
+      .filter(q => (!sectionName || q.class === sectionName))
+      .sort((a, b) => {
+        const aDate = new Date(a.createdAt || 0).getTime()
+        const bDate = new Date(b.createdAt || 0).getTime()
+        return bDate - aDate
+      })
+  }
+
+  return base
     .filter(q => (!courseName || q.subject === courseName))
     .filter(q => (!sectionName || q.class === sectionName))
     .sort((a, b) => {
