@@ -15,6 +15,9 @@ import ClassPeopleTab from '@/components/teacher/TeacherClassPeopleTab.vue'
 import ClassGradesTab from '@/components/teacher/TeacherClassGradesTab.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 
+// PROPS
+interface Props { id: string }
+const props = defineProps<Props>()
 
 // CONSTANT
 const router = useRouter()
