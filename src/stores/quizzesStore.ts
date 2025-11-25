@@ -1391,7 +1391,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       totalPoints,
       percentage,
       completedAt: new Date().toISOString(),
-      answers: JSON.parse(JSON.stringify(currentAttempt.answers))
+      answers: JSON.parse(JSON.stringify(currentAttempt.answers)),
+      durationSeconds: currentAttempt.durationSeconds || undefined
     }
 
     quizAttemptHistory.value.push(historyEntry)

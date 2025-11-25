@@ -269,13 +269,46 @@ const questions = computed<QuizResultQuestion[]>(() => {
   })
 })
 
+const quizTotalPoints = computed(() => {
+  return quizQuestions.value.reduce((sum, q) => {
+    const basePoints = (q as any).points || 0
+
+    if ((q as any).type === 'matching' && Array.isArray((q as any).pairs) && (q as any).pairs.length > 0) {
+      return sum + basePoints * (q as any).pairs.length
+    }
+
+    if ((q as any).type === 'enumeration' && Array.isArray((q as any).items) && (q as any).items.length > 0) {
+      return sum + basePoints * (q as any).items.length
+    }
+
+    return sum + basePoints
+  }, 0)
+})
+
+function formatDuration(seconds: number | undefined): string {
+  if (!seconds || seconds <= 0) return '--:--'
+
+  const total = Math.floor(seconds)
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+
+  const two = (n: number) => n.toString().padStart(2, '0')
+
+  if (hours > 0) {
+    return `${hours}:${two(minutes)}:${two(secs)}`
+  }
+
+  return `${minutes}:${two(secs)}`
+}
+
 function buildParticipantsForSections(sections: ClassSection[], attempts: QuizAttemptHistory[]): Participant[] {
   const usernames = new Set<string>()
   sections.forEach(sec => {
     (sec.studentUsernames || []).forEach(u => usernames.add(u))
   })
 
-  const latestByStudent = new Map<string, { score: number; totalPoints: number; percentage: number; completedAt: string }>()
+  const latestByStudent = new Map<string, { score: number; totalPoints: number; percentage: number; durationSeconds?: number }>()
 
   Array.from(usernames).forEach(username => {
     const history = attempts.filter(a => a.studentUsername === username)
@@ -287,7 +320,7 @@ function buildParticipantsForSections(sections: ClassSection[], attempts: QuizAt
       score: latest.score,
       totalPoints: latest.totalPoints,
       percentage: latest.percentage,
-      completedAt: latest.completedAt,
+      durationSeconds: latest.durationSeconds,
     })
   })
 
@@ -300,14 +333,12 @@ function buildParticipantsForSections(sections: ClassSection[], attempts: QuizAt
     const avatar = profile?.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
     const score = latest ? latest.score : 0
-    const totalPoints = latest ? latest.totalPoints : 0
+
+    const totalPoints = quizTotalPoints.value
     const percentage = latest ? latest.percentage : 0
 
-    const time = latest
-      ? new Date(latest.completedAt).toLocaleTimeString(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+    const time = latest && latest.durationSeconds != null
+      ? formatDuration(latest.durationSeconds)
       : '--:--'
 
     const owningSection = sections.length === 1
@@ -320,6 +351,7 @@ function buildParticipantsForSections(sections: ClassSection[], attempts: QuizAt
       avatar,
       section: owningSection,
       score,
+      totalPoints,
       percentage,
       time,
     }
@@ -659,7 +691,7 @@ function segmentize(ratio: number): number[] {
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ p.section }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.score }}/50</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.score }}/{{ p.totalPoints }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div class="w-16 bg-gray-200 rounded-full h-2.5 mr-2">

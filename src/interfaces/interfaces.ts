@@ -268,6 +268,7 @@ export interface QuizAttemptHistory {
   percentage: number
   completedAt: string
   answers: Record<number, any>
+  durationSeconds?: number
 }
 
 // HEADER INTERFACES
@@ -346,6 +347,7 @@ export interface Participant {
   avatar: string
   section: string
   score: number
+  totalPoints: number
   percentage: number
   time: string
 }
