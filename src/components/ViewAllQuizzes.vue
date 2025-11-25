@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { TeacherQuizItem, StudentQuizItem } from '@/interfaces/interfaces'
 import SearchFilterBar from '@/components/SearchFilterBar.vue'
-import { useToast } from '@/composables/useToast'
 
 const StudentQuizList = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
 const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
@@ -13,14 +13,19 @@ const TeacherQuizList = defineAsyncComponent(() => import('@/components/teacher/
 // REACTIVE
 const auth = useAuthStore()
 const quizzesStore = useQuizzesStore()
+const router = useRouter()
 
 // REFS
 const query = ref('')
 const statusFilter = ref<'all' | 'draft' | 'published'>('all')
-const { info: showInfo } = useToast()
 
 function addQuiz() {
-  showInfo('Add Quiz clicked')
+  if (!isTeacher.value) return
+  quizzesStore.resetCurrentQuiz()
+  router.push({
+    name: 'quiz-builder',
+    params: { id: 'default' },
+  })
 }
 
 // COMPUTED

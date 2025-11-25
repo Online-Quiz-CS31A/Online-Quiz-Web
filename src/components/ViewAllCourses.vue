@@ -4,7 +4,6 @@ import { defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import SearchFilterBar from '@/components/SearchFilterBar.vue'
-import { useToast } from '@/composables/useToast'
 const TeacherCourses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
 
@@ -15,11 +14,6 @@ const classesStore = useCoursesStore()
 // REFS
 const query = ref('')
 const filter = ref('All')
-const { info: showInfo } = useToast()
-
-function addCourse() {
-  showInfo('Add Course clicked')
-}
 
 // COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
@@ -50,11 +44,9 @@ const filtered = computed(() => {
       :filter="filter"
       :options="['All']"
       placeholder="Search by course name, code, teacher, or students..."
-      :action-label="isTeacher ? 'Add Course' : undefined"
       no-border
       @update:modelValue="(v: string) => (query = v)"
       @update:filter="(v: string) => (filter = v)"
-      @action="addCourse"
     />
 
     <TeacherCourses v-if="isTeacher" :classes="filtered" :show-header="false" />
