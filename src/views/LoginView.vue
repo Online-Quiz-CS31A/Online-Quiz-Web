@@ -27,8 +27,11 @@ const handleLogin = async () => {
 
   try {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailPattern.test(form.email)) {
-      errorMessage.value = 'Please enter a valid email address.'
+    const demoUsernames = ['0112345678', '0111111111', '0212345678', 'admin']
+    const isEmail = emailPattern.test(form.email)
+    const isDemo = demoUsernames.includes(form.email)
+    if (!isEmail && !isDemo) {
+      errorMessage.value = 'Please enter a valid email or demo username.'
       isLoading.value = false
       return
     }
@@ -146,7 +149,7 @@ const handleLogin = async () => {
             <input
               id="email"
               v-model="form.email"
-              type="email"
+              type="text"
               required
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
               placeholder="Enter your email address"
