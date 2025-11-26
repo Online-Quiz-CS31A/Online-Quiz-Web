@@ -1,79 +1,21 @@
-/**
- * Authentication API Service
- * Handles all authentication-related API calls
- */
+import api from '@/services/api'
 
-import { apiClient, type ApiResponse } from './api'
-
-export interface LoginRequest {
-  email: string
-  password: string
+export async function login(email: string, password: string) {
+  const response = await api.post('/Auth/login', { email, password })
+  return response.data
 }
 
-export interface UserSummary {
-  id: number
-  email: string
-  fullName: string
-  roles: string[]
+export async function logout() {
+  await api.post('/Auth/logout')
 }
 
-export interface LoginResponse {
-  accessToken?: string | null
-  refreshToken?: string | null
-  tokenType: string
-  expiresIn: number
-  refreshExpiresIn?: number | null
-  user: UserSummary
+export async function verifyToken() {
+  const response = await api.get('/Auth/verify-me')
+  return response.data
 }
 
-export interface VerifyTokenResponse {
-  valid: boolean
-  user: {
-    id: string
-    email: string
-    name: string
-    roles: string[]
-  }
-  tokenExpiry: string
-  timestamp: string
-}
-
-export interface LogoutResponse {
-  message: string
-  user?: {
-    id: string
-    email: string
-  }
-  timestamp: string
-}
-
-/**
- * Login user with email and password
- */
-export async function login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-  return apiClient.post<LoginResponse>('/api/Auth/login', {
-    email,
-    password,
-  })
-}
-
-/**
- * Logout current user
- */
-export async function logout(): Promise<ApiResponse<LogoutResponse>> {
-  return apiClient.post<LogoutResponse>('/api/Auth/logout')
-}
-
-/**
- * Verify current authentication token
- */
-export async function verifyToken(): Promise<ApiResponse<VerifyTokenResponse>> {
-  return apiClient.get<VerifyTokenResponse>('/api/Auth/verify')
-}
-
-/**
- * Refresh authentication token
- */
-export async function refreshToken(): Promise<ApiResponse<LoginResponse>> {
-  return apiClient.post<LoginResponse>('/api/Auth/refresh')
+export default {
+  login,
+  logout,
+  verifyToken,
 }

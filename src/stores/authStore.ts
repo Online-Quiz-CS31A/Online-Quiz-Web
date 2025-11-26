@@ -2,7 +2,6 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { Role, User } from '../interfaces/interfaces'
 import * as authService from '../services/authService'
-import type { LoginResponse, UserSummary } from '../services/authService'
 
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<User | null>(null)
@@ -10,18 +9,6 @@ export const useAuthStore = defineStore('auth', () => {
   const userRole = computed<Role | null>(() => (currentUser.value ? currentUser.value.role : null))
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-
-  try {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null
-    if (saved) {
-      const parsed = JSON.parse(saved) as User
-      currentUser.value = parsed
-    }
-  } catch (e) {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('currentUser')
-    }
-  }
 
   /**
    * Login user with email and password
@@ -31,73 +18,34 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const teacherUsernames = ['0112345678', '0111111111']
-      const studentUsernames = ['0212345678']
-      const adminUsernames = ['admin']
+      const loginData = await authService.login(email, password)
 
-      let matchedRole: Role | null = null
-      if (teacherUsernames.includes(email) && password === 'teacher') {
-        matchedRole = 'teacher'
-      } else if (studentUsernames.includes(email) && password === 'student') {
-        matchedRole = 'student'
-      } else if (adminUsernames.includes(email) && password === 'admin') {
-        matchedRole = 'admin'
+      if (!loginData || !loginData.user) {
+        throw new Error('Login failed')
       }
 
-      if (matchedRole) {
-        const user: User = {
-          username: email,
-          password: '',
-          role: matchedRole,
-          name: matchedRole === 'teacher' ? 'Teacher User' : 'Student User',
-          id: Number(email),
-          email: email,
-          roles: [matchedRole],
-        }
-
-        currentUser.value = user
-
-        try {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('currentUser', JSON.stringify(user))
-          }
-        } catch (e) {
-          console.error('Failed to save user to localStorage:', e)
-        }
-
-        return { success: true, role: matchedRole }
-      }
-
-      const response = await authService.login(email, password)
-      
-      if (!response.success || !response.data) {
-        throw new Error(response.message || 'Login failed')
-      }
-
-      const loginData = response.data
       const userSummary = loginData.user
-      
-      const role = mapRoleToLocal(userSummary.roles[0])
-      
+
+      const backendRoleValue = userSummary.roleName
+        ?? (userSummary.roles && userSummary.roles.length > 0 ? userSummary.roles[0] : undefined)
+        ?? (userSummary.role)
+        ?? (userSummary.teacher ? 'teacher' : undefined)
+        ?? (userSummary.student ? 'student' : undefined)
+        ?? 'student'
+
+      const role = mapRoleToLocal(backendRoleValue)
+
       const user: User = {
         username: userSummary.email,
-        password: '', 
+        password: '',
         role: role,
-        name: userSummary.fullName,
-        id: userSummary.id,
+        name: userSummary.fullName ?? userSummary.name ?? '',
+        id: (userSummary.userId ?? userSummary.id) as number,
         email: userSummary.email,
-        roles: userSummary.roles,
+        roles: userSummary.roles ?? (userSummary.roleName ? [userSummary.roleName] : []),
       }
 
       currentUser.value = user
-      
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('currentUser', JSON.stringify(user))
-        }
-      } catch (e) {
-        console.error('Failed to save user to localStorage:', e)
-      }
 
       return { success: true, role }
     } catch (err: any) {
@@ -112,12 +60,12 @@ export const useAuthStore = defineStore('auth', () => {
   /**
    * Map backend role to local role type
    */
-  function mapRoleToLocal(backendRole: string): Role {
-    const roleLower = backendRole.toLowerCase()
+  function mapRoleToLocal(backendRole?: string): Role {
+    const roleLower = (backendRole || 'student').toLowerCase()
     if (roleLower === 'teacher') return 'teacher'
     if (roleLower === 'student') return 'student'
     if (roleLower === 'admin') return 'admin'
-    return 'student' 
+    return 'student'
   }
 
   /**
@@ -126,17 +74,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     currentUser.value = null
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('currentUser')
-      }
-    } catch (e) {
-      console.error('Failed to clear localStorage:', e)
-    }
-    
-    try {
       await authService.logout()
     } catch (err: any) {
-      if (err.status !== 401) {
+      if (err?.status !== 401) {
         console.warn('Backend logout failed:', err)
       }
     }
@@ -147,8 +87,8 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function verifySession(): Promise<boolean> {
     try {
-      const response = await authService.verifyToken()
-      return response.success && response.data?.valid === true
+      const result = await authService.verifyToken()
+      return result?.valid === true
     } catch (err) {
       if (err && typeof err === 'object' && 'status' in err && err.status !== 401) {
         console.error('Unexpected session verification error:', err)

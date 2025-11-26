@@ -27,11 +27,9 @@ const handleLogin = async () => {
 
   try {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const demoUsernames = ['0112345678', '0111111111', '0212345678', 'admin']
     const isEmail = emailPattern.test(form.email)
-    const isDemo = demoUsernames.includes(form.email)
-    if (!isEmail && !isDemo) {
-      errorMessage.value = 'Please enter a valid email or demo username.'
+    if (!isEmail) {
+      errorMessage.value = 'Please enter a valid email address.'
       isLoading.value = false
       return
     }
@@ -40,10 +38,6 @@ const handleLogin = async () => {
     if (!result.success) {
       errorMessage.value = result.message || 'Invalid email or password'
       return
-    }
-
-    if (store.currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(store.currentUser))
     }
 
     if (result.role === 'teacher') {
