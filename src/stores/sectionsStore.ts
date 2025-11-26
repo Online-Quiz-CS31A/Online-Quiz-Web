@@ -2,35 +2,48 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { ClassSection, CourseSectionMapping, CourseSectionSchedule } from '@/interfaces/interfaces'
 import { useAuthStore } from './authStore'
+import api from '../services/api'
 
 export const useSectionsStore = defineStore('sections', () => {
+  interface TeacherCourseDto {
+    courseId: number
+    code: string
+    name: string
+    instructorId: number
+    instructorName: string
+    status: string
+    category: string
+    section: string
+    createdAt: string
+  }
+
   const allSections = ref<ClassSection[]>([
-    { 
-      id: 1, 
+    {
+      id: 1,
       name: 'CS31A',
       students: 3,
       studentUsernames: ['0212345678', '0221111111', '0222222222']  // Chitoge, Mika, Ken
     },
-    { 
-      id: 2, 
+    {
+      id: 2,
       name: 'IT11B',
       students: 3,
       studentUsernames: ['0223333333', '0224444444', '0225555555']  // Sofia, Liam, Emma
     },
-    { 
-      id: 3, 
+    {
+      id: 3,
       name: 'CS22A',
       students: 3,
       studentUsernames: ['0226666666', '0227777777', '0228888888']  // Noah, Olivia, James
     },
-    { 
-      id: 4, 
+    {
+      id: 4,
       name: 'IT22A',
       students: 3,
       studentUsernames: ['0229999999', '0231111111', '0232222222']  // Ava, Lucas, Isabella
     },
-    { 
-      id: 5, 
+    {
+      id: 5,
       name: 'CS33A',
       students: 3,
       studentUsernames: ['0233333333', '0234444444', '0235555555']  // Mason, Sophia, Ethan
@@ -39,11 +52,11 @@ export const useSectionsStore = defineStore('sections', () => {
 
   const courseSectionMappings = ref<CourseSectionMapping[]>([
     { courseId: 1, sectionId: 1 },
-    { courseId: 2, sectionId: 2 },  
-    { courseId: 3, sectionId: 3 }, 
-    { courseId: 5, sectionId: 4 },  
-    { courseId: 6, sectionId: 1 }, 
-    { courseId: 6, sectionId: 5 },  
+    { courseId: 2, sectionId: 2 },
+    { courseId: 3, sectionId: 3 },
+    { courseId: 5, sectionId: 4 },
+    { courseId: 6, sectionId: 1 },
+    { courseId: 6, sectionId: 5 },
   ])
 
   const courseSectionSchedules = ref<CourseSectionSchedule[]>([
@@ -56,8 +69,46 @@ export const useSectionsStore = defineStore('sections', () => {
   ])
 
   const auth = useAuthStore()
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
   const archivedSectionMappings = ref<{ sectionId: number; courseIds: number[] }[]>([])
+
+  async function fetchTeacherSections() {
+    const user = auth.currentUser
+    if (!user || user.role !== 'teacher' || !user.id) return
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
+      const data = response.data || []
+
+      const newSections: ClassSection[] = data.map(item => ({
+        id: item.courseId,
+        name: item.section || item.name, 
+        students: 0, 
+        studentUsernames: []
+      }))
+
+      allSections.value = newSections
+
+      const newMappings: CourseSectionMapping[] = data.map(item => ({
+        courseId: item.courseId,
+        sectionId: item.courseId
+      }))
+      courseSectionMappings.value = newMappings
+
+      saveCourseSectionMappingsToStorage()
+
+    } catch (e: any) {
+      console.error('Failed to fetch teacher sections:', e)
+      error.value = e.message || 'Failed to load sections'
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   function loadCourseSectionDataFromStorage() {
     try {
@@ -135,7 +186,7 @@ export const useSectionsStore = defineStore('sections', () => {
     const archivedIdsForCourse = archivedSectionMappings.value
       .filter(m => m.courseIds.includes(courseId))
       .map(m => m.sectionId)
-    
+
     return allSections.value.filter(s => sectionIds.includes(s.id) && !archivedIdsForCourse.includes(s.id))
   }
 
@@ -143,7 +194,7 @@ export const useSectionsStore = defineStore('sections', () => {
     const lastSection = allSections.value.length ? allSections.value[allSections.value.length - 1] : undefined
     const nextId = ((lastSection?.id) || 0) + 1
     allSections.value.push({ id: nextId, ...newSection })
-    
+
     courseSectionMappings.value.push({ courseId, sectionId: nextId })
     saveCourseSectionMappingsToStorage()
     return nextId
@@ -234,7 +285,7 @@ export const useSectionsStore = defineStore('sections', () => {
     const index = courseSectionSchedules.value.findIndex(
       s => s.courseId === courseId && s.sectionId === sectionId
     )
-    
+
     if (index !== -1) {
       courseSectionSchedules.value[index] = { courseId, sectionId, ...schedule }
     } else {
@@ -267,5 +318,8 @@ export const useSectionsStore = defineStore('sections', () => {
     getSchedule,
     setSchedule,
     removeSchedule,
+    fetchTeacherSections,
+    isLoading,
+    error,
   }
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import bg1 from '@/assets/image/bg1.jpg'
@@ -78,6 +78,10 @@ const coverUrl = computed(() => {
 })
 
 const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
+
+onMounted(() => {
+  sectionsStore.fetchTeacherSections()
+})
 
 // METHODS
 function formatTime(time24: string): string {
