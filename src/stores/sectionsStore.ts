@@ -85,19 +85,35 @@ export const useSectionsStore = defineStore('sections', () => {
       const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
       const data = response.data || []
 
-      const newSections: ClassSection[] = data.map(item => ({
-        id: item.courseId,
-        name: item.section || item.name, 
-        students: 0, 
-        studentUsernames: []
-      }))
+      const grouped = new Map<string, TeacherCourseDto[]>()
+      data.forEach(c => {
+        if (!c.code) return
+        if (!grouped.has(c.code)) grouped.set(c.code, [])
+        grouped.get(c.code)!.push(c)
+      })
+
+      const newSections: ClassSection[] = []
+      const newMappings: CourseSectionMapping[] = []
+
+      for (const [code, items] of grouped) {
+        const parentId = items[0].courseId 
+
+        items.forEach(item => {
+          newSections.push({
+            id: item.courseId,
+            name: item.section || item.name,
+            students: 0,
+            studentUsernames: []
+          })
+
+          newMappings.push({
+            courseId: parentId,
+            sectionId: item.courseId
+          })
+        })
+      }
 
       allSections.value = newSections
-
-      const newMappings: CourseSectionMapping[] = data.map(item => ({
-        courseId: item.courseId,
-        sectionId: item.courseId
-      }))
       courseSectionMappings.value = newMappings
 
       saveCourseSectionMappingsToStorage()

@@ -64,17 +64,28 @@ export const useCoursesStore = defineStore('classes', () => {
       const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
       const dtoCourses = response.data || []
 
-      const mapped: ClassItem[] = dtoCourses.map(course => ({
-        id: course.courseId,
-        code: course.code,
-        name: course.name,
-        teacher: user.username,
-        description: course.category || '',
-        students: 0,
-        color: 'blue',
-        status: (course.status === 'Active' || course.status === 'Archived') ? course.status : 'Active',
-        studentUsernames: [],
-      }))
+      const grouped = new Map<string, TeacherCourseDto[]>()
+      dtoCourses.forEach(c => {
+        if (!c.code) return
+        if (!grouped.has(c.code)) grouped.set(c.code, [])
+        grouped.get(c.code)!.push(c)
+      })
+
+      const mapped: ClassItem[] = []
+      for (const [code, items] of grouped) {
+        const first = items[0]
+        mapped.push({
+          id: first.courseId,
+          code: first.code,
+          name: first.name,
+          teacher: user.username,
+          description: first.category || '',
+          students: 0,
+          color: 'blue',
+          status: (first.status === 'Active' || first.status === 'Archived') ? first.status : 'Active',
+          studentUsernames: [],
+        })
+      }
 
       allCourses.value = mapped
       saveCoursesToStorage()
