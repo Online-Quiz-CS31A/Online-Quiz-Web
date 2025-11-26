@@ -10,6 +10,35 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
+  const STORAGE_KEY = 'authUser'
+
+  function loadUserFromStorage() {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY)
+      if (!stored) return
+      const parsed = JSON.parse(stored) as User
+      if (parsed && parsed.username && parsed.role) {
+        currentUser.value = parsed
+      }
+    } catch (e) {
+      console.warn('Failed to load auth user from storage', e)
+    }
+  }
+
+  function saveUserToStorage(user: User | null) {
+    try {
+      if (!user) {
+        window.localStorage.removeItem(STORAGE_KEY)
+      } else {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+      }
+    } catch (e) {
+      console.warn('Failed to persist auth user to storage', e)
+    }
+  }
+
+  loadUserFromStorage()
+
   /**
    * Login user with email and password
    */
@@ -46,6 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       currentUser.value = user
+      saveUserToStorage(user)
 
       return { success: true, role }
     } catch (err: any) {
@@ -73,6 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function logout() {
     currentUser.value = null
+    saveUserToStorage(null)
     try {
       await authService.logout()
     } catch (err: any) {
