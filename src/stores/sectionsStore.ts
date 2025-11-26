@@ -1,22 +1,10 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { ClassSection, CourseSectionMapping, CourseSectionSchedule } from '@/interfaces/interfaces'
+import type { ClassSection, CourseSectionMapping, CourseSectionSchedule, TeacherCourseDto } from '@/interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import api from '../services/api'
 
 export const useSectionsStore = defineStore('sections', () => {
-  interface TeacherCourseDto {
-    courseId: number
-    code: string
-    name: string
-    instructorId: number
-    instructorName: string
-    status: string
-    category: string
-    section: string
-    createdAt: string
-  }
-
   const allSections = ref<ClassSection[]>([
     {
       id: 1,
@@ -74,17 +62,8 @@ export const useSectionsStore = defineStore('sections', () => {
 
   const archivedSectionMappings = ref<{ sectionId: number; courseIds: number[] }[]>([])
 
-  async function fetchTeacherSections() {
-    const user = auth.currentUser
-    if (!user || user.role !== 'teacher' || !user.id) return
-
-    isLoading.value = true
-    error.value = null
-
+  function setSectionsFromApi(data: TeacherCourseDto[]) {
     try {
-      const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
-      const data = response.data || []
-
       const grouped = new Map<string, TeacherCourseDto[]>()
       data.forEach(c => {
         if (!c.code) return
@@ -96,13 +75,13 @@ export const useSectionsStore = defineStore('sections', () => {
       const newMappings: CourseSectionMapping[] = []
 
       for (const [code, items] of grouped) {
-        const parentId = items[0].courseId 
+        const parentId = items[0].courseId
 
-        items.forEach(item => {
+        for (const item of items) {
           newSections.push({
             id: item.courseId,
             name: item.section || item.name,
-            students: 0,
+            students: item.students || 0,
             studentUsernames: []
           })
 
@@ -110,19 +89,15 @@ export const useSectionsStore = defineStore('sections', () => {
             courseId: parentId,
             sectionId: item.courseId
           })
-        })
+        }
       }
 
       allSections.value = newSections
       courseSectionMappings.value = newMappings
 
       saveCourseSectionMappingsToStorage()
-
     } catch (e: any) {
-      console.error('Failed to fetch teacher sections:', e)
-      error.value = e.message || 'Failed to load sections'
-    } finally {
-      isLoading.value = false
+      console.error('Failed to set sections from API data:', e)
     }
   }
 
@@ -334,7 +309,7 @@ export const useSectionsStore = defineStore('sections', () => {
     getSchedule,
     setSchedule,
     removeSchedule,
-    fetchTeacherSections,
+    setSectionsFromApi,
     isLoading,
     error,
   }

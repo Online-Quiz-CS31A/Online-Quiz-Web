@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { ClassItem } from '../interfaces/interfaces'
+import type { ClassItem, TeacherCourseDto } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useSectionsStore } from './sectionsStore'
 import api from '../services/api'
@@ -9,18 +9,6 @@ export const useCoursesStore = defineStore('classes', () => {
   const teacherNames: Record<string, string> = {
     '0112345678': 'Donald Francisco',
     '0111111111': 'Alice Mao',
-  }
-
-  interface TeacherCourseDto {
-    courseId: number
-    code: string
-    name: string
-    instructorId: number
-    instructorName: string
-    status: string
-    category: string
-    section: string
-    createdAt: string
   }
 
   const allCourses = ref<ClassItem[]>([])
@@ -64,6 +52,19 @@ export const useCoursesStore = defineStore('classes', () => {
       const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
       const dtoCourses = response.data || []
 
+      for (const course of dtoCourses) {
+        try {
+          const enrollResponse = await api.get<any[]>(`/Course/${course.courseId}/enrollments?teacherId=${user.id}`)
+          course.students = (enrollResponse.data && Array.isArray(enrollResponse.data)) ? enrollResponse.data.length : 0
+        } catch (e) {
+          console.error(`Failed to fetch enrollments for course ${course.courseId}`, e)
+          course.students = 0
+        }
+      }
+
+      const sectionsStore = useSectionsStore()
+      sectionsStore.setSectionsFromApi(dtoCourses)
+
       const grouped = new Map<string, TeacherCourseDto[]>()
       dtoCourses.forEach(c => {
         if (!c.code) return
@@ -74,13 +75,16 @@ export const useCoursesStore = defineStore('classes', () => {
       const mapped: ClassItem[] = []
       for (const [code, items] of grouped) {
         const first = items[0]
+
+        const totalStudents = items.reduce((sum, item) => sum + (item.students || 0), 0)
+
         mapped.push({
           id: first.courseId,
           code: first.code,
           name: first.name,
           teacher: user.username,
           description: first.category || '',
-          students: 0,
+          students: totalStudents,
           color: 'blue',
           status: (first.status === 'Active' || first.status === 'Archived') ? first.status : 'Active',
           studentUsernames: [],

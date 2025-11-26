@@ -414,3 +414,16 @@ export interface StudentItem {
   email: string
   avatar: string
 }
+
+export interface TeacherCourseDto {
+  courseId: number
+  code: string
+  name: string
+  instructorId: number
+  instructorName: string
+  status: string
+  category: string
+  section: string
+  createdAt: string
+  students?: number
+}

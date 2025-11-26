@@ -144,7 +144,7 @@ const getInitials = (name: string) => {
 
 const getStudentCount = (courseId: number) => {
   const sections = sectionsStore.getSectionsByCourse(courseId)
-  return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+  return sections.reduce((total, section) => total + (section.students || 0), 0)
 }
 
 // LIFECYCLE

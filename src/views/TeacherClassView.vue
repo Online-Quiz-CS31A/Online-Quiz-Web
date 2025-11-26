@@ -80,7 +80,7 @@ const coverUrl = computed(() => {
 const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
 
 onMounted(() => {
-  sectionsStore.fetchTeacherSections()
+  classesStore.fetchTeacherCourses()
 })
 
 // METHODS
