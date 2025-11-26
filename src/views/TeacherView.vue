@@ -174,6 +174,7 @@ onMounted(() => {
   if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
     currentSection.value = section as typeof currentSection.value
   }
+  coursesStore.fetchTeacherCourses()
 })
 
 onUnmounted(() => {

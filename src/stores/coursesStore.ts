@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { ClassItem } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useSectionsStore } from './sectionsStore'
+import api from '../services/api'
 
 export const useCoursesStore = defineStore('classes', () => {
   const teacherNames: Record<string, string> = {
@@ -10,15 +11,21 @@ export const useCoursesStore = defineStore('classes', () => {
     '0111111111': 'Alice Mao',
   }
 
-  const allCourses = ref<ClassItem[]>([
-    { id: 1, code: 'CS401', name: 'Information Assurance',  teacher: '0112345678', description: 'This course covers the principles of information security, risk management, cryptography, and security policies to protect information systems against threats and vulnerabilities.', students: 0, color: 'red',    studentUsernames: ['0212345678'], status: 'Active' },
-    { id: 2, code: 'CS301', name: 'Automata',               teacher: '0112345678', description: 'Deep dive into automata theory.', students: 0, color: 'blue',   studentUsernames: ['0212345678'], status: 'Active' },
-    { id: 3, code: 'CS302', name: 'Computer Architecture',  teacher: '0112345678', description: 'Pipelines, caches, and performance optimization.', students: 0, color: 'green',  studentUsernames: ['0212345678'], status: 'Active' },
-    { id: 4, code: 'CS303', name: 'Operating Systems',      teacher: '0112345678', description: 'This course covers the principles of operating systems, including process management, memory management, file systems, and device drivers.', students: 0, color: 'teal',   studentUsernames: [], status: 'Archived' },
-    { id: 5, code: 'IT201', name: 'Web Development',        teacher: '0111111111', description: 'This course covers the principles of web development, including HTML, CSS, JavaScript, and web frameworks.', students: 0, color: 'purple', studentUsernames: ['0212345678'], status: 'Active' },
-    { id: 6, code: 'CS201', name: 'Data Structures',        teacher: '0111111111', description: 'This course covers the principles of data structures, including arrays, linked lists, stacks, queues, and trees.', students: 0, color: 'orange', studentUsernames: ['0212345678'], status: 'Active' },
-    { id: 7, code: 'IT301', name: 'Database Systems',       teacher: '0112345678', description: 'This course covers the principles of database systems, including database design, SQL, and NoSQL databases.', students: 0, color: 'pink',   studentUsernames: [], status: 'Archived' },
-  ])
+  interface TeacherCourseDto {
+    courseId: number
+    code: string
+    name: string
+    instructorId: number
+    instructorName: string
+    status: string
+    category: string
+    section: string
+    createdAt: string
+  }
+
+  const allCourses = ref<ClassItem[]>([])
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
   function loadCoursesFromStorage() {
     try {
@@ -41,7 +48,44 @@ export const useCoursesStore = defineStore('classes', () => {
       console.error('Failed to save courses to localStorage:', e)
     }
   }
-  
+
+  async function fetchTeacherCourses() {
+    const auth = useAuthStore()
+    const user = auth.currentUser
+
+    if (!user || user.role !== 'teacher' || !user.id) {
+      return
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
+      const dtoCourses = response.data || []
+
+      const mapped: ClassItem[] = dtoCourses.map(course => ({
+        id: course.courseId,
+        code: course.code,
+        name: course.name,
+        teacher: user.username,
+        description: course.category || '',
+        students: 0,
+        color: 'blue',
+        status: (course.status === 'Active' || course.status === 'Archived') ? course.status : 'Active',
+        studentUsernames: [],
+      }))
+
+      allCourses.value = mapped
+      saveCoursesToStorage()
+    } catch (e: any) {
+      console.error('Failed to fetch teacher courses from API:', e)
+      error.value = e?.message || 'Failed to load courses'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const allCoursesWithCounts = computed<ClassItem[]>(() => {
     const sectionsStore = useSectionsStore()
     return allCourses.value.map(course => {
@@ -128,10 +172,13 @@ export const useCoursesStore = defineStore('classes', () => {
 
   return {
     allCourses: allCoursesWithCounts,
+    isLoading,
+    error,
     myClasses,
     mySubjects,
     addClass,
     archiveCourse,
     unarchiveCourse,
+    fetchTeacherCourses,
   }
 })
