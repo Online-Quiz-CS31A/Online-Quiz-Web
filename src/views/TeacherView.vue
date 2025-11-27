@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
@@ -10,26 +11,79 @@ const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCal
 const TeacherClasses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
+const ArchivedCourses = defineAsyncComponent(() => import('@/components/teacher/ArchivedCourses.vue'))
+const ArchivedClasses = defineAsyncComponent(() => import('@/components/teacher/ArchivedClasses.vue'))
+const ArchivedQuizzes = defineAsyncComponent(() => import('@/components/teacher/ArchivedQuizzes.vue'))
 
 // REFS
 const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
 const showImport = ref(false)
-const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
+const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
+const archivedView = ref<'courses' | 'classes' | 'quizzes'>('courses')
+const archivedQuizzesTab = ref<'published' | 'draft'>('published')
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
-const activeQuizzes = quizzesStore.myTeacherQuizzes
+const coursesStore = useCoursesStore()
 const route = useRoute()
+const router = useRouter()
+const refreshTrigger = ref(0)
+
+// COMPUTED
+const activeQuizzes = computed(() => {
+  refreshTrigger.value
+  quizzesStore.quizzesVersion
+
+  const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
+  const seedQuizzes = quizzesStore.myTeacherQuizzes
+
+  const byId = new Map<number, any>()
+  seedQuizzes.forEach((q) => {
+    if (!(q as any).archived) {
+      byId.set(q.id, q)
+    }
+  })
+  storedQuizzes.forEach((q) => {
+    if (!(q as any).archived) {
+      byId.set(q.id, q)
+    }
+  })
+
+  const allQuizzes = Array.from(byId.values())
+
+  return allQuizzes.sort((a, b) => {
+    const aStatus = a.status || 'published'
+    const bStatus = b.status || 'published'
+    
+    if (aStatus === 'draft' && bStatus !== 'draft') return -1
+    if (aStatus !== 'draft' && bStatus === 'draft') return 1
+    
+    const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime()
+    const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime()
+    return bDate - aDate
+  })
+})
+
 
 // WATCHERS
 watch(
   () => route.query.section,
   (val) => {
     const section = (val as string) || ''
-    if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home') {
+    if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
       currentSection.value = section as typeof currentSection.value
     }
+    if (section === 'home' || !section) {
+      refreshTrigger.value++
+    }
+  }
+)
+
+watch(
+  () => route.path,
+  () => {
+    refreshTrigger.value++
   }
 )
 
@@ -66,6 +120,38 @@ const navigateToCalendar = () => {
   closeSidebar()
 }
 
+const navigateToArchived = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'courses'
+}
+
+const navigateToArchivedCourses = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'courses'
+}
+
+const navigateToArchivedClasses = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'classes'
+}
+
+const navigateToArchivedQuizzes = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'quizzes'
+}
+
+const navigateToArchivedQuizzesPublished = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'quizzes'
+  archivedQuizzesTab.value = 'published'
+}
+
+const navigateToArchivedQuizzesDraft = () => {
+  currentSection.value = 'archived'
+  archivedView.value = 'quizzes'
+  archivedQuizzesTab.value = 'draft'
+}
+
 const navigateToHome = () => {
   currentSection.value = 'home'
   closeSidebar()
@@ -85,7 +171,7 @@ const handleClickOutside = (e: Event) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   const section = (route.query.section as string) || ''
-  if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home') {
+  if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
     currentSection.value = section as typeof currentSection.value
   }
 })
@@ -114,6 +200,12 @@ onUnmounted(() => {
       @nav-home="navigateToHome"
       @nav-quizzes="navigateToQuizzes"
       @nav-calendar="navigateToCalendar"
+      @nav-archived="navigateToArchived"
+      @nav-archived-courses="navigateToArchivedCourses"
+      @nav-archived-classes="navigateToArchivedClasses"
+      @nav-archived-quizzes="navigateToArchivedQuizzes"
+      @nav-archived-quizzes-published="navigateToArchivedQuizzesPublished"
+      @nav-archived-quizzes-draft="navigateToArchivedQuizzesDraft"
     />
 
     <!-- Main Content -->
@@ -134,6 +226,12 @@ onUnmounted(() => {
         <ViewAllQuizzes v-else-if="currentSection === 'quizzes'" />
         <!-- Calendar Section -->
         <SchoolCalendar v-else-if="currentSection === 'calendar'" />
+        <!-- Archived Section -->
+        <div v-else-if="currentSection === 'archived'" class="space-y-6">
+          <ArchivedCourses v-if="archivedView === 'courses'" />
+          <ArchivedClasses v-else-if="archivedView === 'classes'" />
+          <ArchivedQuizzes v-else :tab="archivedQuizzesTab" @update:tab="value => (archivedQuizzesTab = value)" />
+        </div>
         <!-- Courses Section (View All) -->
         <ViewAllCourses v-else />
       </main>

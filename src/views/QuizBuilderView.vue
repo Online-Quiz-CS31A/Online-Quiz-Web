@@ -1,72 +1,122 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
 
 // CONSTANTS
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 
 // REACTIVE
 const route = useRoute()
 
+const archivedContext = computed(() => route.query.archivedContext as 'section' | 'course' | undefined)
+const isArchivedSectionContext = computed(() => archivedContext.value === 'section')
+const isArchivedCourseContext = computed(() => archivedContext.value === 'course')
+
 // REFS
 const showResults = ref(route.name === 'quiz-results')
 const showAssign = ref(route.name === 'quiz-assign')
 const published = ref(false)
+const archivedQuiz = ref(false)
 const creatorRef = ref<InstanceType<typeof QuizContent> | null>(null)
-
-const quiz = ref({
-  title: '',
-  subject: '',
-  timeLimit: '',
-  questions: []
-})
 
 // WATCHERS
 watch(() => route.name, (newRouteName) => {
   showResults.value = newRouteName === 'quiz-results'
   showAssign.value = newRouteName === 'quiz-assign'
+
+  if ((archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value)
+    && newRouteName !== 'quiz-results'
+    && (newRouteName === 'quiz-builder' || newRouteName === 'quiz-assign' || newRouteName === 'quiz-preview')
+  ) {
+    showResults.value = true
+    showAssign.value = false
+    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
+  }
 })
 
 
 // METHODS
+function syncPublished() {
+  const id = quizzesStore.currentQuiz.id
+  if (id != null) {
+    const fromDefaults = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
+    const fromStorage = quizzesStore.getAllQuizzes().find(q => q.id === id)
+    published.value = (fromDefaults?.status === 'published') || (fromStorage?.status === 'published')
+    const archivedFromDefaults = (fromDefaults as any)?.archived === true
+    const archivedFromStorage = (fromStorage as any)?.archived === true
+    archivedQuiz.value = archivedFromDefaults || archivedFromStorage
+  } else {
+    published.value = false
+    archivedQuiz.value = false
+  }
+}
+
 function onContent() {
   showResults.value = false
   showAssign.value = false
-  router.push({ name: 'quiz-builder' })
+  router.push({ name: 'quiz-builder', params: route.params, query: route.query })
   const el = document.querySelector('#quiz-main-content') as HTMLElement | null
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function onSave() {
   creatorRef.value?.saveQuiz?.()
+  syncPublished()
 }
 
 function onPublish() {
   creatorRef.value?.publishQuiz?.()
   published.value = true
-  router.push({ name: 'quiz-builder' })
+  router.push({ name: 'quiz-builder', params: route.params, query: route.query })
 }
 
 function onAssign() {
   showAssign.value = true
   showResults.value = false
-  router.push({ name: 'quiz-assign' })
+  router.push({ name: 'quiz-assign', params: route.params, query: route.query })
 }
 
 function onResults() {
   showResults.value = true
   showAssign.value = false
-  router.push({ name: 'quiz-results' })
+  router.push({ name: 'quiz-results', params: route.params, query: route.query })
 }
 
 function onPreview() {
-  console.log('Preview quiz...')
+  router.push({ name: 'quiz-preview', params: route.params, query: route.query })
 }
+
+// LIFECYCLE
+
+onMounted(() => {
+  if (quizzesStore.currentQuiz.id === null && quizzesStore.currentQuiz.questions.length === 0) {
+    quizzesStore.resetCurrentQuiz()
+  }
+  syncPublished()
+
+  if (archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value) {
+    showResults.value = true
+    showAssign.value = false
+    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
+  }
+})
+
+watch(() => quizzesStore.currentQuiz.id, (id) => {
+  syncPublished()
+  if (archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value) {
+    showResults.value = true
+    showAssign.value = false
+    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
+  }
+})
 </script>
 
 <template>
@@ -78,6 +128,8 @@ function onPreview() {
       :action-buttons="true"
       :show-quiz-creator-controls="true"
       :published="published"
+      :archived-quiz="archivedQuiz"
+      :read-only-results-only="archivedQuiz || isArchivedSectionContext || isArchivedCourseContext"
       @content="onContent"
       @save="onSave"
       @publish="onPublish"
@@ -89,19 +141,19 @@ function onPreview() {
           <div class="bg-gray-50 rounded p-3 space-y-2">
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Title:</span>
-              <span class="font-medium">{{ quiz.title || 'Untitled Quiz' }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.title || 'Untitled Quiz' }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Subject:</span>
-              <span class="font-medium">{{ quiz.subject || 'Not specified' }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.subject || 'Not specified' }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Questions:</span>
-              <span class="font-medium">{{ quiz.questions?.length || 0 }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.questions?.length || 0 }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Time Limit:</span>
-              <span class="font-medium">{{ quiz.timeLimit || 'Not set' }}</span>
+              <span class="font-medium">{{ quizzesStore.currentQuiz.timeLimit || 'Not set' }}</span>
             </div>
           </div>
         </template>

@@ -1,125 +1,38 @@
   <script setup lang="ts">
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
-  import { useRouter } from 'vue-router'
-  import Header from '@/components/Header.vue'
-  import type { QuizViewQuestion } from '@/interfaces/interfaces'
-  
-// CONSTANT
-  const questions: QuizViewQuestion[] = [
-    {
-      question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
-      options: ["6.75", "8", "11.25", "720"],
-      correctAnswer: 0
-    },
-    {
-      question: "What is 25% of 80?",
-      options: ["15", "20", "25", "30"],
-      correctAnswer: 1
-    },
-    {
-      question: "If a shirt costs $45 and is discounted by 20%, what is the final price?",
-      options: ["$9", "$36", "$54", "$45"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the sum of 1/4 + 1/3?",
-      options: ["2/7", "7/12", "1/2", "2/3"],
-      correctAnswer: 1
-    },
-    {
-      question: "If 3x + 7 = 22, what is the value of x?",
-      options: ["3", "5", "7", "15"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the area of a rectangle with length 8 and width 6?",
-      options: ["14", "28", "48", "56"],
-      correctAnswer: 2
-    },
-    {
-      question: "If a car travels 240 miles in 4 hours, what is its average speed?",
-      options: ["40 mph", "60 mph", "80 mph", "120 mph"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is 15% of 200?",
-      options: ["15", "20", "30", "35"],
-      correctAnswer: 2
-    },
-    {
-      question: "If 2y - 5 = 11, what is the value of y?",
-      options: ["3", "6", "8", "13"],
-      correctAnswer: 2
-    },
-    {
-      question: "What is the perimeter of a square with side length 5?",
-      options: ["10", "15", "20", "25"],
-      correctAnswer: 2
-    },
-    {
-      question: "What is 3/4 of 100?",
-      options: ["25", "50", "75", "100"],
-      correctAnswer: 2
-    },
-    {
-      question: "If a book costs $24 and tax is 8%, what is the total cost?",
-      options: ["$19.20", "$24.00", "$25.92", "$32.00"],
-      correctAnswer: 2
-    },
-    {
-      question: "What is the value of 2³?",
-      options: ["4", "6", "8", "16"],
-      correctAnswer: 2
-    },
-    {
-      question: "If 4x = 20, what is the value of x?",
-      options: ["4", "5", "16", "20"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the square root of 64?",
-      options: ["6", "7", "8", "9"],
-      correctAnswer: 2
-    },
-    {
-      question: "If a triangle has angles of 45°, 45°, and 90°, what type of triangle is it?",
-      options: ["Equilateral", "Isosceles", "Scalene", "Right"],
-      correctAnswer: 1
-    },
-    {
-      question: "What is 1/2 + 1/6?",
-      options: ["1/3", "2/3", "1/2", "3/4"],
-      correctAnswer: 1
-    },
-    {
-      question: "If a circle has radius 5, what is its circumference?",
-      options: ["10π", "15π", "20π", "25π"],
-      correctAnswer: 0
-    },
-    {
-      question: "What is 20% of 150?",
-      options: ["20", "25", "30", "35"],
-      correctAnswer: 2
-    },
-    {
-      question: "If 5z + 3 = 18, what is the value of z?",
-      options: ["2", "3", "4", "5"],
-      correctAnswer: 1
-    }
-  ]
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import Header from '@/components/Header.vue'
+import type { QuizQuestion } from '@/interfaces/interfaces'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+
+const router = useRouter()
+const quizzesStore = useQuizzesStore()
+
+const quizId = ref<number | null>((history.state?.quizId as number) || null)
+const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
+const questions = ref<QuizQuestion[]>(quizStateQuestions)
+const quizTitle = ref(history.state?.quizTitle || 'Quiz')
+const quizSubject = ref(history.state?.quizSubject || 'Quiz')
+const hasValidQuestions = computed(() => questions.value.length > 0)
   
   // REFS
-  const currentQuestion = ref(0)
+  const initialQuestionIndex = typeof (history.state as any)?.questionIndex === 'number'
+    ? (history.state as any).questionIndex
+    : 0
+  const currentQuestion = ref(initialQuestionIndex)
   const selectedOption = ref<number | null>(null)
+  const textAnswer = ref('')
+  const enumerationAnswers = ref<string[]>([])
+  const matchingAnswers = ref<Record<number, number>>({})
+  const fillBlankAnswers = ref<string[]>([])
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  const answeredQuestions = ref<Set<number>>(new Set())
-  const router = useRouter()
+  const durationSeconds = ref(0)
   
   // COMPUTED
-  const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz`)
+  const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
   const progress = computed(() => {
-    return ((currentQuestion.value + 1) / questions.length) * 100
+    return ((currentQuestion.value + 1) / questions.value.length) * 100
   })
   
   // METHODS
@@ -132,41 +45,191 @@
   
   const selectOption = (optionIndex: number) => {
     selectedOption.value = optionIndex
-    answeredQuestions.value.add(currentQuestion.value)
+    quizzesStore.setAnswer(currentQuestion.value, optionIndex)
+  }
+
+  const updateTextAnswer = () => {
+    quizzesStore.setTextAnswer(currentQuestion.value, textAnswer.value)
+  }
+
+  const updateEnumerationAnswer = (index: number, value: string) => {
+    enumerationAnswers.value[index] = value
+    quizzesStore.setEnumerationAnswer(currentQuestion.value, enumerationAnswers.value)
+  }
+
+  const updateMatchingAnswer = (leftIndex: number, rightIndex: number) => {
+    matchingAnswers.value[leftIndex] = rightIndex
+    quizzesStore.setMatchingAnswer(currentQuestion.value, matchingAnswers.value)
+  }
+
+  const updateFillBlankAnswer = (index: number, value: string) => {
+    fillBlankAnswers.value[index] = value
+    quizzesStore.setFillBlankAnswer(currentQuestion.value, fillBlankAnswers.value)
+  }
+
+  const clearAnswers = () => {
+    selectedOption.value = null
+    textAnswer.value = ''
+    enumerationAnswers.value = []
+    matchingAnswers.value = {}
+    fillBlankAnswers.value = []
+  }
+
+  const loadCurrentQuestionAnswers = () => {
+    const idx = currentQuestion.value
+    const answer = quizzesStore.currentAttempt.answers[idx]
+    const q = questions.value[idx]
+    if (!q || answer === undefined) {
+      clearAnswers()
+      return
+    }
+    
+    if (q.type === 'multiple-choice' || q.type === 'true-false') {
+      selectedOption.value = typeof answer === 'number' ? answer : null
+    } else if (q.type === 'text') {
+      textAnswer.value = typeof answer === 'string' ? answer : ''
+    } else if (q.type === 'enumeration') {
+      if (Array.isArray(answer)) {
+        enumerationAnswers.value = answer
+      } else {
+        const items = ((q as any)?.items || []) as string[]
+        enumerationAnswers.value = Array(items.length).fill('')
+      }
+    } else if (q.type === 'matching') {
+      matchingAnswers.value = (typeof answer === 'object' && !Array.isArray(answer)) ? answer : {}
+    } else if (q.type === 'fill-blank') {
+      fillBlankAnswers.value = Array.isArray(answer) ? answer : []
+    } else {
+      clearAnswers()
+    }
   }
   
   const nextQuestion = () => {
-    if (currentQuestion.value < questions.length - 1) {
+    if (currentQuestion.value < questions.value.length - 1) {
       currentQuestion.value++
-      selectedOption.value = null
+      loadCurrentQuestionAnswers()
     }
   }
   
   const previousQuestion = () => {
     if (currentQuestion.value > 0) {
       currentQuestion.value--
-      selectedOption.value = null
+      loadCurrentQuestionAnswers()
     }
   }
   
   const goToQuestion = (questionIndex: number) => {
     currentQuestion.value = questionIndex
-    selectedOption.value = null
+    loadCurrentQuestionAnswers()
   }
   
   const finishQuiz = () => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+    quizzesStore.finishAttempt()
     router.push({ name: 'quiz-review' })
   }
+
+  const autoSubmitOnTimeout = () => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+    quizzesStore.finishAttempt()
+    router.push({ name: 'quiz-score' })
+  }
   
+  const parseTimeLimitToSeconds = (tl: string | undefined): number => {
+    if (!tl) return 0
+    const s = tl.trim().toLowerCase()
+    const m = s.match(/(\d+)\s*(min|mins|minute|minutes)/)
+    if (m) return Number(m[1]) * 60
+    const h = s.match(/(\d+)\s*h/)
+    const mm = s.match(/(\d+)\s*m/)
+    if (h || mm) {
+      return (h ? Number(h[1]) * 3600 : 0) + (mm ? Number(mm[1]) * 60 : 0)
+    }
+    const num = Number(s)
+    if (!isNaN(num) && num > 0) return num * 60
+    return 0
+  }
+
+  const initDuration = () => {
+    quizzesStore.loadAttemptFromStorage()
+    
+    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
+      durationSeconds.value = quizzesStore.currentAttempt.durationSeconds
+      timer.value = quizzesStore.getRemainingSeconds()
+      restoreAnswers()
+    } else if (quizId.value != null) {
+      const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+      const sec = parseTimeLimitToSeconds(sq?.timeLimit)
+      durationSeconds.value = sec > 0 ? sec : 0
+      timer.value = durationSeconds.value
+    } else {
+      durationSeconds.value = 0
+      timer.value = 0
+    }
+  }
+
+  const restoreAnswers = () => {
+    const attempt = quizzesStore.currentAttempt
+    Object.keys(attempt.answers).forEach(key => {
+      const index = Number(key)
+      const answer = attempt.answers[index]
+      const q = questions.value[index]
+      if (!q) return
+      
+      if (q.type === 'multiple-choice' || q.type === 'true-false') {
+        if (typeof answer === 'number') {
+          selectedOption.value = answer
+        }
+      } else if (q.type === 'text') {
+        if (typeof answer === 'string') {
+          textAnswer.value = answer
+        }
+      } else if (q.type === 'enumeration') {
+        if (Array.isArray(answer)) {
+          enumerationAnswers.value = answer
+        }
+      } else if (q.type === 'matching') {
+        if (typeof answer === 'object' && !Array.isArray(answer)) {
+          matchingAnswers.value = answer
+        }
+      } else if (q.type === 'fill-blank') {
+        if (Array.isArray(answer)) {
+          fillBlankAnswers.value = answer
+        }
+      }
+    })
+  }
+
   const startTimer = () => {
+    if (timerInterval.value) clearInterval(timerInterval.value)
     timerInterval.value = setInterval(() => {
-      timer.value++
+      if (timer.value > 0) {
+        timer.value--
+        if (timer.value === 0) {
+          clearInterval(timerInterval.value as any)
+          timerInterval.value = null
+          autoSubmitOnTimeout()
+        }
+      }
     }, 1000)
   }
   
   // LIFECYCLE
   onMounted(() => {
-    startTimer()
+    initDuration()
+    loadCurrentQuestionAnswers()
+
+    if (durationSeconds.value > 0 && timer.value <= 0) {
+      autoSubmitOnTimeout()
+    } else if (durationSeconds.value > 0) {
+      startTimer()
+    }
   })
   
   onUnmounted(() => {
@@ -181,8 +244,20 @@
       <Header :breadcrumb="breadcrumb" />
       <div class="max-w-6xl mx-auto p-4 mt-8">
       
+      <!-- No Questions Available -->
+      <div v-if="!hasValidQuestions" class="flex items-center justify-center min-h-[400px]">
+        <div class="text-center">
+          <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+          <h2 class="text-2xl font-bold text-gray-800 mb-2">No Questions Available</h2>
+          <p class="text-gray-600 mb-4">This quiz doesn't have any questions yet.</p>
+          <button @click="router.push({ name: 'student-home' })" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+
       <!-- Main Content -->
-      <main class="grid grid-cols-3 gap-6">
+      <main v-else class="grid grid-cols-3 gap-6">
         <!-- Left Panel-->
         <div class="col-span-2">
           <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
@@ -195,12 +270,20 @@
             
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
-              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].question }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text }}</p>
+              <div v-if="questions[currentQuestion].mediaUrl" class="mb-6">
+                <img
+                  :src="questions[currentQuestion].mediaUrl"
+                  alt="Question image"
+                  class="w-full max-h-80 object-contain rounded-2xl border border-gray-200"
+                />
+              </div>
             </div>
             
-            <div class="space-y-3">
+            <!-- Multiple Choice / True-False -->
+            <div v-if="questions[currentQuestion].type === 'multiple-choice' || questions[currentQuestion].type === 'true-false'" class="space-y-3">
               <div 
-                v-for="(option, index) in questions[currentQuestion].options" 
+                v-for="(option, index) in (questions[currentQuestion].options || [])" 
                 :key="index"
                 :class="[
                   'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
@@ -231,7 +314,92 @@
                     'text-base font-medium',
                     selectedOption === index ? 'text-[#4866DA]' : 'text-gray-800'
                   ]"
-                >{{ option }}</span>
+                >{{ (option && 'text' in option) ? option.text : option }}</span>
+              </div>
+            </div>
+
+            <!-- Text -->
+            <div v-else-if="questions[currentQuestion].type === 'text'" class="space-y-3">
+              <textarea
+                v-model="textAnswer"
+                @input="updateTextAnswer"
+                class="w-full p-4 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none resize-none"
+                rows="6"
+                placeholder="Type your answer here... (minimum 3 sentences)"
+              ></textarea>
+            </div>
+
+            <!-- Enumeration -->
+            <div v-else-if="questions[currentQuestion].type === 'enumeration'" class="space-y-3">
+              <div
+                v-for="(item, index) in (((questions[currentQuestion] as any)?.items) || [])"
+                :key="index"
+                class="flex items-center gap-3"
+              >
+                <span class="text-gray-600 font-medium">{{ index + 1 }}.</span>
+                <input
+                  type="text"
+                  v-model="enumerationAnswers[index]"
+                  @input="updateEnumerationAnswer(index, enumerationAnswers[index])"
+                  class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
+                  :placeholder="`Item ${index + 1}`"
+                />
+              </div>
+            </div>
+
+            <!-- Matching Type -->
+            <div v-else-if="questions[currentQuestion].type === 'matching'" class="space-y-3">
+              <div class="grid grid-cols-2 gap-6">
+                <!-- Column A -->
+                <div>
+                  <h3 class="font-semibold text-gray-700 mb-3">Column A</h3>
+                  <div
+                    v-for="(pair, index) in ((questions[currentQuestion] as any).pairs || [])"
+                    :key="index"
+                    class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg"
+                  >
+                    {{ index + 1 }}. {{ pair.left }}
+                  </div>
+                </div>
+
+                <!-- Column B -->
+                <div>
+                  <h3 class="font-semibold text-gray-700 mb-3">Column B</h3>
+                  <div
+                    v-for="(pair, leftIndex) in ((questions[currentQuestion] as any).pairs || [])"
+                    :key="leftIndex"
+                    class="mb-2"
+                  >
+                    <select
+                      v-model="matchingAnswers[leftIndex]"
+                      @change="updateMatchingAnswer(leftIndex, matchingAnswers[leftIndex])"
+                      class="w-full p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
+                    >
+                      <option value="">Select answer...</option>
+                      <option
+                        v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as any).pairs || [])"
+                        :key="rightIndex"
+                        :value="rightIndex"
+                      >
+                        {{ String.fromCharCode(65 + rightIndex) }}. {{ rightPair.right }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fill in the Blank -->
+            <div v-else-if="questions[currentQuestion].type === 'fill-blank'" class="space-y-3">
+              <div v-for="(blank, index) in (((questions[currentQuestion] as any)?.blanks) || Array(1).fill({}))" :key="index" class="flex items-center gap-3">
+                <span class="text-gray-600 font-medium">Blank {{ index + 1 }}:</span>
+                <input
+                  type="text"
+                  v-model="fillBlankAnswers[index]"
+                  @input="updateFillBlankAnswer(index, fillBlankAnswers[index])"
+                  class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
+                  :placeholder="`Fill in blank ${index + 1}`"
+                />
               </div>
             </div>
           </div>
@@ -267,14 +435,13 @@
         <div class="col-span-1">
           <div class="bg-[#F4F7F9] rounded-xl shadow-sm p-4">
             <div class="mb-4">
-                   <p class="text-sm text-gray-600 mb-2 text-right font-medium">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
+              <p class="text-sm text-gray-600 mb-2 text-right font-medium">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
               <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
                 <div 
                   class="h-full bg-[#4285f4] rounded-full transition-all duration-300" 
                   :style="{ width: progress + '%' }"
                 ></div>
               </div>
-         
             </div>
             <div class="grid grid-cols-5 gap-3">
               <button 
@@ -284,13 +451,24 @@
                   'w-10 h-10 border-2 rounded-lg font-semibold text-sm cursor-pointer transition-all',
                   currentQuestion === questionIndex - 1
                     ? 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
-                    : answeredQuestions.has(questionIndex - 1)
+                    : quizzesStore.isAnswered(questionIndex - 1)
                     ? 'border-[#8B9EE3] bg-[#C9E4F6] text-[#1976d2]'
                     : 'border-[#4D74FF] bg-[#F4F7F9] text-gray-600 hover:bg-gray-50'
                 ]"
                 @click="goToQuestion(questionIndex - 1)"
               >
                 {{ questionIndex }}
+              </button>
+            </div>
+
+            <!-- Finish Attempt Button -->
+            <div class="mt-6 pt-4 border-t border-gray-300">
+              <button 
+                @click="finishQuiz"
+                class="w-full px-4 py-2 bg-white border border-[#7B90DF] text-[#4285f4] rounded-xl font-medium hover:bg-[#F4F7F9] transition-all flex items-center justify-center gap-2"
+              >
+                <span>Finish Attempt</span>
+                <i class="fas fa-arrow-right text-sm"></i>
               </button>
             </div>
           </div>

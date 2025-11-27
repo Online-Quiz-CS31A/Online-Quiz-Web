@@ -14,6 +14,7 @@ const props = defineProps<{
   importLabel?: string
   importAccept?: string
   showImport?: boolean
+  noBorder?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,7 +34,7 @@ const slots = useSlots()
 </script>
 
 <template>
-  <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+  <div class="bg-white rounded-xl p-4 shadow-sm" :class="{ 'border border-gray-200': !props.noBorder }">
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div class="flex items-center space-x-3 flex-1">
         <div class="relative rounded-lg shadow-sm flex-1 max-w-md">

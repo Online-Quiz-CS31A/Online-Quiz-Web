@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
+import { useAuthStore } from '@/stores/authStore'
 import type { ClassItem } from '@/interfaces/interfaces'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
@@ -24,15 +26,17 @@ const emit = defineEmits<{
 // REACTIVE
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
+const authStore = useAuthStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
+const router = useRouter()
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
 const displayedClasses = computed<ClassItem[]>(() => {
-  const list = classes.value
-  return typeof props.maxItems === 'number' ? list.slice(0, props.maxItems) : list
+  const nonArchived = classes.value.filter(c => c.status !== 'Archived')
+  return typeof props.maxItems === 'number' ? nonArchived.slice(0, props.maxItems) : nonArchived
 })
 
 // METHODS
@@ -48,7 +52,7 @@ const onDocClick = (e: MouseEvent) => {
 }
 
 const handleEnterClass = (classItem: ClassItem) => {
-  console.log(`Entering class: ${classItem.name}`)
+  router.push({ name: 'student-course-dashboard', params: { id: classItem.id } })
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
@@ -91,8 +95,17 @@ const getInitials = (name: string) => {
 }
 
 const getStudentCount = (courseId: number) => {
+  const uname = authStore.currentUser?.username
   const sections = sectionsStore.getSectionsByCourse(courseId)
-  return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+
+  if (!uname) {
+    return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+  }
+
+  const mySection = sections.find(section => (section.studentUsernames || []).includes(uname))
+  if (!mySection) return 0
+
+  return (mySection.studentUsernames || []).length
 }
 
 // LIFECYCLE
@@ -112,7 +125,20 @@ onBeforeUnmount(() => {
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Empty State -->
+    <div v-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+      <div class="relative mb-6">
+        <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-graduation-cap text-4xl text-blue-400"></i>
+        </div>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-2">No Courses Enrolled</h3>
+      <p class="text-gray-500 max-w-md">
+        You haven't enrolled in any courses yet. Join a course to start your learning journey.
+      </p>
+    </div>
+    
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
         v-for="classItem in displayedClasses" 
         :key="classItem.id"
@@ -168,7 +194,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="bg-white px-4 py-3 flex items-center justify-end">
-          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
+          <button @click.stop="handleEnterClass(classItem)" class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
             Enter class
           </button>
         </div>

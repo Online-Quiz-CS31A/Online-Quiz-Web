@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { useCalendarStore } from '@/stores/calendarStore'
+import SearchFilterBar from '@/components/SearchFilterBar.vue'
 import type { CalendarEventType, CalendarEventItem } from '../interfaces/interfaces'
+import CalendarEventAddModal from '@/components/modals/CalendarEventAddModal.vue'
+import CalendarEventEditModal from '@/components/modals/CalendarEventEditModal.vue'
 
 // REFS
 const now = ref(new Date())
@@ -15,6 +19,10 @@ const formTime = ref<string>('')
 const formType = ref<CalendarEventType>('quiz')
 const formIsDeadline = ref(false)
 const editingEventId = ref<number | null>(null)
+const readOnlyMode = ref(false)
+const { error: showError } = useToast()
+const searchQuery = ref('')
+const eventFilter = ref<'all' | 'quiz' | 'holiday' | 'other'>('all')
 
 // REACTIVE
 const calendarStore = useCalendarStore()
@@ -77,8 +85,32 @@ const calendarCells = computed(() => {
 })
 
 // METHODS
+function isDateInPast(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const target = new Date(y, m - 1, d)
+  target.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return target < today
+}
+
+function isEventInPast(ev: CalendarEventItem) {
+  const [y, m, d] = ev.date.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  if (ev.time) {
+    const [hh, mm] = ev.time.split(':').map(Number)
+    dt.setHours(hh || 0, mm || 0, 0, 0)
+    return dt.getTime() < Date.now()
+  }
+  dt.setHours(23, 59, 59, 999)
+  return dt.getTime() < Date.now()
+}
 function eventsForDate(dateStr: string) {
-  return events.value.filter(e => e.date === dateStr)
+  const q = searchQuery.value.trim().toLowerCase()
+  return events.value
+    .filter(e => e.date === dateStr)
+    .filter(e => (eventFilter.value === 'all' ? true : e.type === eventFilter.value))
+    .filter(e => (q ? (e.title || '').toLowerCase().includes(q) : true))
 }
 
 function isToday(dateStr: string) {
@@ -113,10 +145,16 @@ function openModal(defaultDate?: string) {
 }
 
 function openAddForDate(dateStr: string) {
+  if (isDateInPast(dateStr)) {
+    showError("You can't add events in the past")
+    return
+  }
+  readOnlyMode.value = false
   openModal(dateStr)
 }
 
 function openEdit(ev: CalendarEventItem) {
+  readOnlyMode.value = isEventInPast(ev)
   editingEventId.value = ev.id
   formTitle.value = ev.title
   formDate.value = ev.date
@@ -179,135 +217,164 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <div class="items-center mb-8">
-      <div class="flex justify-between space-x-4">
-        <div class="text-blue-700 font-medium">{{ currentTimeString }}</div>
-        <button @click="openModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow transition cursor-pointer">
-          <i class="fas fa-plus mr-2"></i> Add Event
+  <div class="min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+      <!-- Header Section -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-1">School Calendar</h1>
+            <p class="text-sm text-gray-600 flex items-center">
+              <i class="fas fa-clock mr-2 text-blue-600"></i>
+              {{ currentTimeString }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <SearchFilterBar
+          :model-value="searchQuery"
+          :filter="eventFilter"
+          :options="[
+            { label: 'All Events', value: 'all' },
+            { label: 'Quizzes', value: 'quiz' },
+            { label: 'Holidays', value: 'holiday' },
+            { label: 'Other', value: 'other' }
+          ]"
+          placeholder="Search events by title..."
+          action-label="Add Event"
+          @update:modelValue="(v: string) => (searchQuery = v)"
+          @update:filter="(v: string) => (eventFilter = v as 'all' | 'quiz' | 'holiday' | 'other')"
+          @action="openModal()"
+        />
+      </div>
+
+      <!-- Calendar Card -->
+      <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
+        <!-- Calendar Header -->
+        <div class="flex items-center justify-between px-6 py-4 bg-white">
+        <button 
+          @click="prevMonth" 
+          class="p-2 rounded-lg bg-white/10 text-blue-500 transition-all duration-200 hover:scale-110 cursor-pointer"
+          aria-label="Previous month"
+        >
+          <i class="fas fa-chevron-left text-lg"></i>
+        </button>
+        <h2 class="text-2xl font-bold text-blue-500 tracking-wide">{{ monthYearLabel }}</h2>
+        <button 
+          @click="nextMonth" 
+          class="p-2 rounded-lg bg-white/10 text-blue-500 transition-all duration-200 hover:scale-110 cursor-pointer"
+          aria-label="Next month"
+        >
+          <i class="fas fa-chevron-right text-lg"></i>
         </button>
       </div>
-    </div>
 
-    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-      <div class="flex items-center justify-between p-4 border-b">
-        <button @click="prevMonth" class="text-blue-500 hover:text-blue-700">
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <h2 class="text-xl font-semibold text-blue-800">{{ monthYearLabel }}</h2>
-        <button @click="nextMonth" class="text-blue-500 hover:text-blue-700">
-          <i class="fas fa-chevron-right"></i>
-        </button>
+      <!-- Weekday Headers -->
+      <div class="grid grid-cols-7 gap-px bg-gray-100">
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Sun</div>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Mon</div>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Tue</div>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Wed</div>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Thu</div>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Fri</div>
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Sat</div>
       </div>
 
-      <div class="grid grid-cols-7 gap-px bg-gray-200">
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Sun</div>
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Mon</div>
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Tue</div>
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Wed</div>
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Thu</div>
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Fri</div>
-        <div class="bg-blue-100 py-2 text-center font-medium text-blue-800">Sat</div>
-      </div>
-
-      <div class="grid grid-cols-7 gap-px bg-gray-200">
+      <!-- Calendar Grid -->
+      <div class="grid grid-cols-7 gap-px bg-gray-100">
         <div
           v-for="(cell, idx) in calendarCells"
           :key="idx"
-          class="bg-white min-h-24 p-2 relative cursor-pointer"
-          :class="{ 'bg-gray-50 text-gray-400': !cell.inCurrentMonth }"
+          class="bg-white min-h-28 p-3 relative cursor-pointer transition-all duration-200 hover:bg-blue-50 hover:shadow-md group"
+          :class="{ 
+            'bg-gray-50/50 text-gray-400': !cell.inCurrentMonth,
+            'bg-blue-50/30': isToday(cell.date) && cell.inCurrentMonth
+          }"
           @click="openAddForDate(cell.date)"
         >
-          <span
-            class="font-medium inline-flex items-center justify-center"
-            :class="[
-              !cell.inCurrentMonth ? 'text-gray-400' : '',
-              isToday(cell.date) ? 'bg-blue-600 text-white rounded-full w-7 h-7' : ''
-            ]"
-          >
-            {{ cell.dayNumber }}
-          </span>
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="font-semibold inline-flex items-center justify-center text-sm transition-all"
+              :class="[
+                !cell.inCurrentMonth ? 'text-gray-400' : 'text-gray-700',
+                isToday(cell.date) ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full w-8 h-8 shadow-lg ring-2 ring-blue-200' : ''
+              ]"
+            >
+              {{ cell.dayNumber }}
+            </span>
+            <i v-if="cell.inCurrentMonth && !isDateInPast(cell.date)" class="fas fa-plus text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+          </div>
 
-          <div v-if="eventsForDate(cell.date).length" class="mt-1 space-y-1">
+          <div v-if="eventsForDate(cell.date).length" class="space-y-1.5">
             <div
               v-for="ev in eventsForDate(cell.date)"
               :key="ev.id"
-              class="text-xs p-1 rounded truncate cursor-pointer"
+              class="text-xs px-2 py-1.5 rounded-lg truncate cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-md font-medium"
               :class="[
-                ev.type === 'quiz' ? 'bg-red-100 text-red-800' :
-                ev.type === 'holiday' ? 'bg-purple-100 text-purple-800' :
-                ev.type === 'other' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-blue-100 text-blue-800',
-                ev.isDeadline ? 'deadline' : ''
+                ev.type === 'quiz' ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 hover:from-red-200 hover:to-red-300 border border-red-300' :
+                ev.type === 'holiday' ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 hover:from-purple-200 hover:to-purple-300 border border-purple-300' :
+                ev.type === 'other' ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 hover:from-amber-200 hover:to-amber-300 border border-amber-300' :
+                'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 hover:from-blue-200 hover:to-blue-300 border border-blue-300',
+                ev.isDeadline ? 'ring-2 ring-offset-1 ring-red-400' : ''
               ]"
               @click.stop="openEdit(ev)"
             >
-              {{ ev.title }}<span v-if="ev.time"> ({{ ev.time }})</span>
+              <div class="flex items-center gap-1">
+                <i v-if="ev.isDeadline" class="fas fa-exclamation-circle text-xs"></i>
+                <span class="truncate">{{ ev.title }}</span>
+              </div>
+              <span v-if="ev.time" class="text-[10px] opacity-75 block mt-0.5">
+                <i class="far fa-clock mr-1"></i>{{ ev.time }}
+              </span>
             </div>
           </div>
         </div>
       </div>
-    </div>
-
-
-    <!-- Add Event Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xl font-semibold text-blue-800">{{ editingEventId !== null ? 'Edit Event' : 'Add New Event' }}</h3>
-          <button @click="closeModal" class="text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div v-if="selectedDateEvents.length" class="mb-4">
-          <div class="text-sm font-medium text-gray-700 mb-2">Events on {{ formDate }}:</div>
-          <ul class="space-y-1">
-            <li v-for="ev in selectedDateEvents" :key="'sel-' + ev.id" class="flex items-center justify-between text-sm bg-gray-50 px-2 py-1 rounded">
-              <span class="truncate">{{ ev.title }}<span v-if="ev.time"> ({{ ev.time }})</span></span>
-              <div class="space-x-2">
-                <button class="text-blue-600 hover:underline" @click="openEdit(ev)">Edit</button>
-                <button class="text-red-600 hover:underline" @click="() => { editingEventId = ev.id; onDelete() }">Delete</button>
-              </div>
-            </li>
-          </ul>
-        </div>
-        <form @submit.prevent="onSubmit">
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2" for="event-title">Event Title</label>
-            <input v-model="formTitle" type="text" id="event-title" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2">Date</label>
-            <!-- Replace this native input with shadcn-vue Calendar/DatePicker once installed -->
-            <input v-model="formDate" type="date" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2" for="event-time">Time (optional)</label>
-            <input v-model="formTime" type="time" id="event-time" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-          </div>
-          <div class="mb-4">
-            <label class="block text-gray-700 mb-2" for="event-type">Event Type</label>
-            <select v-model="formType" id="event-type" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-              <option value="quiz">Quiz</option>
-              <option value="holiday">Holiday</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div class="mb-4">
-            <label class="flex items-center">
-              <input v-model="formIsDeadline" type="checkbox" class="rounded text-blue-500 focus:ring-blue-300">
-              <span class="ml-2 text-gray-700">Is this a deadline?</span>
-            </label>
-          </div>
-          <div class="flex justify-end space-x-3">
-            <button type="button" @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
-            <button v-if="editingEventId !== null" type="button" @click="onDelete" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Delete</button>
-            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">{{ editingEventId !== null ? 'Save Changes' : 'Save Event' }}</button>
-          </div>
-        </form>
       </div>
     </div>
+
+    <!-- Modals -->
+    <CalendarEventAddModal
+      v-if="showModal && editingEventId === null"
+      :open="showModal"
+      :form-title="formTitle"
+      :form-date="formDate"
+      :form-time="formTime"
+      :form-type="formType"
+      :form-is-deadline="formIsDeadline"
+      :selected-date-events="selectedDateEvents"
+      @close="closeModal"
+      @submit="onSubmit"
+      @update:form-title="val => (formTitle = val)"
+      @update:form-date="val => (formDate = val)"
+      @update:form-time="val => (formTime = val)"
+      @update:form-type="val => (formType = val)"
+      @update:form-is-deadline="val => (formIsDeadline = val)"
+      @openEdit="openEdit"
+      @quickDelete="id => { editingEventId = id; onDelete() }"
+    />
+
+    <CalendarEventEditModal
+      v-if="showModal && editingEventId !== null"
+      :open="showModal"
+      :form-title="formTitle"
+      :form-date="formDate"
+      :form-time="formTime"
+      :form-type="formType"
+      :form-is-deadline="formIsDeadline"
+      :read-only="readOnlyMode"
+      @close="closeModal"
+      @submit="onSubmit"
+      @delete="onDelete"
+      @update:form-title="val => (formTitle = val)"
+      @update:form-date="val => (formDate = val)"
+      @update:form-time="val => (formTime = val)"
+      @update:form-type="val => (formType = val)"
+      @update:form-is-deadline="val => (formIsDeadline = val)"
+    />
   </div>
 </template>
+
 
 

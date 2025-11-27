@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watchEffect } from 'vue'
-import { X } from 'lucide-vue-next'
-import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
+import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
+import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
+import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import type { AdminUser } from '@/interfaces/interfaces'
 
@@ -422,92 +423,26 @@ const getStatusBadgeClass = (status: string) => {
       :page-size="pageSize"
     />
     
-    <!-- Modal: Add/Edit User -->
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[9999]">
-        <div class="w-full max-w-lg max-h-[70vh] overflow-hidden bg-white rounded-lg shadow-lg flex flex-col">
-          <div class="flex items-center justify-between px-6 py-4 border-b">
-            <h3 class="text-lg font-semibold">{{ isEditing ? 'Edit User' : 'Add User' }}</h3>
-            <button @click="closeModal" class="text-gray-500 hover:text-gray-700"><X class="w-5 h-5" /></button>
-          </div>
-          <div class="px-6 py-4 overflow-y-auto">
-            <p v-if="errors._form" class="mb-3 text-sm text-red-600">{{ errors._form }}</p>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">Name</label>
-                <input v-model="form.name" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Full name" />
-                <p v-if="errors.name" class="mt-1 text-xs text-red-600">{{ errors.name }}</p>
-              </div>
-              <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">Email</label>
-                <input v-model="form.email" type="email" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="email@example.com" />
-                <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ errors.email }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Role</label>
-                <select v-model="form.role" @change="onRoleChange" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                  <option>Student</option>
-                  <option>Teacher</option>
-                  <option>Administrator</option>
-                </select>
-                <p v-if="errors.role" class="mt-1 text-xs text-red-600">{{ errors.role }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Status</label>
-                <select v-model="form.status" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-                <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Username</label>
-                <input v-model="form.username" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.username" class="mt-1 text-xs text-red-600">{{ errors.username }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input v-model="form.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
-              </div>
-
-              <!-- Student fields -->
-              <template v-if="form.role === 'Student'">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Course</label>
-                  <input v-model="form.course" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.course" class="mt-1 text-xs text-red-600">{{ errors.course }}</p>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Year</label>
-                  <input v-model="form.year" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.year" class="mt-1 text-xs text-red-600">{{ errors.year }}</p>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700">Section</label>
-                  <input v-model="form.section" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.section" class="mt-1 text-xs text-red-600">{{ errors.section }}</p>
-                </div>
-              </template>
-
-              <!-- Teacher fields -->
-              <template v-else-if="form.role === 'Teacher'">
-                <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700">Department</label>
-                  <input v-model="form.department" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.department" class="mt-1 text-xs text-red-600">{{ errors.department }}</p>
-                </div>
-              </template>
-            </div>
-          </div>
-          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t">
-            <button @click="closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-            <button @click="saveUser" :disabled="Object.keys(errors).length > 0" :class="['px-4 py-2 text-sm font-medium text-white rounded-md', Object.keys(errors).length > 0 ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700']">Save</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <AdminUserAddModal
+      v-if="showModal && !isEditing"
+      :open="true"
+      :model-value="form"
+      :errors="errors"
+      @close="closeModal"
+      @save="saveUser"
+      @role-change="onRoleChange"
+      @update:modelValue="val => Object.assign(form, val)"
+    />
+    <AdminUserEditModal
+      v-if="showModal && isEditing"
+      :open="true"
+      :model-value="form"
+      :errors="errors"
+      @close="closeModal"
+      @save="saveUser"
+      @role-change="onRoleChange"
+      @update:modelValue="val => Object.assign(form, val)"
+    />
   </div>
 </template>
 

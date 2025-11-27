@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,7 +22,12 @@ const router = createRouter({
     {
       path: '/teacher/profile',
       name: 'teacher-profile',
-      component: () => import('../views/TeacherProfileView.vue'),
+      component: () => import('../views/ProfileView.vue'),
+    },
+    {
+      path: '/student/profile',
+      name: 'student-profile',
+      component: () => import('../views/ProfileView.vue'),
     },
     {
       path: '/quiz',
@@ -39,6 +45,11 @@ const router = createRouter({
       component: () => import('../views/QuizScoreView.vue'),
     },
     {
+      path: '/quiz/preview',
+      name: 'quiz-preview',
+      component: () => import('../views/QuizPreviewView.vue'),
+    },
+    {
       path: '/student',
       name: 'student',
       component: () => import('../views/StudentView.vue'),
@@ -47,6 +58,12 @@ const router = createRouter({
       path: '/student/quizzes/:quizId/info',
       name: 'student-prequiz',
       component: () => import('../views/PreQuizInfoView.vue'),
+      props: true,
+    },
+    {
+      path: '/student/courses/:id/dashboard',
+      name: 'student-course-dashboard',
+      component: () => import('../views/StudentCourseDashboardView.vue'),
       props: true,
     },
     {
@@ -95,7 +112,7 @@ const router = createRouter({
     {
       path: '/teacher/classes/:id/dashboard',
       name: 'teacher-class-dashboard',
-      component: () => import('../views/ClassroomDashboardView.vue'),
+      component: () => import('../views/TeacherClassroomDashboardView.vue'),
       props: true,
     },
     {
@@ -138,6 +155,53 @@ const router = createRouter({
       redirect: (to) => ({ name: 'quiz-results', params: to.params }),
     },
   ],
+})
+
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
+  const userRole = authStore.userRole
+
+  const requiresAuth = to.path !== '/'
+  const isLoginPage = to.path === '/' || to.name === 'login'
+  
+  if (isAuthenticated && isLoginPage) {
+    if (userRole === 'admin') {
+      return next({ name: 'admin-dashboard' })
+    } else if (userRole === 'teacher') {
+      return next({ name: 'teacher' })
+    } else if (userRole === 'student') {
+      return next({ name: 'student' })
+    }
+  }
+
+  if (requiresAuth && !isAuthenticated) {
+    return next({ name: 'login' })
+  }
+
+  if (isAuthenticated) {
+    const path = to.path.toLowerCase()
+    
+    if (userRole === 'admin') {
+      if (!path.startsWith('/admin')) {
+        return next({ name: 'admin-dashboard' })
+      }
+    }
+    
+    else if (userRole === 'teacher') {
+      if (path.startsWith('/admin') || path.startsWith('/student')) {
+        return next({ name: 'teacher' })
+      }
+    }
+    
+    else if (userRole === 'student') {
+      if (path.startsWith('/admin') || path.startsWith('/teacher')) {
+        return next({ name: 'student' })
+      }
+    }
+  }
+
+  next()
 })
 
 export default router
