@@ -143,6 +143,8 @@ export interface Course {
   instructors: CourseInstructor[]
   description?: string
   units?: number
+  section?: string
+  instructorId?: number
 }
 
 export interface Person {
@@ -192,6 +194,8 @@ export interface AdminUser {
   year?: string
   section?: string
   department?: string
+  contactNumber?: string
+  emergencyContactNumber?: string
 }
 
 // QUIZ CONTENT INTERFACES

@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watchEffect } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
 import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
+import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
+import { Trash2 } from 'lucide-vue-next'
+import { Pencil } from 'lucide-vue-next'
 import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
-import type { AdminUser } from '@/interfaces/interfaces'
+import type { AdminUser, User } from '@/interfaces/interfaces'
+import { useAdminStore } from '@/stores/adminStore'
+import api from '@/services/api'
+
+// STORE
+const adminStore = useAdminStore()
 
 // CONSTANTS / TYPRS
 const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
 // REACTIVE
-const form = reactive<User>({
+const form = reactive<AdminUser>({
   id: 0,
   name: '',
   email: '',
@@ -23,7 +31,9 @@ const form = reactive<User>({
   course: '',
   year: '',
   section: '',
-  department: ''
+  department: '',
+  contactNumber: '',
+  emergencyContactNumber: ''
 })
 
 const errors = reactive<Record<string, string>>({})
@@ -31,83 +41,58 @@ const errors = reactive<Record<string, string>>({})
 // REFS
 const searchQuery = ref('')
 const filterRole = ref('All Users')
-const users = ref<AdminUser[]>([
-  {
-    id: 1,
-    name: 'Donald Francisco',
-    email: 'donald.francisco@gmail.com',
-    role: 'Teacher',
-    status: 'Active',
-    lastActive: 'October 15, 2024',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  {
-    id: 2,
-    name: 'Neil Vallecer',
-    email: 'neil.vallecer@gmail.com',
-    role: 'Student',
-    status: 'Active',
-    lastActive: 'October 5, 2025',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  {
-    id: 3,
-    name: 'Ada Wong',
-    email: 'ada.wong@gmail.com',
-    role: 'Administrator',
-    status: 'Active',
-    lastActive: 'September 14, 2025',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  {
-    id: 4,
-    name: 'Jan Rosalijos',
-    email: 'jan.rosalijos@gmail.com',
-    role: 'Student',
-    status: 'Inactive',
-    lastActive: 'September 28, 2025',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  }
-])
 const pageSize = ref(10)
 const currentPage = ref(1)
 const showModal = ref(false)
 const isEditing = ref(false)
+const showDeleteModal = ref(false)
+const userToDelete = ref<AdminUser | null>(null)
 
+// DROPDOWN DATA
+const departments = ref<string[]>([])
+const years = ref<string[]>([])
+const courses = ref<string[]>([])
 
 // COMPUTED
-const filteredUsers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  const role = filterRole.value
-  return users.value.filter(u => {
-    const matchesSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-    const matchesRole =
-      role === 'All Users' ||
-      (role === 'Students' && u.role === 'Student') ||
-      (role === 'Teachers' && u.role === 'Teacher') ||
-      (role === 'Administrators' && u.role === 'Administrator') ||
-      (role === 'Inactive' && u.status === 'Inactive')
-    return matchesSearch && matchesRole
-  })
-})
-
-const totalItems = computed(() => filteredUsers.value.length)
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredUsers.value.slice(start, start + pageSize.value)
-})
-
+const totalItems = computed(() => adminStore.totalUsers)
 
 // WATCHERS
-watchEffect(() => {
-  currentPage.value = 1
-})
-
-watchEffect(() => {
-  if (showModal.value) validateForm()
+watch([currentPage, pageSize, filterRole, searchQuery], () => {
+  loadUsers()
 })
 
 // METHODS
+const loadUsers = () => {
+  adminStore.fetchUsers(currentPage.value, pageSize.value, searchQuery.value, filterRole.value)
+}
+
+const fetchDropdownData = async () => {
+  try {
+    const response = await api.get('/user/paged?pageNumber=1&pageSize=1000')
+    const allUsers = response.data.items || []
+    
+    const uniqueDepartments = new Set<string>()
+    allUsers
+      .filter((u: any) => u.roleName === 'Teacher' && u.teacher?.department)
+      .forEach((u: any) => uniqueDepartments.add(u.teacher.department))
+    departments.value = Array.from(uniqueDepartments).sort()
+    
+    const uniqueYears = new Set<string>()
+    allUsers
+      .filter((u: any) => u.roleName === 'Student' && u.student?.yearLevel)
+      .forEach((u: any) => uniqueYears.add(u.student.yearLevel.toString()))
+    years.value = Array.from(uniqueYears).sort()
+    
+    const uniqueCourses = new Set<string>()
+    allUsers
+      .filter((u: any) => u.roleName === 'Student' && u.student?.course)
+      .forEach((u: any) => uniqueCourses.add(u.student.course))
+    courses.value = Array.from(uniqueCourses).sort()
+  } catch (error) {
+    console.error('Failed to fetch dropdown data:', error)
+  }
+}
+
 const normalizeRole = (val: string): 'Student' | 'Teacher' | 'Administrator' => {
   const v = (val || '').toLowerCase()
   if (v.startsWith('teach')) return 'Teacher'
@@ -142,28 +127,25 @@ const onImport = async (e: Event) => {
   } else {
     records = parseCSV(text)
   }
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+  
   for (const r of records) {
     const role = normalizeRole(r.role || r.type || r.userrole || '')
-    const newUser: AdminUser = {
-      id: 0,
-      name: r.name || r.fullname || '',
+    const newUser = {
       email: r.email || '',
-      role,
-      status: (r.status && r.status.toLowerCase().startsWith('inact')) ? 'Inactive' : 'Active',
-      lastActive: r.lastActive || today,
-      avatar: defaultAvatar,
-      username: genUsernameByRole(role),
+      name: r.name || r.fullname || '',
       password: genPassword(),
-      course: r.course || '',
-      year: r.year || '',
-      section: r.section || '',
-      department: r.department || ''
+      roleId: role === 'Student' ? 3 : role === 'Teacher' ? 2 : 1, 
+      studentId: r.studentId || genUsernameByRole(role),
+      yearLevel: Number(r.year) || 1,
+      section: r.section || 'A',
+      course: r.course || 'CS',
+      department: r.department || 'General',
+      contactNumber: '0000000000',
+      createdBy: 1 
     }
-    const newId = users.value.length ? Math.max(...users.value.map(u => u.id)) + 1 : 1
-    newUser.id = newId
-    users.value.push(newUser)
+    await adminStore.createUser(newUser)
   }
+  loadUsers()
   if (input) input.value = ''
 }
 
@@ -202,7 +184,9 @@ const openAdd = () => {
     course: '',
     year: '',
     section: '',
-    department: ''
+    department: '',
+    contactNumber: '',
+    emergencyContactNumber: ''
   })
   showModal.value = true
 }
@@ -211,7 +195,7 @@ const openEdit = (u: AdminUser) => {
   isEditing.value = true
   Object.assign(form, {
     id: u.id,
-    name: u.name,
+    name: u.name, 
     email: u.email,
     role: u.role,
     status: u.status,
@@ -222,7 +206,9 @@ const openEdit = (u: AdminUser) => {
     course: u.course || '',
     year: u.year || '',
     section: u.section || '',
-    department: u.department || ''
+    department: u.department || '',
+    contactNumber: u.contactNumber || '',
+    emergencyContactNumber: u.emergencyContactNumber || ''
   })
   showModal.value = true
 }
@@ -239,82 +225,71 @@ const clearErrors = () => {
   Object.keys(errors).forEach(k => delete (errors as any)[k])
 }
 
-const usernameMatchesRole = (username: string, role: string) => {
-  const isDigits = /^\d{10}$/.test(username)
-  const prefix = role === 'Teacher' ? '01' : role === 'Student' ? '02' : '00'
-  return isDigits && username.startsWith(prefix)
-}
-
-const getComparable = (u: AdminUser) => ({
-  name: u.name.trim().toLowerCase(),
-  email: u.email.trim().toLowerCase(),
-  role: u.role,
-  status: u.status,
-  username: (u.username || '').trim(),
-  course: (u.course || '').trim().toLowerCase(),
-  year: (u.year || '').trim().toLowerCase(),
-  section: (u.section || '').trim().toLowerCase(),
-  department: (u.department || '').trim().toLowerCase(),
-})
-
-const isExactDuplicate = (a: AdminUser, b: AdminUser) => {
-  const ca = getComparable(a)
-  const cb = getComparable(b)
-  return JSON.stringify(ca) === JSON.stringify(cb)
-}
-
 const validateForm = (): boolean => {
   clearErrors()
   if (!form.name || !form.name.trim()) errors.name = 'Name is required.'
   if (!form.email || !form.email.trim()) errors.email = 'Email is required.'
   else if (!emailRegex.test(form.email.trim())) errors.email = 'Enter a valid email address.'
   if (!form.role) errors.role = 'Role is required.'
-  if (!form.status) errors.status = 'Status is required.'
-
-  if (!form.username || !usernameMatchesRole(form.username, form.role)) {
-    errors.username = `Username must be 10 digits and start with ${form.role === 'Teacher' ? '01' : form.role === 'Student' ? '02' : '00'}.`
-  }
-  if (!form.password || form.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters.'
-  }
-
+  
   if (form.role === 'Student') {
     if (!form.course || !form.course.trim()) errors.course = 'Course is required for students.'
-    if (!form.year || !form.year.trim()) errors.year = 'Year is required for students.'
-    if (!form.section || !form.section.trim()) errors.section = 'Section is required for students.'
   }
   if (form.role === 'Teacher') {
     if (!form.department || !form.department.trim()) errors.department = 'Department is required for teachers.'
   }
 
-  const emailTaken = users.value.some(u => u.id !== form.id && u.email.trim().toLowerCase() === form.email.trim().toLowerCase())
-  if (emailTaken) errors.email = 'Email is already in use.'
-  const usernameTaken = users.value.some(u => u.id !== form.id && (u.username || '').trim() === (form.username || '').trim())
-  if (usernameTaken) errors.username = 'Username is already in use.'
-  const exactDup = users.value.some(u => u.id !== form.id && isExactDuplicate(u, form))
-  if (exactDup) errors._form = 'A user with the same information already exists.'
-
   return Object.keys(errors).length === 0
 }
 
-const saveUser = () => {
-  if (!form.username) form.username = genUsernameByRole(form.role)
-  if (!form.password) form.password = genPassword()
-  if (!form.lastActive) {
-    const d = new Date()
-    form.lastActive = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-  }
-
+const saveUser = async () => {
   if (!validateForm()) return
 
-  if (isEditing.value) {
-    const idx = users.value.findIndex(u => u.id === form.id)
-    if (idx !== -1) users.value[idx] = { ...users.value[idx], ...form }
-  } else {
-    const newId = users.value.length ? Math.max(...users.value.map(u => u.id)) + 1 : 1
-    users.value.push({ ...form, id: newId })
+  const userData = {
+    email: form.email,
+    fullName: form.name,
+    password: form.password || 'password123',
+    roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+    studentId: form.username,
+    yearLevel: Number(form.year) || null,
+    section: form.section || null,
+    course: form.course || null,
+    department: form.department || null,
+    contactNumber: form.contactNumber || null,
+    emergencyContactNumber: form.emergencyContactNumber || null,
+    createdBy: 1
   }
-  showModal.value = false
+
+  let success = false
+  if (isEditing.value) {
+    success = await adminStore.updateUser(form.id, userData)
+  } else {
+    success = await adminStore.createUser(userData)
+  }
+
+  if (success) {
+    showModal.value = false
+    loadUsers()
+  }
+  if (success) {
+    showModal.value = false
+    loadUsers()
+  }
+}
+
+const confirmDelete = (u: AdminUser) => {
+  userToDelete.value = u
+  showDeleteModal.value = true
+}
+
+const deleteUser = async () => {
+  if (!userToDelete.value) return
+  const success = await adminStore.deleteUser(userToDelete.value.id)
+  if (success) {
+    showDeleteModal.value = false
+    userToDelete.value = null
+    loadUsers()
+  }
 }
 
 const getRoleBadgeClass = (role: string) => {
@@ -335,8 +310,13 @@ const getStatusBadgeClass = (status: string) => {
     ? 'bg-green-100 text-green-800' 
     : 'bg-red-100 text-red-800'
 }
-</script>
 
+// LIFECYCLE
+onMounted(() => {
+  loadUsers()
+  fetchDropdownData()
+})
+</script>
 
 <template>
   <div class="p-6 space-y-6">
@@ -355,7 +335,8 @@ const getStatusBadgeClass = (status: string) => {
     
     <!-- User table -->
     <div class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-gray-200">
-      <div class="overflow-x-auto">
+      <div v-if="adminStore.isLoading" class="p-8 text-center text-gray-500">Loading users...</div>
+      <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 data-table">
           <thead class="bg-gray-50">
             <tr>
@@ -380,7 +361,7 @@ const getStatusBadgeClass = (status: string) => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in paginatedUsers" :key="user.id" class="transition-colors hover:bg-gray-50">
+            <tr v-for="user in adminStore.users" :key="user.id" class="transition-colors hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 w-10 h-10">
@@ -408,8 +389,16 @@ const getStatusBadgeClass = (status: string) => {
                 <time :datetime="user.lastActive">{{ user.lastActive }}</time>
               </td>
               <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                <a href="#" @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900">Edit</a>
+                <button @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900 mr-3">
+                  <Pencil class="w-4 h-4" />
+                </button>
+                <button @click="confirmDelete(user)" class="text-red-600 hover:text-red-900">
+                  <Trash2 class="w-4 h-4" />
+                </button>
               </td>
+            </tr>
+            <tr v-if="adminStore.users.length === 0">
+              <td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found.</td>
             </tr>
           </tbody>
         </table>
@@ -428,6 +417,9 @@ const getStatusBadgeClass = (status: string) => {
       :open="true"
       :model-value="form"
       :errors="errors"
+      :departments="departments"
+      :years="years"
+      :courses="courses"
       @close="closeModal"
       @save="saveUser"
       @role-change="onRoleChange"
@@ -438,14 +430,25 @@ const getStatusBadgeClass = (status: string) => {
       :open="true"
       :model-value="form"
       :errors="errors"
+      :departments="departments"
+      :years="years"
+      :courses="courses"
       @close="closeModal"
       @save="saveUser"
       @role-change="onRoleChange"
       @update:modelValue="val => Object.assign(form, val)"
     />
+    <DangerConfirmModal
+      :open="showDeleteModal"
+      title="Delete User"
+      message="Are you sure you want to delete this user? This action cannot be undone."
+      confirm-label="Delete"
+      cancel-label="Cancel"
+      @confirm="deleteUser"
+      @cancel="showDeleteModal = false"
+    />
   </div>
 </template>
-
 
 <style scoped>
 @keyframes fadeIn {
