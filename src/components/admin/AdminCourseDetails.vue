@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { Clock, BookOpen, Users, Book, ChevronDown, Edit2, Mail, FileText, Plus, Search, X } from 'lucide-vue-next'
-import type { Course, CourseInstructor, AdminQuiz } from '@/interfaces/interfaces'
+import type { Course, CourseInstructor, AdminQuiz, AdminUser } from '@/interfaces/interfaces'
+import { useAdminStore } from '@/stores/adminStore'
 
 // PROPS
 const props = defineProps<{
@@ -14,12 +15,11 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
+// STORE
+const adminStore = useAdminStore()
+
 // REACTIVE
-const teachers = reactive([
-  { id: 1, name: 'Jovelyn Comaingking', email: 'jovelyn@gmail.com', department: 'Computer Studies', status: 'Active' },
-  { id: 2, name: 'Winslie Dada', email: 'winslie@gmail.com', department: 'HM', status: 'Active' },
-  { id: 3, name: 'Jeniffer Lopez', email: 'jeniffer@gmail.com', department: 'Accounting', status: 'Active' },
-])
+const teachers = computed(() => adminStore.users.filter(u => u.role === 'Teacher'))
 
 // REFS
 const showAddTeacherModal = ref(false)
@@ -29,10 +29,8 @@ const teacherPageSize = 5
 const activeTab = ref<'instructors' | 'quizzes' | 'settings'>('instructors')
 const expandedSections = ref<string[]>([])
 const pageSize = 5
-
-
-
 const sectionPage = reactive<Record<string, number>>({})
+const sectionCounts = reactive<Record<string, number>>({})
 
 const detailsForm = reactive<Pick<Course, 'title' | 'status' | 'subjectCode' | 'units' | 'description'>>({
   title: props.course.title,
@@ -44,10 +42,10 @@ const detailsForm = reactive<Pick<Course, 'title' | 'status' | 'subjectCode' | '
 
 // COMPUTED
 const filteredTeachers = computed(() => {
-  return teachers.filter(t =>
+  return teachers.value.filter(t =>
     t.name.toLowerCase().includes(teacherSearchQuery.value.toLowerCase()) ||
     t.email.toLowerCase().includes(teacherSearchQuery.value.toLowerCase()) ||
-    t.department.toLowerCase().includes(teacherSearchQuery.value.toLowerCase())
+    (t.department || '').toLowerCase().includes(teacherSearchQuery.value.toLowerCase())
   )
 })
 
@@ -57,25 +55,25 @@ const groupedInstructors = computed(() => {
     if (!map.has(i.teacherId)) map.set(i.teacherId, { teacherId: i.teacherId, sections: [] })
     map.get(i.teacherId)!.sections.push({ section: i.section, students: i.students })
   }
-  const grouped = Array.from(map.values())
-  const don = grouped.find(g => g.teacherId === 101)
-  if (don) {
-    const labels = new Set(don.sections.map(s => s.section))
-    const candidates = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-    const next = candidates.find(l => !labels.has(l)) || `${don.sections.length + 1}`
-    don.sections.push({ section: next, students: 0 })
-  }
-  return grouped
+  return Array.from(map.values())
 })
 
 const quizzesByInstructor = computed<Record<number, AdminQuiz[]>>(() => {
   const result: Record<number, AdminQuiz[]> = {}
+  
   for (const gi of groupedInstructors.value) {
-    result[gi.teacherId] = [
-      { id: Number(`${gi.teacherId}01`), title: 'Quiz 1', dueDate: 'Sep 15, 2025', status: 'Active', instructorId: gi.teacherId },
-      { id: Number(`${gi.teacherId}02`), title: 'Quiz', dueDate: 'Sep 29, 2025', status: 'Draft', instructorId: gi.teacherId },
-    ]
+    result[gi.teacherId] = [] 
   }
+
+  for (const quiz of courseQuizzes.value) {
+    if (result[quiz.instructorId]) {
+      result[quiz.instructorId].push(quiz)
+    } else {
+      if (!result[quiz.instructorId]) result[quiz.instructorId] = []
+      result[quiz.instructorId].push(quiz)
+    }
+  }
+  
   return result
 })
 
@@ -86,41 +84,6 @@ const paginatedTeachers = computed(() => {
   return filteredTeachers.value.slice(start, start + teacherPageSize)
 })
 
-
-const sectionStudentsMap = computed<Record<string, { id: string; name: string; email: string; status: 'Active' | 'Inactive' }[]>>(() => {
-  const result: Record<string, { id: string; name: string; email: string; status: 'Active' | 'Inactive' }[]> = {}
-  const humanNames = [
-    'Neil Vallecer',
-    'Jose Betonio',
-    'James Maguinda',
-    'Jan Rosalijos',
-    'John Cez Casupanan',
-    'Nicole Inot',
-    'Uzziah Lanz',
-    'Weah Jacionto',
-    'Elian Inot',
-    'Chitoge Kirisaki',
-  ]
-  for (const gi of groupedInstructors.value) {
-    gi.sections.forEach((sec, sIdx) => {
-      const key = makeKey(gi.teacherId, sIdx)
-      const count = Math.max(5, Number(sec.students || 0))
-      result[key] = Array.from({ length: count }, (_, i) => {
-        const n = i + 1
-        const name = humanNames[i % humanNames.length]
-        const emailSlug = name.toLowerCase().replace(/[^a-z]+/g, '.')
-        return {
-          id: `S${String(n).padStart(3, '0')}`,
-          name,
-          email: `${emailSlug}@gmail.com`,
-          status: (n % 3 === 0) ? 'Inactive' as const : 'Active' as const,
-        }
-      })
-    })
-  }
-  return result
-})
-
 // WATCHERS
 watch(() => props.course, (c) => {
   detailsForm.title = c.title
@@ -128,36 +91,116 @@ watch(() => props.course, (c) => {
   detailsForm.subjectCode = c.subjectCode
   detailsForm.units = c.units
   detailsForm.description = c.description || ''
+  loadSectionCounts()
 })
 
 // METHODS
+const loadTeachers = async () => {
+  await adminStore.fetchUsers(1, 100, '', 'Teacher')
+  loadSectionCounts()
+}
+
+const loadQuizzes = async () => {
+  try {
+    const quizzes = await adminStore.fetchCourseQuizzes(props.course.id)
+    courseQuizzes.value = quizzes.map((q: any) => ({
+      id: q.id || q.quizId,
+      title: q.title,
+      dueDate: q.dueDate ? new Date(q.dueDate).toLocaleDateString() : 'No due date',
+      status: q.status || (q.isPublished ? 'Active' : 'Draft'),
+      instructorId: q.teacherId || q.ownerId 
+    }))
+  } catch (e) {
+    console.error('Failed to load quizzes', e)
+  }
+}
+
+const loadSectionCounts = async () => {
+  if (!props.course.instructors) return
+
+  for (const instructor of props.course.instructors) {
+    if (instructor.section) {
+      try {
+        const students = await adminStore.fetchStudentsBySection(instructor.section)
+        sectionCounts[instructor.section] = students.length
+        instructor.students = students.length
+      } catch (e) {
+        console.error(`Failed to fetch students for section ${instructor.section}`, e)
+      }
+    }
+  }
+}
+
 const goToTeacherPage = (page: number) => {
   if (page >= 1 && page <= totalTeacherPages.value) {
     currentTeacherPage.value = page
   }
 }
 
-const toggleSection = (key: string) => {
+const studentsBySection = reactive<Record<string, any[]>>({})
+const loadingSections = reactive<Record<string, boolean>>({})
+const courseQuizzes = ref<AdminQuiz[]>([]) // Local state for quizzes
+
+const toggleSection = async (key: string, sectionName: string) => {
   const idx = expandedSections.value.indexOf(key)
-  if (idx > -1) expandedSections.value.splice(idx, 1)
-  else expandedSections.value.push(key)
+  if (idx > -1) {
+    expandedSections.value.splice(idx, 1)
+  } else {
+    expandedSections.value.push(key)
+    if (!studentsBySection[key]) {
+      loadingSections[key] = true
+      try {
+        const students = await adminStore.fetchStudentsBySection(sectionName)
+        studentsBySection[key] = students
+        sectionCounts[sectionName] = students.length
+      } catch (e) {
+        console.error(e)
+      } finally {
+        loadingSections[key] = false
+      }
+    }
+  }
 }
 
 const makeKey = (teacherId: number, sIdx: number) => `${teacherId}-${sIdx}`
 
-const totalPagesFor = (key: string) => Math.max(1, Math.ceil(((sectionStudentsMap.value[key] || []).length) / pageSize))
-
-const pagedStudents = (key: string) => {
-  const page = sectionPage[key] || 1
-  const start = (page - 1) * pageSize
-  return (sectionStudentsMap.value[key] || []).slice(start, start + pageSize)
+const assignTeacher = async (teacher: AdminUser) => {
+  const newInstructor: CourseInstructor = {
+    teacherId: teacher.id,
+    section: 'A', 
+    students: 0
+  }
+  
+  const updatedInstructors = [...(props.course.instructors || []), newInstructor]
+  
+  const success = await adminStore.updateCourse(props.course.id, {
+    ...props.course,
+    instructors: updatedInstructors
+  })
+  
+  if (success) {
+    showAddTeacherModal.value = false
+  }
 }
 
-const goToPage = (key: string, page: number) => {
-  const tp = totalPagesFor(key)
-  if (page < 1 || page > tp) return
-  sectionPage[key] = page
+const saveSettings = async () => {
+  const success = await adminStore.updateCourse(props.course.id, {
+    ...props.course,
+    name: detailsForm.title,
+    status: detailsForm.status,
+    category: detailsForm.subjectCode, 
+    units: detailsForm.units,
+    description: detailsForm.description
+  })
+  if (success) {
+  }
 }
+
+// LIFECYCLE
+onMounted(() => {
+  loadTeachers()
+  loadQuizzes()
+})
 </script>
 
 <template>
@@ -189,11 +232,11 @@ const goToPage = (key: string, page: number) => {
           <div class="mt-6 flex flex-wrap gap-4">
             <div class="flex items-center">
               <BookOpen class="text-gray-500 mr-2 h-4 w-4" />
-              <span class="text-gray-700">4 Quizzes</span>
+              <span class="text-gray-700">Quizzes</span>
             </div>
             <div class="flex items-center">
               <Users class="text-gray-500 mr-2 h-4 w-4" />
-              <span class="text-gray-700">{{ (props.course.instructors || []).length }} Instructors</span>
+              <span class="text-gray-700">{{ groupedInstructors.length }} Instructors</span>
             </div>
             <div class="flex items-center">
               <Book class="text-gray-500 mr-2 h-4 w-4" />
@@ -238,6 +281,9 @@ const goToPage = (key: string, page: number) => {
           </button>
         </div>
         <div class="space-y-6">
+          <div v-if="groupedInstructors.length === 0" class="text-center py-8 text-gray-500 bg-white rounded-xl shadow-md">
+            No instructors assigned to this course.
+          </div>
           <div v-for="gi in groupedInstructors" :key="gi.teacherId"
             class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="p-6">
@@ -246,94 +292,57 @@ const goToPage = (key: string, page: number) => {
                   <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
                     alt="Instructor" class="w-16 h-16 rounded-full mr-4">
                   <div>
-                    <h3 class="font-bold text-gray-800">{{ props.getPersonName(gi.teacherId) || 'Instructor' }}</h3>
-                    <div class="flex items-center text-xs text-gray-600 mt-1">
-                      <Mail class="h-3.5 w-3.5 mr-2" /> instructor{{ gi.teacherId }}@gmail.com
-                    </div>
+                    <h3 class="font-bold text-gray-800">{{ props.getPersonName(gi.teacherId) }}</h3>
                     <p class="text-gray-600 text-sm mt-1">{{ gi.sections.length }} Section(s)</p>
                   </div>
                 </div>
                 <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span>
               </div>
 
-
-
               <!-- Sections -->
               <div class="mt-6 border rounded-xl overflow-hidden">
                 <div v-for="(sec, sIdx) in gi.sections" :key="`${gi.teacherId}-${sIdx}`"
                   class="border-b last:border-b-0 border-gray-200">
-                  <div @click="toggleSection(`${gi.teacherId}-${sIdx}`)"
+                  <div @click="toggleSection(`${gi.teacherId}-${sIdx}`, sec.section)"
                     class="px-6 py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
                     <div>
                       <h3 class="font-medium text-gray-800">Section {{ sec.section }}</h3>
-                      <p class="text-sm text-gray-600 mt-1">{{ props.getPersonName(gi.teacherId) || 'Instructor' }} |
-                        Room 105 | {{ sec.students }} Students</p>
+                      <p class="text-sm text-gray-600 mt-1">{{ props.getPersonName(gi.teacherId) }} | {{ sectionCounts[sec.section] ?? sec.students }} Students</p>
                     </div>
                     <ChevronDown class="text-gray-500 transition-transform duration-200"
                       :class="{ 'rotate-180': expandedSections.includes(`${gi.teacherId}-${sIdx}`) }" />
                   </div>
                   <div v-if="expandedSections.includes(`${gi.teacherId}-${sIdx}`)" class="px-6 py-4 bg-gray-50">
-                    <div class="flex justify-between items-center mb-4">
-                      <h4 class="font-medium text-gray-800">Students ({{ sec.students }})</h4>
-                      <div class="relative">
-                        <Search class="absolute left-3 top-2.5 text-gray-400 h-4 w-4" />
-                        <input type="text" placeholder="Search students..."
-                          class="pl-10 pr-4 py-2 text-sm w-full border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                      </div>
+                    <div v-if="loadingSections[`${gi.teacherId}-${sIdx}`]" class="text-center py-4 text-gray-500">
+                      Loading students...
                     </div>
-                    <div class="overflow-auto">
+                    <div v-else-if="studentsBySection[`${gi.teacherId}-${sIdx}`] && studentsBySection[`${gi.teacherId}-${sIdx}`].length > 0">
                       <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-100">
+                        <thead class="bg-gray-50">
                           <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Student ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Email</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Actions</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                           </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                          <tr v-for="stu in pagedStudents(makeKey(gi.teacherId, sIdx))" :key="stu.id"
-                            class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ stu.id }}</td>
+                          <tr v-for="student in studentsBySection[`${gi.teacherId}-${sIdx}`]" :key="student.id">
                             <td class="px-6 py-4 whitespace-nowrap">
                               <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                  <img class="h-10 w-10 rounded-full"
-                                    src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
-                                    alt="">
+                                <div class="flex-shrink-0 h-8 w-8">
+                                  <img class="h-8 w-8 rounded-full" :src="student.avatar" alt="">
                                 </div>
                                 <div class="ml-4">
-                                  <div class="text-sm font-medium text-gray-900">{{ stu.name }}</div>
+                                  <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
                                 </div>
                               </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ stu.email }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                              <span
-                                :class="['px-2 inline-flex text-xs leading-5 font-semibold rounded-full', stu.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800']">{{
-                                stu.status }}</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button class="text-blue-600 hover:text-blue-700 mr-3">View</button>
-                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ student.email }}</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
-                    <!-- Pagination controls -->
-                    <div class="mt-4 flex items-center justify-between">
-                      <button class="px-3 py-1 text-sm border rounded-md text-gray-700 hover:bg-gray-50"
-                        @click="goToPage(makeKey(gi.teacherId, sIdx), (sectionPage[makeKey(gi.teacherId, sIdx)] || 1) - 1)">Prev</button>
-                      <div class="text-sm text-gray-600">Page {{ sectionPage[makeKey(gi.teacherId, sIdx)] || 1 }} of {{
-                        totalPagesFor(makeKey(gi.teacherId, sIdx)) }}</div>
-                      <button class="px-3 py-1 text-sm border rounded-md text-gray-700 hover:bg-gray-50"
-                        @click="goToPage(makeKey(gi.teacherId, sIdx), (sectionPage[makeKey(gi.teacherId, sIdx)] || 1) + 1)">Next</button>
+                    <div v-else class="text-sm text-gray-500 text-center py-4">
+                      No students found in this section.
                     </div>
                   </div>
                 </div>
@@ -354,19 +363,22 @@ const goToPage = (key: string, page: number) => {
       </div>
 
       <div class="space-y-6">
-        <div v-for="gi in groupedInstructors" :key="`quiz-${gi.teacherId}`" class="border rounded-xl overflow-hidden">
+        <div v-if="Object.keys(quizzesByInstructor).length === 0" class="text-center py-8 text-gray-500">
+           No quizzes available.
+        </div>
+        <div v-for="(quizzes, teacherId) in quizzesByInstructor" :key="`quiz-${teacherId}`" class="border rounded-xl overflow-hidden">
           <div class="px-6 py-4 bg-gray-50 flex items-center justify-between">
             <div class="flex items-center">
               <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
                 class="w-10 h-10 rounded-full mr-3" />
               <div>
-                <h3 class="font-semibold text-gray-800">{{ props.getPersonName(gi.teacherId) || 'Instructor' }}</h3>
-                <p class="text-xs text-gray-500">{{ (quizzesByInstructor[gi.teacherId] || []).length }} quiz(es)</p>
+                <h3 class="font-semibold text-gray-800">{{ props.getPersonName(Number(teacherId)) }}</h3>
+                <p class="text-xs text-gray-500">{{ quizzes.length }} quiz(es)</p>
               </div>
             </div>
           </div>
           <div class="divide-y divide-gray-200">
-            <div v-for="q in quizzesByInstructor[gi.teacherId] || []" :key="q.id"
+            <div v-for="q in quizzes" :key="q.id"
               class="px-6 py-4 flex items-center justify-between">
               <div>
                 <h4 class="text-sm font-medium text-gray-900">{{ q.title }}</h4>
@@ -382,7 +394,7 @@ const goToPage = (key: string, page: number) => {
                 <button class="text-blue-600 hover:text-blue-700 text-sm">Open</button>
               </div>
             </div>
-            <div v-if="(quizzesByInstructor[gi.teacherId] || []).length === 0"
+            <div v-if="quizzes.length === 0"
               class="px-6 py-8 text-center text-gray-500 text-sm">
               No quizzes yet.
             </div>
@@ -394,7 +406,7 @@ const goToPage = (key: string, page: number) => {
     <!-- Settings Tab -->
     <div v-else class="bg-white rounded-xl shadow-md p-6">
       <h2 class="text-2xl font-bold text-gray-800 mb-6">Course Settings</h2>
-      <form @submit.prevent>
+      <form @submit.prevent="saveSettings">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <!-- Title -->
           <div class="sm:col-span-2">
@@ -494,7 +506,7 @@ const goToPage = (key: string, page: number) => {
                       <div class="flex items-center">
                         <div class="flex-shrink-0 h-10 w-10">
                           <img class="h-10 w-10 rounded-full"
-                            src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
+                            :src="teacher.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'"
                             alt="">
                         </div>
                         <div class="ml-4">
@@ -511,7 +523,7 @@ const goToPage = (key: string, page: number) => {
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button class="text-blue-600 hover:text-blue-700">Assign to Course</button>
+                      <button @click="assignTeacher(teacher)" class="text-blue-600 hover:text-blue-700">Assign to Course</button>
                     </td>
                   </tr>
                 </tbody>
