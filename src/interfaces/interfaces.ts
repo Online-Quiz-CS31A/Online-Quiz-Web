@@ -91,6 +91,7 @@ export interface User {
   id?: number
   email?: string
   roles?: string[]
+  avatar?: string
 }
 
 // QUIZ LIST ITEMS FOR TEACHERS

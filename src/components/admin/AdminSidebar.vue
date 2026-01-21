@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { BookOpen, Home, Users, BookOpenCheck, Settings, Database, BarChart2 } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
+const authStore = useAuthStore()
 </script>
 
 
@@ -139,12 +141,12 @@ const route = useRoute()
       <div class="flex items-center">
         <img 
           class="w-10 h-10 rounded-full" 
-          src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" 
-          alt="Admin profile"
+          :src="authStore.currentUser?.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" 
+          :alt="authStore.currentUser?.name"
         >
         <div class="ml-3">
-          <p class="text-sm font-medium text-gray-700">Admin User</p>
-          <p class="text-xs font-medium text-gray-500">Super Administrator</p>
+          <p class="text-sm font-medium text-gray-700">{{ authStore.currentUser?.name || 'Admin User' }}</p>
+          <p class="text-xs font-medium text-gray-500">{{ authStore.currentUser?.role || 'Administrator' }}</p>
         </div>
       </div>
     </div>
