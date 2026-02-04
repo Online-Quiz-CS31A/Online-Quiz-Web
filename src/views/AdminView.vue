@@ -77,7 +77,7 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="flex items-center ml-4 space-x-4 md:ml-6">
-            <button class="p-1 text-gray-400 bg-white rounded-full hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button class="p-1 text-gray-400 bg-white rounded-full hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
               <Bell class="w-6 h-6" />
             </button>
             <div class="relative ml-3">
@@ -124,9 +124,11 @@ onUnmounted(() => {
       <main class="flex-1 overflow-y-auto focus:outline-none">
         <div class="py-6">
           <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <Transition name="fade" mode="out-in">
-              <router-view />
-            </Transition>
+            <router-view v-slot="{ Component }">
+              <Transition name="fade" mode="out-in">
+                <component :is="Component" />
+              </Transition>
+            </router-view>
           </div>
         </div>
       </main>
