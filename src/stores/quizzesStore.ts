@@ -4,19 +4,20 @@ import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, Qu
 import { useAuthStore } from './authStore'
 import { useCoursesStore } from './coursesStore'
 import { useSectionsStore } from './sectionsStore'
+import api from '../services/api'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
   const teacherQuizzesByUser = ref<Record<string, TeacherQuizItem[]>>({
     '0111111111': [
-      { 
-        id: 101, 
-        subject: 'Web Development', 
-        title: 'HTML & CSS Fundamentals', 
-        description: 'Basic HTML structure and CSS styling', 
-        dueDate: '2025-06-01 23:59', 
-        class: 'CS22A', 
-        submitted: 5, 
-        total: 15, 
+      {
+        id: 101,
+        subject: 'Web Development',
+        title: 'HTML & CSS Fundamentals',
+        description: 'Basic HTML structure and CSS styling',
+        dueDate: '2025-06-01 23:59',
+        class: 'CS22A',
+        submitted: 5,
+        total: 15,
         color: 'purple',
         status: 'published',
         timeLimit: '30 min',
@@ -31,15 +32,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         createdAt: '2024-05-10T10:00:00Z',
         updatedAt: '2024-05-10T10:00:00Z'
       },
-      { 
-        id: 102, 
-        subject: 'Data Structures', 
-        title: 'Arrays and Linked Lists', 
-        description: 'Fundamental data structures and their operations', 
-        dueDate: '2025-06-05 23:59', 
-        class: 'CS33A', 
-        submitted: 8, 
-        total: 20, 
+      {
+        id: 102,
+        subject: 'Data Structures',
+        title: 'Arrays and Linked Lists',
+        description: 'Fundamental data structures and their operations',
+        dueDate: '2025-06-05 23:59',
+        class: 'CS33A',
+        submitted: 8,
+        total: 20,
         color: 'orange',
         status: 'published',
         timeLimit: '30 min',
@@ -56,15 +57,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       },
     ],
     '0112345678': [
-      { 
-        id: 1, 
-        subject: 'Information Assurance', 
-        title: 'Week 1 Quiz', 
-        description: 'Fundamentals of Information Security', 
-        dueDate: '2025-05-15 23:59', 
-        class: 'CS31A', 
-        submitted: 12, 
-        total: 24, 
+      {
+        id: 1,
+        subject: 'Information Assurance',
+        title: 'Week 1 Quiz',
+        description: 'Fundamentals of Information Security',
+        dueDate: '2025-05-15 23:59',
+        class: 'CS31A',
+        submitted: 12,
+        total: 24,
         color: 'blue',
         status: 'published',
         timeLimit: '30 min',
@@ -79,15 +80,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         createdAt: '2024-05-01T10:00:00Z',
         updatedAt: '2024-05-01T10:00:00Z'
       },
-      { 
-        id: 2, 
-        subject: 'Information Assurance', 
-        title: 'Week 2 Quiz', 
-        description: 'Cryptography and Network Security', 
-        dueDate: '2025-05-18 23:59', 
-        class: 'CS31A', 
-        submitted: 8, 
-        total: 24, 
+      {
+        id: 2,
+        subject: 'Information Assurance',
+        title: 'Week 2 Quiz',
+        description: 'Cryptography and Network Security',
+        dueDate: '2025-05-18 23:59',
+        class: 'CS31A',
+        submitted: 8,
+        total: 24,
         color: 'green',
         status: 'published',
         timeLimit: '30 min',
@@ -102,15 +103,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         createdAt: '2024-05-02T10:00:00Z',
         updatedAt: '2024-05-02T10:00:00Z'
       },
-      { 
-        id: 3, 
-        subject: 'Computer Architecture', 
-        title: 'Week 5 Quiz', 
-        description: 'Memory Hierarchy and Cache', 
-        dueDate: '2025-05-20 23:59', 
-        class: 'CS22A', 
-        submitted: 3, 
-        total: 24, 
+      {
+        id: 3,
+        subject: 'Computer Architecture',
+        title: 'Week 5 Quiz',
+        description: 'Memory Hierarchy and Cache',
+        dueDate: '2025-05-20 23:59',
+        class: 'CS22A',
+        submitted: 3,
+        total: 24,
         color: 'purple',
         status: 'published',
         timeLimit: '30 min',
@@ -125,15 +126,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         createdAt: '2024-05-03T10:00:00Z',
         updatedAt: '2024-05-03T10:00:00Z'
       },
-      { 
-        id: 4, 
-        subject: 'Operating Systems', 
-        title: 'Process Management Quiz', 
-        description: 'Process Scheduling and Synchronization', 
-        dueDate: '2025-05-25 23:59', 
-        class: 'IT22A', 
-        submitted: 17, 
-        total: 28, 
+      {
+        id: 4,
+        subject: 'Operating Systems',
+        title: 'Process Management Quiz',
+        description: 'Process Scheduling and Synchronization',
+        dueDate: '2025-05-25 23:59',
+        class: 'IT22A',
+        submitted: 17,
+        total: 28,
         color: 'red',
         status: 'published',
         archived: true,
@@ -149,15 +150,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         createdAt: '2024-05-04T10:00:00Z',
         updatedAt: '2024-05-04T10:00:00Z'
       },
-      { 
-        id: 5, 
-        subject: 'Automata', 
-        title: 'PDA and CFG Quiz', 
-        description: 'Pushdown Automata and Context-Free Grammars', 
-        dueDate: '2025-05-28 23:59', 
-        class: 'IT11B', 
-        submitted: 9, 
-        total: 22, 
+      {
+        id: 5,
+        subject: 'Automata',
+        title: 'PDA and CFG Quiz',
+        description: 'Pushdown Automata and Context-Free Grammars',
+        dueDate: '2025-05-28 23:59',
+        class: 'IT11B',
+        submitted: 9,
+        total: 22,
         color: 'yellow',
         status: 'published',
         timeLimit: '30 min',
@@ -348,7 +349,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       Object.values(teacherQuizzesByUser.value).forEach(list => {
         list.forEach(q => {
           if ((q as any).archived) {
-            ;(q as any).archived = false
+            ; (q as any).archived = false
           }
         })
       })
@@ -357,7 +358,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         Object.values(teacherQuizzesByUser.value).forEach(list => {
           list.forEach(q => {
             if (ids.includes(q.id)) {
-              ;(q as any).archived = true
+              ; (q as any).archived = true
             }
           })
         })
@@ -485,8 +486,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuestion.value.pairs = []
     currentQuestion.value.items = []
     currentQuestion.value.correctAnswer = ''
-    
-    switch(newType) {
+
+    switch (newType) {
       case 'multiple-choice':
         currentQuestion.value.options = [
           { text: '', isCorrect: true, imageUrl: '' },
@@ -625,7 +626,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     let mutated = false
     stored.forEach(q => {
       if (q.id === quizId) {
-        ;(q as any).archived = true
+        ; (q as any).archived = true
         mutated = true
       }
     })
@@ -637,7 +638,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
         if (q.id === quizId) {
-          ;(q as any).archived = true
+          ; (q as any).archived = true
           if (!archivedSeedQuizIds.value.includes(quizId)) {
             archivedSeedQuizIds.value.push(quizId)
             seedMutated = true
@@ -669,25 +670,25 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     all.forEach(q => {
       if (q.id === quizId) {
         if (payload.dueDate != null) {
-          ;(q as any).dueDate = payload.dueDate
+          ; (q as any).dueDate = payload.dueDate
         }
 
         if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
           const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
-          ;(q as any).assignedSections = unique
+            ; (q as any).assignedSections = unique
           if (unique.length > 0) {
-            ;(q as any).class = unique[0]
+            ; (q as any).class = unique[0]
           }
         } else if (payload.sectionName != null) {
-          ;(q as any).class = payload.sectionName
-          ;(q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+          ; (q as any).class = payload.sectionName
+            ; (q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
         }
 
         if (payload.timeLimitMinutes != null) {
-          ;(q as any).timeLimit = `${payload.timeLimitMinutes} min`
+          ; (q as any).timeLimit = `${payload.timeLimitMinutes} min`
         }
         if (payload.maxAttempts != null) {
-          ;(q as any).maxAttempts = payload.maxAttempts
+          ; (q as any).maxAttempts = payload.maxAttempts
         }
         mutated = true
       }
@@ -728,15 +729,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         }
 
         if (payload.maxAttempts != null) {
-          ;(storedCopy as any).maxAttempts = payload.maxAttempts
+          ; (storedCopy as any).maxAttempts = payload.maxAttempts
         }
 
         if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          ;(storedCopy as any).assignedSections = Array.from(
+          ; (storedCopy as any).assignedSections = Array.from(
             new Set(payload.sectionNames.filter(Boolean))
           )
         } else if (payload.sectionName != null) {
-          ;(storedCopy as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+          ; (storedCopy as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
         }
 
         all.push(storedCopy)
@@ -752,25 +753,25 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     allSeed.forEach(q => {
       if (q.id === quizId) {
         if (payload.dueDate != null) {
-          ;(q as any).dueDate = payload.dueDate
+          ; (q as any).dueDate = payload.dueDate
         }
 
         if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
           const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
-          ;(q as any).assignedSections = unique
+            ; (q as any).assignedSections = unique
           if (unique.length > 0) {
-            ;(q as any).class = unique[0]
+            ; (q as any).class = unique[0]
           }
         } else if (payload.sectionName != null) {
-          ;(q as any).class = payload.sectionName
-          ;(q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+          ; (q as any).class = payload.sectionName
+            ; (q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
         }
 
         if (payload.timeLimitMinutes != null) {
-          ;(q as any).timeLimit = `${payload.timeLimitMinutes} min`
+          ; (q as any).timeLimit = `${payload.timeLimitMinutes} min`
         }
         if (payload.maxAttempts != null) {
-          ;(q as any).maxAttempts = payload.maxAttempts
+          ; (q as any).maxAttempts = payload.maxAttempts
         }
       }
     })
@@ -819,7 +820,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     let mutated = false
     stored.forEach(q => {
       if (q.id === quizId && (q as any).archived) {
-        ;(q as any).archived = false
+        ; (q as any).archived = false
         mutated = true
       }
     })
@@ -831,7 +832,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
         if (q.id === quizId && (q as any).archived) {
-          ;(q as any).archived = false
+          ; (q as any).archived = false
           seedMutated = true
         }
       })
@@ -1081,9 +1082,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         const trimmed = userText.trim()
         const sentences = trimmed
           ? trimmed
-              .split(/[.!?\n]+/)
-              .map(s => s.trim())
-              .filter(Boolean)
+            .split(/[.!?\n]+/)
+            .map(s => s.trim())
+            .filter(Boolean)
           : []
         let isCorrect = false
         if (sentences.length >= 3) {
@@ -1223,7 +1224,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (!stored) return false
       const data = JSON.parse(stored)
       if (!data.isOngoing) return false
-      
+
       currentAttempt.quizId = data.quizId
       currentAttempt.quizTitle = data.quizTitle
       currentAttempt.questionsLength = data.questionsLength
@@ -1259,7 +1260,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
   function calculateScore(): { score: number; totalPoints: number; percentage: number } {
     if (currentAttempt.quizId == null) return { score: 0, totalPoints: 0, percentage: 0 }
-    
+
     const quizQuestions = getStudentQuizQuestions(currentAttempt.quizId)
     let score = 0
     let totalPoints = 0
@@ -1299,9 +1300,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         const trimmed = userText.trim()
         const sentences = trimmed
           ? trimmed
-              .split(/[.!?\n]+/)
-              .map(s => s.trim())
-              .filter(Boolean)
+            .split(/[.!?\n]+/)
+            .map(s => s.trim())
+            .filter(Boolean)
           : []
 
         if (sentences.length >= 2 && sentences.length <= 3) {
@@ -1369,9 +1370,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function saveAttemptToHistory() {
     const auth = useAuthStore()
     const username = auth.currentUser?.username
-    
+
     if (!username || currentAttempt.quizId == null) return
-    
+
     if (currentAttempt.isHistoricalReview) return
 
     loadAttemptHistoryFromStorage()
@@ -1402,7 +1403,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function getQuizAttemptHistory(quizId: number): QuizAttemptHistory[] {
     const auth = useAuthStore()
     const username = auth.currentUser?.username
-    
+
     if (!username) return []
 
     loadAttemptHistoryFromStorage()
@@ -1471,11 +1472,11 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     if (!username) return false
 
     loadAttemptHistoryFromStorage()
-    
+
     const attempt = quizAttemptHistory.value.find(
       a => a.quizId === quizId && a.studentUsername === username && a.attemptNumber === attemptNumber
     )
-    
+
     if (!attempt) return false
 
     const quiz = myStudentQuizzes.value.find(q => q.id === quizId)
@@ -1493,6 +1494,41 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentAttempt.isHistoricalReview = true
 
     return true
+  }
+
+  async function fetchQuizzesForCourse(courseId: number, userId: number, isStudent: boolean = false): Promise<TeacherQuizItem[]> {
+    try {
+      const response = await api.get(`/Quiz/course/${courseId}`, {
+        params: {
+          userId,
+          isStudent
+        }
+      })
+
+      if (response.data && Array.isArray(response.data)) {
+        return response.data.map((quiz: any) => ({
+          id: quiz.quizId || quiz.id,
+          subject: quiz.courseName || '',
+          title: quiz.title || 'Untitled Quiz',
+          description: quiz.description || '',
+          dueDate: quiz.dueAt || '',
+          class: '',
+          submitted: 0,
+          total: 0,
+          color: 'blue',
+          status: quiz.isPublished ? 'published' : 'draft',
+          timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
+          questions: quiz.questions || [],
+          createdAt: quiz.createdAt || new Date().toISOString(),
+          updatedAt: quiz.updatedAt || new Date().toISOString(),
+        }))
+      }
+
+      return []
+    } catch (error) {
+      console.error('Failed to fetch quizzes for course:', error)
+      return []
+    }
   }
 
   return {
@@ -1550,6 +1586,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     getAllQuizAttemptHistory,
     isQuizMarkedDone,
     toggleQuizDone,
-    loadQuizDoneFromStorage
+    loadQuizDoneFromStorage,
+    fetchQuizzesForCourse
   }
 })

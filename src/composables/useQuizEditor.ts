@@ -9,7 +9,7 @@ export function useQuizEditor() {
   const router = useRouter()
   const toast = useToast()
   const store = useQuizzesStore()
-  
+
   const showAddQuestionModal = ref(false)
   const openMenuIndex = ref<number | null>(null)
 
@@ -34,7 +34,7 @@ export function useQuizEditor() {
 
   function deleteCurrentQuestion() {
     if (store.currentQuiz.currentQuestionIndex === -1) return
-    
+
     if (confirm('Are you sure you want to delete this question?')) {
       store.deleteQuestion(store.currentQuiz.currentQuestionIndex)
     }
