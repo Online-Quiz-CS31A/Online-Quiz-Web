@@ -78,14 +78,14 @@ const emit = defineEmits<{
           </div>
         </div>
         <div class="mt-3 space-y-1">
-          <div class="flex items-center text-white/90 text-sm">
+          <!-- <div class="flex items-center text-white/90 text-sm">
             <i class="fas fa-calendar-day w-5 mr-2"></i>
             <span>{{ props.section.scheduleDay }} {{ props.section.scheduleTime }}</span>
           </div>
           <div class="flex items-center text-white/90 text-sm">
             <i class="fas fa-door-open w-5 mr-2"></i>
             <span>{{ props.section.classroom }}</span>
-          </div>
+          </div> -->
         </div>
         <span class="inline-block mt-3 bg-white/20 text-white text-xs px-2 py-1 rounded-full">
           {{ props.section.students }} students
