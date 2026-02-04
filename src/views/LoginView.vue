@@ -174,7 +174,7 @@ const handleLogin = async () => {
           </div>
 
           <!-- Remember Me & Forgot Password -->
-          <div class="flex items-center justify-between">
+          <!-- <div class="flex items-center justify-between">
             <div class="flex items-center">
               <input
                 id="remember-me"
@@ -189,7 +189,7 @@ const handleLogin = async () => {
             <a href="#" class="text-sm text-blue-600 hover:text-blue-500 font-medium transition duration-200">
               Forgot password?
             </a>
-          </div>
+          </div> -->
 
           <!-- Submit Button -->
           <button
