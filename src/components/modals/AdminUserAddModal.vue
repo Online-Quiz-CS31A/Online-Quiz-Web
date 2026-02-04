@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
+
 import { X } from 'lucide-vue-next'
 
 const props = defineProps<{ 
   open: boolean,
   modelValue: any,
-  errors: Record<string, string>
+  errors: Record<string, string>,
+  departments: string[],
+  years: string[],
+  courses: string[]
 }>()
 
 const emit = defineEmits<{
@@ -32,14 +35,22 @@ const onInput = (key: string, value: any) => {
           <p v-if="errors._form" class="mb-3 text-sm text-red-600">{{ errors._form }}</p>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
-              <label class="block text-sm font-medium text-gray-700">Name</label>
-              <input :value="modelValue.name" @input="onInput('name', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Full name" />
-              <p v-if="errors.name" class="mt-1 text-xs text-red-600">{{ errors.name }}</p>
+              <label class="block text-sm font-medium text-gray-700">Full Name</label>
+              <input :value="modelValue.fullName" @input="onInput('fullName', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Full name" />
+              <p v-if="errors.fullName" class="mt-1 text-xs text-red-600">{{ errors.fullName }}</p>
             </div>
             <div class="sm:col-span-2">
               <label class="block text-sm font-medium text-gray-700">Email</label>
               <input :value="modelValue.email" @input="onInput('email', ($event.target as HTMLInputElement).value)" type="email" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="email@example.com" />
               <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ errors.email }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Contact Number</label>
+              <input :value="modelValue.contactNumber" @input="onInput('contactNumber', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="+63 912 345 6789" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Emergency Contact</label>
+              <input :value="modelValue.emergencyContactNumber" @input="onInput('emergencyContactNumber', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Optional" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Role</label>
@@ -59,29 +70,29 @@ const onInput = (key: string, value: any) => {
               <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Username</label>
-              <input :value="modelValue.username" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-              <p v-if="errors.username" class="mt-1 text-xs text-red-600">{{ errors.username }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Password</label>
-              <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-              <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
-            </div>
-
             <template v-if="modelValue.role === 'Student'">
               <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
+                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-700">Course</label>
-                <input :value="modelValue.course" @input="onInput('course', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
+                <select :value="modelValue.course" @change="onInput('course', ($event.target as HTMLSelectElement).value)" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <option value="">Select Course</option>
+                  <option v-for="course in courses" :key="course" :value="course">{{ course }}</option>
+                </select>
                 <p v-if="errors.course" class="mt-1 text-xs text-red-600">{{ errors.course }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700">Year</label>
-                <input :value="modelValue.year" @input="onInput('year', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
+                <select :value="modelValue.year" @change="onInput('year', ($event.target as HTMLSelectElement).value)" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <option value="">Select Year</option>
+                  <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+                </select>
                 <p v-if="errors.year" class="mt-1 text-xs text-red-600">{{ errors.year }}</p>
               </div>
-              <div class="sm:col-span-2">
+              <div>
                 <label class="block text-sm font-medium text-gray-700">Section</label>
                 <input :value="modelValue.section" @input="onInput('section', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
                 <p v-if="errors.section" class="mt-1 text-xs text-red-600">{{ errors.section }}</p>
@@ -89,10 +100,26 @@ const onInput = (key: string, value: any) => {
             </template>
 
             <template v-else-if="modelValue.role === 'Teacher'">
-              <div class="sm:col-span-2">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
+                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-700">Department</label>
-                <input :value="modelValue.department" @input="onInput('department', ($event.target as HTMLInputElement).value)" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
+                <select :value="modelValue.department" @change="onInput('department', ($event.target as HTMLSelectElement).value)" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <option value="">Select Department</option>
+                  <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
+                </select>
                 <p v-if="errors.department" class="mt-1 text-xs text-red-600">{{ errors.department }}</p>
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
+                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
               </div>
             </template>
           </div>

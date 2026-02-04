@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { AlertTriangle } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { AlertTriangle, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   open: boolean
-  courseName?: string
+  courseName: string
+  courseCode: string
 }>()
 
 const emit = defineEmits<{
@@ -12,82 +13,76 @@ const emit = defineEmits<{
   (e: 'confirm'): void
 }>()
 
-const stage = ref<'warn' | 'verify'>('warn')
-const inputText = ref('')
-const isVerify = computed(() => stage.value === 'verify')
-const isValid = computed(() => inputText.value.trim().toLowerCase() === 'leave')
-
-watch(() => props.open, (v) => {
-  if (v) {
-    stage.value = 'warn'
-    inputText.value = ''
-  }
-})
-
-const handleCancel = () => {
-  stage.value = 'warn'
-  inputText.value = ''
-  emit('cancel')
-}
+const confirmationText = ref('')
+const isConfirmed = () => confirmationText.value.toUpperCase() === 'DELETE'
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-      <div class="text-center">
-        <div class="mx-auto mb-4 w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
-          <AlertTriangle class="h-7 w-7 text-amber-600" />
+  <Teleport to="body">
+    <div v-if="open" class="fixed inset-0 z-[9999] flex items-center justify-center">
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" @click="emit('cancel')"></div>
+
+      <!-- Modal -->
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl transform transition-all scale-100 p-6">
+        <button 
+          @click="emit('cancel')"
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <X class="w-5 h-5" />
+        </button>
+
+        <div class="flex flex-col items-center text-center">
+          <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle class="w-6 h-6 text-red-600" />
+          </div>
+
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Course?</h3>
+          
+          <div class="bg-red-50 border border-red-100 rounded-lg p-4 mb-6 w-full">
+            <p class="text-sm text-red-800 mb-1">You are about to delete:</p>
+            <p class="font-bold text-red-900 text-lg">{{ courseName }}</p>
+            <p class="text-xs text-red-700 font-mono mt-1">{{ courseCode }}</p>
+          </div>
+
+          <p class="text-sm text-gray-500 mb-6">
+            This action cannot be undone. All data associated with this course, including student enrollments and grades, will be permanently removed.
+          </p>
+
+          <div class="w-full mb-6">
+            <label class="block text-xs font-medium text-gray-700 mb-2 text-left">
+              Type <span class="font-mono font-bold text-red-600">DELETE</span> to confirm
+            </label>
+            <input 
+              v-model="confirmationText"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all text-center font-mono uppercase placeholder-gray-300"
+              placeholder="DELETE"
+            />
+          </div>
+
+          <div class="flex gap-3 w-full">
+            <button 
+              @click="emit('cancel')"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              @click="emit('confirm')"
+              :disabled="!isConfirmed()"
+              :class="[
+                'flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all shadow-sm',
+                isConfirmed() 
+                  ? 'bg-red-600 hover:bg-red-700 shadow-red-200' 
+                  : 'bg-gray-300 cursor-not-allowed'
+              ]"
+            >
+              Delete Course
+            </button>
+          </div>
         </div>
-        <h3 class="text-xl font-semibold text-gray-900" v-if="!isVerify">
-          Leave this course?
-        </h3>
-        <p class="mt-2 text-gray-600" v-if="!isVerify">
-          You are about to leave the course
-          <span class="font-semibold">"{{ courseName || 'Untitled Course' }}"</span>.
-          It will be moved from your active courses list to archived courses.
-        </p>
-        <h3 class="text-xl font-semibold text-gray-900" v-else>
-          Confirm leaving course
-        </h3>
-        <p class="mt-2 text-gray-600" v-else>
-          Please type <span class="font-semibold">LEAVE</span> to confirm. This will archive the course for you.
-        </p>
-      </div>
-      <div v-if="isVerify" class="mt-5 text-left">
-        <input
-          v-model="inputText"
-          type="text"
-          placeholder="Type LEAVE"
-          class="w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-amber-200"
-        />
-      </div>
-      <div class="mt-6 flex flex-col sm:flex-row gap-3">
-        <button
-          type="button"
-          class="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50"
-          @click="handleCancel"
-        >
-          {{ isVerify ? 'Back' : 'Cancel' }}
-        </button>
-        <button
-          v-if="!isVerify"
-          type="button"
-          class="w-full px-4 py-2.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 shadow"
-          @click="() => { stage = 'verify' }"
-        >
-          Leave course
-        </button>
-        <button
-          v-else
-          type="button"
-          class="w-full px-4 py-2.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed shadow"
-          :disabled="!isValid"
-          @click="emit('confirm')"
-        >
-          Confirm leave
-        </button>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { defineProps } from 'vue'
 import { ref, computed, watch } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 
@@ -9,6 +8,11 @@ const props = defineProps<{
   message?: string
   confirmLabel?: string
   cancelLabel?: string
+}>()
+
+const emit = defineEmits<{
+  (e: 'cancel'): void
+  (e: 'confirm'): void
 }>()
 
 const stage = ref<'warn' | 'verify'>('warn')
@@ -22,10 +26,16 @@ watch(() => props.open, (v) => {
     inputText.value = ''
   }
 })
+
+const handleCancel = () => {
+  stage.value = 'warn'
+  inputText.value = ''
+  emit('cancel')
+}
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div v-if="open" class="fixed inset-0 z-[9999] flex items-center justify-center">
     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
       <div class="text-center">
@@ -33,16 +43,16 @@ watch(() => props.open, (v) => {
           <AlertTriangle class="h-7 w-7 text-red-600" />
         </div>
         <h3 class="text-xl font-semibold text-gray-900" v-if="!isVerify">
-          {{ title || 'Are you sure?' }}
+          {{ title || 'Confirm Action' }}
         </h3>
         <p class="mt-2 text-gray-600" v-if="!isVerify">
-          {{ message || 'This action cannot be undone.' }}
+          {{ message || 'Are you sure you want to proceed?' }}
         </p>
         <h3 class="text-xl font-semibold text-gray-900" v-else>
-          Confirm deletion
+          Confirm Deletion
         </h3>
-        <p class="mt-2 text-gray-600" v-else>
-          Please type <span class="font-semibold">DELETE</span> to confirm. This cannot be undone.
+        <p class="mt-2 text-gray-600" v-if="isVerify">
+          Please type <span class="font-semibold">DELETE</span> to confirm. This action cannot be undone.
         </p>
       </div>
       <div v-if="isVerify" class="mt-5 text-left">
@@ -57,7 +67,7 @@ watch(() => props.open, (v) => {
         <button
           type="button"
           class="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50"
-          @click="() => { stage = 'warn'; inputText = ''; $emit('cancel') }"
+          @click="handleCancel"
         >
           {{ isVerify ? 'Back' : (cancelLabel || 'Cancel') }}
         </button>
@@ -67,16 +77,16 @@ watch(() => props.open, (v) => {
           class="w-full px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 shadow"
           @click="() => { stage = 'verify' }"
         >
-          {{ confirmLabel || 'Delete everything' }}
+          {{ confirmLabel || 'Delete' }}
         </button>
         <button
           v-else
           type="button"
           class="w-full px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow"
           :disabled="!isValid"
-          @click="$emit('confirm')"
+          @click="emit('confirm')"
         >
-          Confirm delete
+          Confirm Delete
         </button>
       </div>
     </div>
