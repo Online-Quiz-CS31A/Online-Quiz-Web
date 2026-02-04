@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, TeacherQuizItem } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
 import ClassDashboardTab from '@/components/teacher/TeacherClassQuizzesTab.vue'
 import ClassPeopleTab from '@/components/teacher/TeacherClassPeopleTab.vue'
@@ -36,6 +37,10 @@ const breakdown = ref<QuizBreakdown[]>([])
 const quizViewMode = ref<'cards' | 'rows'>('cards')
 const showRemoveConfirm = ref(false)
 const removeTarget = ref<{ name: string; email: string } | null>(null)
+const apiStudents = ref<any[]>([])
+const apiQuizzes = ref<TeacherQuizItem[]>([])
+const isLoadingStudents = ref(false)
+const isLoadingQuizzes = ref(false)
 
 // COMPUTED
 const sectionId = computed(() => Number(route.params.id || 0))
@@ -97,6 +102,46 @@ const breadcrumbText = computed(() => {
 
 
 const students = computed<Student[]>(() => {
+  console.log('Computing students...')
+  console.log('apiStudents.value:', apiStudents.value)
+  console.log('apiStudents.value.length:', apiStudents.value.length)
+  
+  if (apiStudents.value.length > 0) {
+    console.log('Using API students')
+    const currentSectionName = currentSection.value?.name
+    
+    const filteredApiStudents = apiStudents.value.filter(student => {
+      if (!currentSectionName) return true
+      
+      if (Array.isArray(student.sections)) {
+        return student.sections.includes(currentSectionName)
+      }
+      
+      if (typeof student.section === 'string') {
+        return student.section.split(',').map((s: string) => s.trim()).includes(currentSectionName)
+      }
+      
+      return true
+    })
+
+    const result = filteredApiStudents.map((student, i) => {
+      const fullName = (student.studentName || '').trim()
+        || `${student.firstName || ''} ${student.lastName || ''}`.trim()
+        || student.username
+        || 'Unknown'
+      return {
+        id: student.userId || student.id || i + 1,
+        name: fullName,
+        email: student.email || `${student.username || fullName.replace(/\s+/g, '.').toLowerCase()}@unknown.com`,
+        initials: initialsOf(fullName),
+        avatar: student.photoUrl || AVATAR_URL,
+      }
+    })
+    console.log('Returning API students:', result)
+    return result
+  }
+
+  console.log('Falling back to local data')
   if (!currentSection.value) return []
   
   const studentUsernames = currentSection.value.studentUsernames || []
@@ -251,7 +296,7 @@ const quizzesStore = useQuizzesStore()
 
 const activeQuizzes = computed<TeacherQuizItem[]>(() => {
   const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
-  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes]
+  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes, ...apiQuizzes.value]
 
   const courseName = currentCourse.value?.name || ''
   const sectionName = currentSection.value?.name || ''
@@ -271,8 +316,8 @@ const activeQuizzes = computed<TeacherQuizItem[]>(() => {
   }
 
   return base
-    .filter(q => (!courseName || q.subject === courseName))
-    .filter(q => (!sectionName || q.class === sectionName))
+    .filter(q => (!courseName || q.subject === courseName || q.subject.includes(courseName)))
+    .filter(q => (!sectionName || q.class === sectionName || q.class.includes(sectionName)))
     .sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime()
       const bDate = new Date(b.createdAt || 0).getTime()
@@ -287,8 +332,102 @@ const classMeta = reactive({
   code: currentCourse.value?.code || '',
 })
 
+// FETCH FUNCTIONS
+async function fetchStudentsFromAPI() {
+  const currentSectionName = currentSection.value?.name
+  
+  if (!currentCourseId.value || !currentSectionName) {
+    console.log('No currentCourseId or section name, skipping student fetch')
+    return
+  }
+
+  const teacherId = authStore.currentUser?.id
+  if (!teacherId) {
+    console.log('No teacherId, skipping student fetch')
+    return
+  }
+
+  console.log('Fetching students for section:', currentSectionName)
+  isLoadingStudents.value = true
+
+  try {
+    const { useAdminStore } = await import('@/stores/adminStore')
+    const adminStore = useAdminStore()
+    
+    const students = await adminStore.fetchStudentsBySection(currentSectionName)
+    console.log('Fetched students:', students)
+
+    if (students && Array.isArray(students)) {
+      apiStudents.value = students.map((student: any) => ({
+        userId: student.id,
+        id: student.id,
+        studentName: student.name,
+        firstName: student.name?.split(' ')[0] || '',
+        lastName: student.name?.split(' ').slice(1).join(' ') || '',
+        username: student.username || student.email?.split('@')[0] || '',
+        email: student.email,
+        photoUrl: student.avatar,
+        section: currentSectionName,
+        sections: [currentSectionName]
+      }))
+      console.log('Set apiStudents to:', apiStudents.value)
+    } else {
+      console.warn('No students data or not an array')
+      apiStudents.value = []
+    }
+  } catch (error) {
+    console.error('Failed to fetch students from API:', error)
+    apiStudents.value = []
+  } finally {
+    isLoadingStudents.value = false
+  }
+}
+
+async function fetchQuizzesFromAPI() {
+  if (!currentCourseId.value || !authStore.currentUser?.id) return
+  
+  isLoadingQuizzes.value = true
+  try {
+    const response = await api.get(`/Quiz/course/${currentCourseId.value}`, {
+      params: {
+        userId: authStore.currentUser.id,
+        isStudent: false
+      }
+    })
+    
+    if (response.data && Array.isArray(response.data)) {
+      apiQuizzes.value = response.data.map((quiz: any) => ({
+        id: quiz.quizId || quiz.id,
+        subject: currentCourse.value?.name || '',
+        title: quiz.title || 'Untitled Quiz',
+        description: quiz.description || '',
+        dueDate: quiz.dueAt || '',
+        class: currentSection.value?.name || '',
+        submitted: 0,
+        total: 0,
+        color: 'blue',
+        status: quiz.isPublished ? 'published' : 'draft',
+        timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
+        questions: quiz.questions || [],
+        createdAt: quiz.createdAt || new Date().toISOString(),
+        updatedAt: quiz.updatedAt || new Date().toISOString(),
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to fetch quizzes from API:', error)
+    apiQuizzes.value = []
+  } finally {
+    isLoadingQuizzes.value = false
+  }
+}
+
 onMounted(() => {
+  console.log('Component mounted')
+  console.log('currentCourseId:', currentCourseId.value)
+  console.log('authStore.currentUser:', authStore.currentUser)
   sectionsStore.loadArchivedSectionsFromStorage()
+  fetchStudentsFromAPI()
+  fetchQuizzesFromAPI()
 })
 
 // WATCHERS
@@ -297,6 +436,17 @@ watch([currentSection, currentCourse], () => {
   classMeta.professor = currentCourse.value?.teacher || authStore.currentUser?.name || 'Unknown'
   classMeta.code = currentCourse.value?.code || ''
 }, { immediate: true })
+
+watch([sectionId], () => {
+  console.log('Watcher triggered - sectionId:', sectionId.value, 'section name:', currentSection.value?.name)
+  if (sectionId.value && currentSection.value?.name && authStore.currentUser?.id) {
+    console.log('Calling fetch functions from watcher')
+    fetchStudentsFromAPI()
+    fetchQuizzesFromAPI()
+  } else {
+    console.log('Skipping fetch - missing sectionId or section name or userId')
+  }
+}, { immediate: false })
 
 
 // METHODS
@@ -445,10 +595,10 @@ function cancelRemove() {
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end">
           <div>
             <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ classMeta.title }}</h1>
-            <div class="mt-3 text-blue-100 text-sm flex items-center gap-2 mb-4">
+            <!-- <div class="mt-3 text-blue-100 text-sm flex items-center gap-2 mb-4">
               <i class="fas fa-clock"></i>
               <span>{{ scheduleInfo }}</span>
-            </div>
+            </div> -->
             <div class="flex items-center space-x-3">
               <div class="relative">
                 <div class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold ring-2 ring-white/20">

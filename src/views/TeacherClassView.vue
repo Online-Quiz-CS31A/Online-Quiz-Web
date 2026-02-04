@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import bg1 from '@/assets/image/bg1.jpg'
@@ -79,8 +79,34 @@ const coverUrl = computed(() => {
 
 const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
 
-onMounted(() => {
-  classesStore.fetchTeacherCourses()
+const fetchStudentCounts = async () => {
+  if (!sections.value.length) return
+  
+  const { useAdminStore } = await import('@/stores/adminStore')
+  const adminStore = useAdminStore()
+  
+  for (const section of sections.value) {
+    if (section.name) {
+      try {
+        const students = await adminStore.fetchStudentsBySection(section.name)
+        sectionsStore.updateSection(section.id, {
+          students: students.length
+        })
+      } catch (e) {
+        console.error(`Failed to fetch students for section ${section.name}`, e)
+      }
+    }
+  }
+}
+
+watch(sections, (newSections) => {
+  if (newSections.length > 0) {
+    fetchStudentCounts()
+  }
+}, { immediate: true })
+
+onMounted(async () => {
+  await classesStore.fetchTeacherCourses()
 })
 
 // METHODS
@@ -193,7 +219,7 @@ function openDashboard(id: number) {
       <div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800">Your Classes</h2>
-          <button
+          <!-- <button
             @click="openCreateClass"
             :disabled="isCourseArchived"
             :title="isCourseArchived ? `Can't edit archived course` : 'Create a new class'"
@@ -205,7 +231,7 @@ function openDashboard(id: number) {
             ]"
           >
             <i class="fas fa-plus mr-2"></i> New Class
-          </button>
+          </button> -->
         </div>
 
         <!-- Empty State -->

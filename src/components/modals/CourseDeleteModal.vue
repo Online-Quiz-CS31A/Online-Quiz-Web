@@ -4,8 +4,8 @@ import { AlertTriangle, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   open: boolean
-  courseName: string
-  courseCode: string
+  courseName?: string
+  courseCode?: string
 }>()
 
 const emit = defineEmits<{

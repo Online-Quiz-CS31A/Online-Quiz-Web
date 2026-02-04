@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
@@ -147,9 +147,66 @@ const getStudentCount = (courseId: number) => {
   return sections.reduce((total, section) => total + (section.students || 0), 0)
 }
 
+const hasFetchedCounts = ref(false)
+
+const fetchStudentCounts = async () => {
+  if (hasFetchedCounts.value) return
+  
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  const { useAdminStore } = await import('@/stores/adminStore')
+  const adminStore = useAdminStore()
+  
+  const coursesToProcess = classes.value.filter(c => c.id)
+  if (!coursesToProcess.length) return
+  
+  console.log('Fetching student counts for', coursesToProcess.length, 'courses')
+  
+  for (const classItem of coursesToProcess) {
+    const sections = sectionsStore.getSectionsByCourse(classItem.id)
+    
+    if (!sections.length) {
+      console.log(`No sections found for course ${classItem.id} (${classItem.name})`)
+      continue
+    }
+    
+    console.log(`Found ${sections.length} sections for course ${classItem.id}`)
+    
+    for (const section of sections) {
+      if (section.name) {
+        try {
+          const students = await adminStore.fetchStudentsBySection(section.name)
+          console.log(`Section ${section.name}: ${students.length} students`)
+          sectionsStore.updateSection(section.id, {
+            students: students.length
+          })
+        } catch (e) {
+          console.error(`Failed to fetch students for section ${section.name}`, e)
+        }
+      }
+    }
+  }
+  
+  hasFetchedCounts.value = true
+  console.log('Finished fetching all student counts')
+}
+
+watch(classes, (newClasses) => {
+  if (newClasses.length > 0 && !hasFetchedCounts.value) {
+    console.log('Classes loaded, triggering student count fetch')
+    fetchStudentCounts()
+  }
+}, { immediate: true })
+
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', onDocClick)
+  
+  await classesStore.fetchTeacherCourses()
+  
+  if (classes.value.length > 0 && !hasFetchedCounts.value) {
+    fetchStudentCounts()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -269,7 +326,7 @@ onBeforeUnmount(() => {
 
   <CourseDeleteModal
     :open="showCourseDeleteModal"
-    :course-name="coursePendingDeletion?.name"
+    :courseName="coursePendingDeletion?.name"
     @cancel="handleCancelDelete"
     @confirm="handleConfirmDelete"
   />
