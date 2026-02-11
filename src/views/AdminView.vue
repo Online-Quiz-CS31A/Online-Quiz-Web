@@ -18,7 +18,8 @@ const titleMap: Record<string, string> = {
   'admin-courses': 'Course Catalog',
   'admin-quiz-settings': 'Quiz Settings',
   'admin-data': 'Data Management',
-  'admin-analytics': 'Analytics'
+  'admin-analytics': 'Analytics',
+  'admin-archived': 'Archived Courses'
 }
 
 // COMPUTED

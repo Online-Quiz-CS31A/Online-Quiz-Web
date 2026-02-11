@@ -285,6 +285,23 @@ const deleteCourse = async () => {
   
   const coursesToDelete = adminStore.courses.filter(c => c.code === courseToDelete.value?.code)
   
+  const STORAGE_KEY = 'archivedCourses'
+  try {
+    const existingArchived = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    const archivedCourses = coursesToDelete.map(c => ({
+      id: c.id,
+      code: c.code,
+      title: c.title,
+      category: c.subjectCode,
+      status: c.status,
+      deletedAt: new Date().toISOString(),
+      instructors: c.instructors || []
+    }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...existingArchived, ...archivedCourses]))
+  } catch (e) {
+    console.error('Failed to archive course:', e)
+  }
+  
   const promises = coursesToDelete.map(c => adminStore.deleteCourse(c.id))
   await Promise.all(promises)
   
