@@ -101,6 +101,11 @@ const router = createRouter({
           name: 'admin-analytics',
           component: () => import('../components/admin/AdminAnalytics.vue'),
         },
+        {
+          path: 'archived',
+          name: 'admin-archived',
+          component: () => import('../components/admin/AdminArchivedCourses.vue'),
+        },
       ],
     },
     {
