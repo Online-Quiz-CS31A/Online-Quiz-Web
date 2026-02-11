@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { BarChart2, TrendingUp, Users, AlertTriangle, Activity, Filter, Download, Search, Calendar } from 'lucide-vue-next'
+import { 
+  BarChart2, TrendingUp, Users, AlertTriangle, Activity, Filter, Download, Search, Calendar,
+  LogIn, FileCheck, ClipboardCheck, UserPlus, FileDown, FileText, Trash2, LogOut, Edit, Send, UserCheck, Upload
+} from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import type { LogEntry, AnalyticsSummary } from '@/interfaces/interfaces'
@@ -127,12 +130,19 @@ const clearFilters = () => {
 
 const getTypeIcon = (type: string) => {
   const icons: Record<string, any> = {
-    login: Users,
-    quiz_created: BarChart2,
-    quiz_submitted: Activity,
+    login: LogIn,
+    logout: LogOut,
+    delete: Trash2,
+    create: FileText,
+    update: Edit,
+    submit: Send,
+    enroll: UserCheck,
+    import: Upload,
+    quiz_created: FileText,
+    quiz_submitted: ClipboardCheck,
     warning: AlertTriangle,
-    user_created: Users,
-    data_export: Download
+    user_created: UserPlus,
+    data_export: FileDown
   }
   return icons[type] || Activity
 }
@@ -140,6 +150,13 @@ const getTypeIcon = (type: string) => {
 const getTypeColor = (type: string) => {
   const colors: Record<string, string> = {
     login: 'bg-blue-100 text-blue-700',
+    logout: 'bg-slate-100 text-slate-700',
+    delete: 'bg-red-100 text-red-700',
+    create: 'bg-green-100 text-green-700',
+    update: 'bg-amber-100 text-amber-700',
+    submit: 'bg-purple-100 text-purple-700',
+    enroll: 'bg-teal-100 text-teal-700',
+    import: 'bg-cyan-100 text-cyan-700',
     quiz_created: 'bg-green-100 text-green-700',
     quiz_submitted: 'bg-purple-100 text-purple-700',
     warning: 'bg-orange-100 text-orange-700',
