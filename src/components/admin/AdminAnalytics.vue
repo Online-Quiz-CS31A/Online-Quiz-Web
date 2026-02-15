@@ -6,6 +6,8 @@ import {
 } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
+import SkeletonStats from '@/components/skeletons/SkeletonStats.vue'
+import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import type { LogEntry, AnalyticsSummary } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
 const { success } = useToast()
@@ -190,7 +192,8 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Analytics Summary -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <SkeletonStats v-if="isLoading" />
+    <div v-else class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
@@ -257,7 +260,7 @@ onMounted(() => {
     </div>
 
     <!-- Log Type Distribution -->
-    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+    <div v-if="!isLoading" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
       <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Distribution</h3>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <div
@@ -371,7 +374,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <div v-if="isLoading" class="p-8 text-center text-gray-500">Loading logs...</div>
+      <SkeletonTable v-if="isLoading" :rows="10" :columns="5" />
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50 border-b border-gray-200">
