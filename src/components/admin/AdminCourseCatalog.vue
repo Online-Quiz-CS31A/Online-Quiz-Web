@@ -6,6 +6,7 @@ import AdminCourseEditModal from '@/components/modals/AdminCourseEditModal.vue'
 import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
 import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
+import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import { useAdminStore } from '@/stores/adminStore'
 import type { Course, CourseInstructor, AdminUser } from '@/interfaces/interfaces'
 
@@ -343,7 +344,9 @@ onMounted(() => {
 
     <!-- Course Cards -->
     <div v-else>
-      <div v-if="adminStore.isLoading" class="p-12 text-center text-gray-500">Loading courses...</div>
+      <div v-if="adminStore.isLoading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SkeletonCard v-for="i in 6" :key="i" />
+      </div>
       <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div v-for="c in groupedCourses" :key="c.code" class="overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-all group" @click="openCourseDetailsInline(c)">
           <div class="p-5">
