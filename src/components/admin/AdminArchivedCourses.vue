@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Archive, RotateCcw, Trash2, AlertCircle, Search } from 'lucide-vue-next'
-
+import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
 
@@ -16,7 +16,7 @@ interface ArchivedCourse {
     teacherId: number
     section: string
     students?: number
-  }>
+  }> 
 }
 
 const STORAGE_KEY = 'archivedCourses'
@@ -25,7 +25,7 @@ const STORAGE_KEY = 'archivedCourses'
 const archivedCourses = ref<ArchivedCourse[]>([])
 const searchQuery = ref('')
 const filterStatus = ref<'All' | 'Recent' | 'Older'>('All')
-const isLoading = ref(false)
+const isLoading = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(1000)
 const showDeleteModal = ref(false)
@@ -74,16 +74,26 @@ const groupedCourses = computed(() => {
 
 const totalItems = computed(() => groupedCourses.value.length)
 
+const skeletonCount = computed(() => {
+  const count = archivedCourses.value.length
+  if (count === 0) return 3
+  if (count <= 3) return 3  
+  return Math.min(count, 6) 
+})
+
 // METHODS
 const loadArchivedCourses = () => {
   isLoading.value = true
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     archivedCourses.value = stored ? JSON.parse(stored) : []
+    
+    setTimeout(() => {
+      isLoading.value = false
+    }, 300)
   } catch (e) {
     console.error('Failed to load archived courses:', e)
     archivedCourses.value = []
-  } finally {
     isLoading.value = false
   }
 }
@@ -160,8 +170,10 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="p-12 text-center text-gray-500">Loading archived courses...</div>
+    <!-- Course Cards -->
+    <div v-if="isLoading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <SkeletonCard v-for="i in skeletonCount" :key="i" />
+    </div>
 
     <!-- Empty State -->
     <div
