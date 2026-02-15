@@ -167,6 +167,7 @@ const cancelClearAllData = () => {
   showClearDataModal.value = false
 }
 
+// LIFECYCLE
 onMounted(async () => {
   if (courses.value.length === 0) await adminStore.fetchCourses(1, 1000, '', 'All Courses')
   if (users.value.length === 0) await adminStore.fetchUsers(1, 1000, '', '')
@@ -174,7 +175,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="p-6 space-y-6">
+  <div>
+    <div class="p-6 space-y-6">
     <!-- Database Statistics -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
@@ -425,15 +427,16 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+    </div>
+    
+    <DangerConfirmModal
+      :open="showClearDataModal"
+      title="Delete all data from the system?"
+      message="This will permanently remove courses, sections, schedules, and student profiles. This action cannot be undone."
+      confirm-label="Delete everything"
+      cancel-label="Cancel"
+      @confirm="confirmClearAllData"
+      @cancel="cancelClearAllData"
+    />
   </div>
-  
-  <DangerConfirmModal
-    :open="showClearDataModal"
-    title="Delete all data from the system?"
-    message="This will permanently remove courses, sections, schedules, and student profiles. This action cannot be undone."
-    confirm-label="Delete everything"
-    cancel-label="Cancel"
-    @confirm="confirmClearAllData"
-    @cancel="cancelClearAllData"
-  />
 </template>
