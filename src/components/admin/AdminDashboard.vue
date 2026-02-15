@@ -4,6 +4,8 @@ import { Users, BookOpen, Clipboard, Activity as ActivityIcon, User, Book, Calen
 import type { Stats, Activity } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
 import { storeToRefs } from 'pinia'
+import SkeletonStats from '@/components/skeletons/SkeletonStats.vue'
+import SkeletonList from '@/components/skeletons/SkeletonList.vue'
 
 // EMITS
 defineEmits<{
@@ -12,7 +14,7 @@ defineEmits<{
 
 // STORE
 const adminStore = useAdminStore()
-const { stats, recentActivity } = storeToRefs(adminStore)
+const { stats, recentActivity, isLoading } = storeToRefs(adminStore)
 
 // LIFECYCLE
 onMounted(() => {
@@ -25,7 +27,8 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <SkeletonStats v-if="isLoading" />
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Active Users -->
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="$emit('navigate', 'users')">
         <div class="flex items-center justify-between">
@@ -86,7 +89,8 @@ onMounted(() => {
     <!-- Recent Activity -->
     <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
       <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-      <div class="space-y-3">
+      <SkeletonList v-if="isLoading" />
+      <div v-else class="space-y-3">
         <div v-if="recentActivity.length === 0" class="text-center text-gray-500 py-4">No recent activity</div>
         <div v-for="activity in recentActivity" :key="activity.id" class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div class="flex items-center justify-between mb-2">
