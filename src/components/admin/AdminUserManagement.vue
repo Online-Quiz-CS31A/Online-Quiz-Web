@@ -7,6 +7,7 @@ import { Trash2 } from 'lucide-vue-next'
 import { Pencil } from 'lucide-vue-next'
 import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
+import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import type { AdminUser, User } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
 import api from '@/services/api'
@@ -335,7 +336,7 @@ onMounted(() => {
     
     <!-- User table -->
     <div class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-gray-200">
-      <div v-if="adminStore.isLoading" class="p-8 text-center text-gray-500">Loading users...</div>
+      <SkeletonTable v-if="adminStore.isLoading" :rows="10" :columns="6" />
       <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 data-table">
           <thead class="bg-gray-50">
