@@ -19,9 +19,9 @@ const adminStore = useAdminStore()
 const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
 // REACTIVE
-const form = reactive<AdminUser>({
+const form = reactive<any>({
   id: 0,
-  name: '',
+  fullName: '',
   email: '',
   role: 'Student',
   status: 'Active',
@@ -172,9 +172,10 @@ const genPassword = () => randomAlnum(10)
 
 const openAdd = () => {
   isEditing.value = false
+  clearErrors()
   Object.assign(form, {
     id: 0,
-    name: '',
+    fullName: '',
     email: '',
     role: 'Student',
     status: 'Active',
@@ -194,9 +195,10 @@ const openAdd = () => {
 
 const openEdit = (u: AdminUser) => {
   isEditing.value = true
+  clearErrors()
   Object.assign(form, {
     id: u.id,
-    name: u.name, 
+    fullName: u.name, 
     email: u.email,
     role: u.role,
     status: u.status,
@@ -228,7 +230,7 @@ const clearErrors = () => {
 
 const validateForm = (): boolean => {
   clearErrors()
-  if (!form.name || !form.name.trim()) errors.name = 'Name is required.'
+  if (!form.fullName || !form.fullName.trim()) errors.fullName = 'Name is required.'
   if (!form.email || !form.email.trim()) errors.email = 'Email is required.'
   else if (!emailRegex.test(form.email.trim())) errors.email = 'Enter a valid email address.'
   if (!form.role) errors.role = 'Role is required.'
@@ -248,7 +250,7 @@ const saveUser = async () => {
 
   const userData = {
     email: form.email,
-    fullName: form.name,
+    fullName: form.fullName,
     password: form.password || 'password123',
     roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
     studentId: form.username,
@@ -271,10 +273,8 @@ const saveUser = async () => {
   if (success) {
     showModal.value = false
     loadUsers()
-  }
-  if (success) {
-    showModal.value = false
-    loadUsers()
+  } else {
+    errors._form = adminStore.error || 'Failed to save user. Please try again.'
   }
 }
 
