@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { X } from 'lucide-vue-next'
+import { X, Mail } from 'lucide-vue-next'
 
 const props = defineProps<{ 
   open: boolean,
@@ -40,8 +40,8 @@ const onInput = (key: string, value: any) => {
               <p v-if="errors.fullName" class="mt-1 text-xs text-red-600">{{ errors.fullName }}</p>
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-sm font-medium text-gray-700">Email</label>
-              <input :value="modelValue.email" @input="onInput('email', ($event.target as HTMLInputElement).value)" type="email" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="email@example.com" />
+              <label class="block text-sm font-medium text-gray-700">Email (Gmail only)</label>
+              <input :value="modelValue.email" @input="onInput('email', ($event.target as HTMLInputElement).value)" type="email" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="username@gmail.com" />
               <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ errors.email }}</p>
             </div>
             <div>
@@ -70,12 +70,15 @@ const onInput = (key: string, value: any) => {
               <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
             </div>
 
-            <template v-if="modelValue.role === 'Student'">
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
+            <!-- Password info notice -->
+            <div class="sm:col-span-2">
+              <div class="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
+                <Mail class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                <p class="text-xs text-amber-700">The user's password is hidden for security. The password was sent to the user's email upon account creation.</p>
               </div>
+            </div>
+
+            <template v-if="modelValue.role === 'Student'">
               <div>
                 <label class="block text-sm font-medium text-gray-700">Course</label>
                 <select :value="modelValue.course" @change="onInput('course', ($event.target as HTMLSelectElement).value)" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
@@ -100,26 +103,13 @@ const onInput = (key: string, value: any) => {
             </template>
 
             <template v-else-if="modelValue.role === 'Teacher'">
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
-              </div>
-              <div>
+              <div class="sm:col-span-2">
                 <label class="block text-sm font-medium text-gray-700">Department</label>
                 <select :value="modelValue.department" @change="onInput('department', ($event.target as HTMLSelectElement).value)" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                   <option value="">Select Department</option>
                   <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
                 </select>
                 <p v-if="errors.department" class="mt-1 text-xs text-red-600">{{ errors.department }}</p>
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input :value="modelValue.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
               </div>
             </template>
           </div>

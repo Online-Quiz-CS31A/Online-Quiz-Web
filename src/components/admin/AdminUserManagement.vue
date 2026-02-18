@@ -11,6 +11,7 @@ import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import type { AdminUser, User } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
 import api from '@/services/api'
+import { sendPasswordEmail } from '@/services/emailService'
 
 // STORE
 const adminStore = useAdminStore()
@@ -222,7 +223,7 @@ const onRoleChange = () => {
   form.username = genUsernameByRole(form.role)
 }
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/
 
 const clearErrors = () => {
   Object.keys(errors).forEach(k => delete (errors as any)[k])
@@ -232,7 +233,7 @@ const validateForm = (): boolean => {
   clearErrors()
   if (!form.fullName || !form.fullName.trim()) errors.fullName = 'Name is required.'
   if (!form.email || !form.email.trim()) errors.email = 'Email is required.'
-  else if (!emailRegex.test(form.email.trim())) errors.email = 'Enter a valid email address.'
+  else if (!gmailRegex.test(form.email.trim())) errors.email = 'Only Gmail addresses (@gmail.com) are accepted.'
   if (!form.role) errors.role = 'Role is required.'
   
   if (form.role === 'Student') {
@@ -248,26 +249,51 @@ const validateForm = (): boolean => {
 const saveUser = async () => {
   if (!validateForm()) return
 
-  const userData = {
-    email: form.email,
-    fullName: form.fullName,
-    password: form.password || 'password123',
-    roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
-    studentId: form.username,
-    yearLevel: Number(form.year) || null,
-    section: form.section || null,
-    course: form.course || null,
-    department: form.department || null,
-    contactNumber: form.contactNumber || null,
-    emergencyContactNumber: form.emergencyContactNumber || null,
-    createdBy: 1
-  }
-
   let success = false
+
   if (isEditing.value) {
+    const userData = {
+      email: form.email,
+      fullName: form.fullName,
+      roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+      studentId: form.username,
+      yearLevel: Number(form.year) || null,
+      section: form.section || null,
+      course: form.course || null,
+      department: form.department || null,
+      contactNumber: form.contactNumber || null,
+      emergencyContactNumber: form.emergencyContactNumber || null,
+      status: form.status
+    }
     success = await adminStore.updateUser(form.id, userData)
   } else {
+    const generatedPassword = genPassword()
+    console.log('Generated password for new user:', generatedPassword)
+
+    const userData = {
+      email: form.email,
+      fullName: form.fullName,
+      password: generatedPassword,
+      roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+      studentId: form.username,
+      yearLevel: Number(form.year) || null,
+      section: form.section || null,
+      course: form.course || null,
+      department: form.department || null,
+      contactNumber: form.contactNumber || null,
+      emergencyContactNumber: form.emergencyContactNumber || null,
+      status: form.status,
+      createdBy: 1
+    }
     success = await adminStore.createUser(userData)
+    console.log('Create user result:', success)
+
+    console.log('Sending password email to:', form.email)
+    const emailSent = await sendPasswordEmail(form.email, form.fullName, generatedPassword)
+    console.log('Email send result:', emailSent)
+    if (!emailSent) {
+      console.warn('Password email could not be sent.')
+    }
   }
 
   if (success) {
