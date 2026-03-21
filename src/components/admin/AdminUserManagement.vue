@@ -3,7 +3,8 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
 import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
 import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
-import { Trash2 } from 'lucide-vue-next'
+import ArchiveUserModal from '@/components/modals/ArchiveUserModal.vue'
+import { Trash2, Archive } from 'lucide-vue-next'
 import { Pencil } from 'lucide-vue-next'
 import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
@@ -49,6 +50,8 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const showDeleteModal = ref(false)
 const userToDelete = ref<AdminUser | null>(null)
+const showArchiveModal = ref(false)
+const userToArchive = ref<AdminUser | null>(null)
 
 // DROPDOWN DATA
 const departments = ref<string[]>([])
@@ -333,9 +336,50 @@ const getRoleBadgeClass = (role: string) => {
 }
 
 const getStatusBadgeClass = (status: string) => {
-  return status === 'Active' 
-    ? 'bg-green-100 text-green-800' 
-    : 'bg-red-100 text-red-800'
+  if (status === 'Active') return 'bg-green-100 text-green-800'
+  if (status === 'Archived') return 'bg-amber-100 text-amber-800'
+  return 'bg-red-100 text-red-800'
+}
+
+const confirmArchive = (u: AdminUser) => {
+  userToArchive.value = u
+  showArchiveModal.value = true
+}
+
+const archiveUser = (reason: string) => {
+  if (!userToArchive.value) return
+  const u = userToArchive.value
+
+  //localstorage
+  const STORAGE_KEY = 'archivedUsers'
+  const stored = localStorage.getItem(STORAGE_KEY)
+  const archivedUsers = stored ? JSON.parse(stored) : []
+  
+  if (!archivedUsers.find((au: any) => au.id === u.id)) {
+    archivedUsers.push({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      status: 'Archived',
+      lastActive: u.lastActive,
+      avatar: u.avatar,
+      username: u.username,
+      course: u.course,
+      year: u.year,
+      section: u.section,
+      department: u.department,
+      contactNumber: u.contactNumber,
+      emergencyContactNumber: u.emergencyContactNumber,
+      archivedAt: new Date().toISOString(),
+      archiveReason: reason
+    })
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
+  }
+
+  showArchiveModal.value = false
+  userToArchive.value = null
+  loadUsers()
 }
 
 // LIFECYCLE
@@ -351,7 +395,7 @@ onMounted(() => {
     <AdminSearchFilterBar
       v-model="searchQuery"
       v-model:filter="filterRole"
-      :options="['All Users', 'Students', 'Teachers', 'Administrators', 'Inactive']"
+      :options="['All Users', 'Students', 'Teachers', 'Administrators', 'Inactive', 'Archived']"
       placeholder="Search users..."
       action-label="Add User"
       import-label="Import Users"
@@ -416,10 +460,13 @@ onMounted(() => {
                 <time :datetime="user.lastActive">{{ user.lastActive }}</time>
               </td>
               <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                <button @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900 mr-3">
+                <button @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900 mr-3" title="Edit">
                   <Pencil class="w-4 h-4" />
                 </button>
-                <button @click="confirmDelete(user)" class="text-red-600 hover:text-red-900">
+                <button v-if="user.status !== 'Archived'" @click="confirmArchive(user)" class="text-amber-600 hover:text-amber-900 mr-3" title="Archive">
+                  <Archive class="w-4 h-4" />
+                </button>
+                <button @click="confirmDelete(user)" class="text-red-600 hover:text-red-900" title="Delete">
                   <Trash2 class="w-4 h-4" />
                 </button>
               </td>
@@ -473,6 +520,12 @@ onMounted(() => {
       cancel-label="Cancel"
       @confirm="deleteUser"
       @cancel="showDeleteModal = false"
+    />
+    <ArchiveUserModal
+      :open="showArchiveModal"
+      :user-name="userToArchive?.name"
+      @confirm="archiveUser"
+      @cancel="showArchiveModal = false"
     />
   </div>
 </template>

@@ -66,6 +66,7 @@ const onInput = (key: string, value: any) => {
               <select :value="modelValue.status" @change="onInput('status', ($event.target as HTMLSelectElement).value)" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 <option>Active</option>
                 <option>Inactive</option>
+                <option>Archived</option>
               </select>
               <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
             </div>

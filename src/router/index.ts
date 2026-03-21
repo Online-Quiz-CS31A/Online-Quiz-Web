@@ -103,8 +103,17 @@ const router = createRouter({
         },
         {
           path: 'archived',
-          name: 'admin-archived',
+          redirect: '/admin/archived/courses',
+        },
+        {
+          path: 'archived/courses',
+          name: 'admin-archived-courses',
           component: () => import('../components/admin/AdminArchivedCourses.vue'),
+        },
+        {
+          path: 'archived/users',
+          name: 'admin-archived-users',
+          component: () => import('../components/admin/AdminArchivedUsers.vue'),
         },
       ],
     },
@@ -169,7 +178,7 @@ router.beforeEach((to, from, next) => {
 
   const requiresAuth = to.path !== '/'
   const isLoginPage = to.path === '/' || to.name === 'login'
-  
+
   if (isAuthenticated && isLoginPage) {
     if (userRole === 'admin') {
       return next({ name: 'admin-dashboard' })
@@ -186,19 +195,19 @@ router.beforeEach((to, from, next) => {
 
   if (isAuthenticated) {
     const path = to.path.toLowerCase()
-    
+
     if (userRole === 'admin') {
       if (!path.startsWith('/admin')) {
         return next({ name: 'admin-dashboard' })
       }
     }
-    
+
     else if (userRole === 'teacher') {
       if (path.startsWith('/admin') || path.startsWith('/student')) {
         return next({ name: 'teacher' })
       }
     }
-    
+
     else if (userRole === 'student') {
       if (path.startsWith('/admin') || path.startsWith('/teacher')) {
         return next({ name: 'student' })
