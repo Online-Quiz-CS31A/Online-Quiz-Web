@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { defineProps } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 
 const props = defineProps<{ 
   open: boolean
   unansweredCount: number
 }>()
+
+const emit = defineEmits<{
+  (e: 'cancel'): void
+  (e: 'confirm'): void
+}>()
 </script>
 
 <template>
     <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="$emit('cancel')"></div>
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="emit('cancel')"></div>
       <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
         <div class="text-center">
           <div class="mx-auto mb-4 w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -27,14 +31,14 @@ const props = defineProps<{
           <button
             type="button"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50"
-            @click="$emit('cancel')"
+            @click="emit('cancel')"
           >
             Review first
           </button>
           <button
             type="button"
             class="w-full px-4 py-2.5 rounded-xl bg-[#4285f4] text-white hover:bg-[#4866DA] shadow"
-            @click="$emit('confirm')"
+            @click="emit('confirm')"
           >
             Submit anyway
           </button>
