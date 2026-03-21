@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Archive, RotateCcw, AlertCircle, Search, Users } from 'lucide-vue-next'
 import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
-import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
+import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 
 interface ArchivedUser {
   id: number
@@ -272,12 +272,10 @@ onMounted(() => {
     />
 
     <!-- Restore Confirmation Modal -->
-    <DangerConfirmModal
+    <ConfirmUnarchiveModal
       :open="showRestoreModal"
       title="Restore User"
-      message="Are you sure you want to restore this user? Their status will be set back to Active."
-      confirm-label="Restore"
-      cancel-label="Cancel"
+      description="Are you sure you want to restore this user? Their status will be set back to Active."
       @confirm="restoreUser"
       @cancel="showRestoreModal = false"
     />

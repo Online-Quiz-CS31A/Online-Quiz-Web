@@ -41,22 +41,28 @@ export const useAdminStore = defineStore('admin', () => {
             const response = await api.get(`/user/paged?${params.toString()}`)
 
             const data = response.data
-            users.value = data.items.map((u: any) => ({
-                id: u.userId,
-                name: u.fullName,
-                email: u.email,
-                role: u.roleName || 'Student', 
-                status: u.status || 'Active',
-                lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : 'Never',
-                avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png', 
-                username: u.email.split('@')[0], 
-                course: u.student?.course,
-                year: u.student?.yearLevel?.toString(),
-                section: u.student?.section,
-                department: u.teacher?.department || u.department,
-                contactNumber: u.contactNumber,
-                emergencyContactNumber: u.emergencyContactNumber
-            }))
+            const storedArchived = localStorage.getItem('archivedUsers')
+            const archivedUsers = storedArchived ? JSON.parse(storedArchived) : []
+
+            users.value = data.items.map((u: any) => {
+                const isArchived = archivedUsers.some((au: any) => au.id === u.userId)
+                return {
+                    id: u.userId,
+                    name: u.fullName,
+                    email: u.email,
+                    role: u.roleName || 'Student', 
+                    status: isArchived ? 'Archived' : (u.status || 'Active'),
+                    lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : 'Never',
+                    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png', 
+                    username: u.email.split('@')[0], 
+                    course: u.student?.course,
+                    year: u.student?.yearLevel?.toString(),
+                    section: u.student?.section,
+                    department: u.teacher?.department || u.department,
+                    contactNumber: u.contactNumber,
+                    emergencyContactNumber: u.emergencyContactNumber
+                }
+            })
             totalUsers.value = data.totalCount
         } catch (err: any) {
             console.error('Failed to fetch users:', err)

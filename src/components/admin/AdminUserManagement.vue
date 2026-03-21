@@ -254,6 +254,12 @@ const saveUser = async () => {
 
   let success = false
 
+  let apiStatus = form.status
+  const isArchived = form.status === 'Archived'
+  if (isArchived) {
+    apiStatus = 'Inactive'
+  }
+
   if (isEditing.value) {
     const userData = {
       email: form.email,
@@ -266,7 +272,7 @@ const saveUser = async () => {
       department: form.department || null,
       contactNumber: form.contactNumber || null,
       emergencyContactNumber: form.emergencyContactNumber || null,
-      status: form.status
+      status: apiStatus
     }
     success = await adminStore.updateUser(form.id, userData)
   } else {
@@ -285,7 +291,7 @@ const saveUser = async () => {
       department: form.department || null,
       contactNumber: form.contactNumber || null,
       emergencyContactNumber: form.emergencyContactNumber || null,
-      status: form.status,
+      status: apiStatus,
       createdBy: 1
     }
     success = await adminStore.createUser(userData)
@@ -300,6 +306,45 @@ const saveUser = async () => {
   }
 
   if (success) {
+    const STORAGE_KEY = 'archivedUsers'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    let archivedUsers = stored ? JSON.parse(stored) : []
+    
+    const storeUser = adminStore.users.find((u: any) => u.email === form.email)
+    const userIdToUse = form.id || (storeUser ? storeUser.id : 0)
+
+    if (userIdToUse) {
+      if (isArchived) {
+        if (!archivedUsers.find((au: any) => au.id === userIdToUse)) {
+          archivedUsers.push({
+            id: userIdToUse,
+            name: form.fullName,
+            email: form.email,
+            role: form.role,
+            status: 'Archived',
+            lastActive: form.lastActive || new Date().toISOString(),
+            avatar: form.avatar || defaultAvatar,
+            username: form.username,
+            course: form.course || '',
+            year: form.year || '',
+            section: form.section || '',
+            department: form.department || '',
+            contactNumber: form.contactNumber || '',
+            emergencyContactNumber: form.emergencyContactNumber || '',
+            archivedAt: new Date().toISOString(),
+            archiveReason: 'Archived from edit modal'
+          })
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
+        }
+      } else {
+        const initialLength = archivedUsers.length
+        archivedUsers = archivedUsers.filter((au: any) => au.id !== userIdToUse)
+        if (archivedUsers.length !== initialLength) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
+        }
+      }
+    }
+
     showModal.value = false
     loadUsers()
   } else {
