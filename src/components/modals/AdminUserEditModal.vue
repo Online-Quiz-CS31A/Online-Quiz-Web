@@ -1,10 +1,12 @@
 <script setup lang="ts">
 
-import { X, Mail } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { X, Mail, AlertTriangle } from 'lucide-vue-next'
 
 const props = defineProps<{ 
   open: boolean,
   modelValue: any,
+  originalRole: string,
   errors: Record<string, string>,
   departments: string[],
   years: string[],
@@ -21,18 +23,38 @@ const emit = defineEmits<{
 const onInput = (key: string, value: any) => {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
 }
+
+const roleChanged = computed(() => 
+  props.originalRole && props.modelValue.role && props.originalRole !== props.modelValue.role
+)
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="open" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[9999]">
-      <div class="w-full max-w-lg max-h-[70vh] overflow-hidden bg-white rounded-lg shadow-lg flex flex-col">
+      <div class="w-full max-w-lg max-h-[80vh] overflow-hidden bg-white rounded-lg shadow-lg flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b">
           <h3 class="text-lg font-semibold">Edit User</h3>
           <button @click="emit('close')" class="text-gray-500 hover:text-gray-700"><X class="w-5 h-5" /></button>
         </div>
         <div class="px-6 py-4 overflow-y-auto">
           <p v-if="errors._form" class="mb-3 text-sm text-red-600">{{ errors._form }}</p>
+
+          <!-- Role change warning banner -->
+          <div
+            v-if="roleChanged"
+            class="flex items-start gap-2 p-3 mb-4 rounded-md bg-orange-50 border border-orange-300"
+          >
+            <AlertTriangle class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+            <div class="text-xs text-orange-800">
+              <strong>Role change detected:</strong> Changing from
+              <span class="font-semibold">{{ originalRole }}</span> to
+              <span class="font-semibold">{{ modelValue.role }}</span> will
+              <span class="font-semibold">recreate this user's account</span> under the new role.
+              A new password will be generated and emailed to them.
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
               <label class="block text-sm font-medium text-gray-700">Full Name</label>
@@ -54,7 +76,14 @@ const onInput = (key: string, value: any) => {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Role</label>
-              <select :value="modelValue.role" @change="onInput('role', ($event.target as HTMLSelectElement).value); emit('role-change')" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <select
+                :value="modelValue.role"
+                @change="onInput('role', ($event.target as HTMLSelectElement).value); emit('role-change')"
+                :class="[
+                  'block w-full px-3 py-2 mt-1 bg-white border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm',
+                  roleChanged ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-300'
+                ]"
+              >
                 <option>Student</option>
                 <option>Teacher</option>
                 <option>Administrator</option>
@@ -117,7 +146,15 @@ const onInput = (key: string, value: any) => {
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t">
           <button @click="emit('close')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-          <button @click="emit('save')" class="px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700">Save</button>
+          <button
+            @click="emit('save')"
+            :class="[
+              'px-4 py-2 text-sm font-medium text-white rounded-md',
+              roleChanged ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'
+            ]"
+          >
+            {{ roleChanged ? 'Change Role & Save' : 'Save' }}
+          </button>
         </div>
       </div>
     </div>

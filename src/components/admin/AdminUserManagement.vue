@@ -52,6 +52,7 @@ const showDeleteModal = ref(false)
 const userToDelete = ref<AdminUser | null>(null)
 const showArchiveModal = ref(false)
 const userToArchive = ref<AdminUser | null>(null)
+const originalRole = ref('')
 
 // DROPDOWN DATA
 const departments = ref<string[]>([])
@@ -200,6 +201,7 @@ const openAdd = () => {
 const openEdit = (u: AdminUser) => {
   isEditing.value = true
   clearErrors()
+  originalRole.value = u.role
   Object.assign(form, {
     id: u.id,
     fullName: u.name, 
@@ -224,6 +226,10 @@ const closeModal = () => { showModal.value = false }
 
 const onRoleChange = () => {
   form.username = genUsernameByRole(form.role)
+  form.course = ''
+  form.year = ''
+  form.section = ''
+  form.department = ''
 }
 
 const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/
@@ -260,21 +266,56 @@ const saveUser = async () => {
     apiStatus = 'Inactive'
   }
 
+  let roleWasChanged = false
   if (isEditing.value) {
-    const userData = {
-      email: form.email,
-      fullName: form.fullName,
-      roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
-      studentId: form.username,
-      yearLevel: Number(form.year) || null,
-      section: form.section || null,
-      course: form.course || null,
-      department: form.department || null,
-      contactNumber: form.contactNumber || null,
-      emergencyContactNumber: form.emergencyContactNumber || null,
-      status: apiStatus
+    const existingUser = adminStore.users.find((u: any) => u.id === form.id)
+    const roleHasChanged = existingUser && existingUser.role !== form.role
+    roleWasChanged = !!roleHasChanged
+    
+    if (roleHasChanged && form.id > 0) {
+      const generatedPassword = form.password || genPassword()
+      const userData = {
+        email: form.email,
+        fullName: form.fullName,
+        password: generatedPassword,
+        roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+        studentId: form.username,
+        yearLevel: Number(form.year) || null,
+        section: form.section || null,
+        course: form.course || null,
+        department: form.department || null,
+        contactNumber: form.contactNumber || null,
+        emergencyContactNumber: form.emergencyContactNumber || null,
+        status: apiStatus,
+        createdBy: 1
+      }
+      
+      const deleteSuccess = await adminStore.deleteUser(form.id)
+      if (deleteSuccess) {
+        success = await adminStore.createUser(userData)
+        if (success) {
+          console.log('Role completely changed. Sending password email to:', form.email)
+          sendPasswordEmail(form.email, form.fullName, generatedPassword)
+        }
+      } else {
+        adminStore.error = 'Failed to delete old user record to change role.'
+      }
+    } else {
+      const userData = {
+        email: form.email,
+        fullName: form.fullName,
+        roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+        studentId: form.username,
+        yearLevel: Number(form.year) || null,
+        section: form.section || null,
+        course: form.course || null,
+        department: form.department || null,
+        contactNumber: form.contactNumber || null,
+        emergencyContactNumber: form.emergencyContactNumber || null,
+        status: apiStatus
+      }
+      success = await adminStore.updateUser(form.id, userData)
     }
-    success = await adminStore.updateUser(form.id, userData)
   } else {
     const generatedPassword = genPassword()
     console.log('Generated password for new user:', generatedPassword)
@@ -310,8 +351,9 @@ const saveUser = async () => {
     const stored = localStorage.getItem(STORAGE_KEY)
     let archivedUsers = stored ? JSON.parse(stored) : []
     
+    // If role was explicitly changed, the old ID was deleted and we need the newly generated ID
     const storeUser = adminStore.users.find((u: any) => u.email === form.email)
-    const userIdToUse = form.id || (storeUser ? storeUser.id : 0)
+    const userIdToUse = (!roleWasChanged && form.id) ? form.id : (storeUser ? storeUser.id : 0)
 
     if (userIdToUse) {
       if (isArchived) {
@@ -548,6 +590,7 @@ onMounted(() => {
       v-if="showModal && isEditing"
       :open="true"
       :model-value="form"
+      :original-role="originalRole"
       :errors="errors"
       :departments="departments"
       :years="years"
