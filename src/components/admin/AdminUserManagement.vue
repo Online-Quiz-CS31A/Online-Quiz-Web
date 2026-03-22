@@ -63,7 +63,12 @@ const courses = ref<string[]>([])
 const totalItems = computed(() => adminStore.totalUsers)
 
 // WATCHERS
-watch([currentPage, pageSize, filterRole, searchQuery], () => {
+watch([filterRole, searchQuery], () => {
+  currentPage.value = 1
+  loadUsers()
+})
+
+watch([currentPage, pageSize], () => {
   loadUsers()
 })
 

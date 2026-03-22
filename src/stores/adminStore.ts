@@ -28,42 +28,72 @@ export const useAdminStore = defineStore('admin', () => {
     // ACTIONS
 
     // --- USERS ---
+    const allRawUsers = ref<any[]>([])
+
+    function applyFiltersAndPaginate(page: number, pageSize: number, search: string, roleFilter: string) {
+        const storedArchived = localStorage.getItem('archivedUsers')
+        const archivedUsers: any[] = storedArchived ? JSON.parse(storedArchived) : []
+
+        let mapped: AdminUser[] = allRawUsers.value.map((u: any) => {
+            const isArchived = archivedUsers.some((au: any) => au.id === u.userId)
+            return {
+                id: u.userId,
+                name: u.fullName,
+                email: u.email,
+                role: u.roleName || 'Student',
+                status: isArchived ? 'Archived' : (u.status || 'Active'),
+                lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : 'Never',
+                avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                username: u.email.split('@')[0],
+                course: u.student?.course,
+                year: u.student?.yearLevel?.toString(),
+                section: u.student?.section,
+                department: u.teacher?.department || u.department,
+                contactNumber: u.contactNumber,
+                emergencyContactNumber: u.emergencyContactNumber
+            }
+        })
+
+        // --- Role / status filter ---
+        const roleMap: Record<string, string> = {
+            'Students': 'Student',
+            'Teachers': 'Teacher',
+            'Administrators': 'Administrator',
+        }
+        if (roleFilter && roleFilter !== 'All Users') {
+            if (roleMap[roleFilter]) {
+                mapped = mapped.filter(u => u.role === roleMap[roleFilter])
+            } else if (roleFilter === 'Inactive') {
+                mapped = mapped.filter(u => u.status === 'Inactive')
+            } else if (roleFilter === 'Archived') {
+                mapped = mapped.filter(u => u.status === 'Archived')
+            }
+        }
+
+        // --- Search filter  ---
+        if (search && search.trim()) {
+            const q = search.trim().toLowerCase()
+            mapped = mapped.filter(u =>
+                u.name.toLowerCase().includes(q) ||
+                u.email.toLowerCase().includes(q)
+            )
+        }
+
+        // --- Paginate ---
+        totalUsers.value = mapped.length
+        const start = (page - 1) * pageSize
+        users.value = mapped.slice(start, start + pageSize)
+    }
+
     async function fetchUsers(page = 1, pageSize = 10, search = '', role = '') {
         isLoading.value = true
         error.value = null
         try {
-            const params = new URLSearchParams()
-            params.append('pageNumber', page.toString())
-            params.append('pageSize', pageSize.toString())
-            if (search) params.append('search', search) 
-            if (role && role !== 'All Users') params.append('role', role) 
-
-            const response = await api.get(`/user/paged?${params.toString()}`)
-
-            const data = response.data
-            const storedArchived = localStorage.getItem('archivedUsers')
-            const archivedUsers = storedArchived ? JSON.parse(storedArchived) : []
-
-            users.value = data.items.map((u: any) => {
-                const isArchived = archivedUsers.some((au: any) => au.id === u.userId)
-                return {
-                    id: u.userId,
-                    name: u.fullName,
-                    email: u.email,
-                    role: u.roleName || 'Student', 
-                    status: isArchived ? 'Archived' : (u.status || 'Active'),
-                    lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : 'Never',
-                    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png', 
-                    username: u.email.split('@')[0], 
-                    course: u.student?.course,
-                    year: u.student?.yearLevel?.toString(),
-                    section: u.student?.section,
-                    department: u.teacher?.department || u.department,
-                    contactNumber: u.contactNumber,
-                    emergencyContactNumber: u.emergencyContactNumber
-                }
-            })
-            totalUsers.value = data.totalCount
+            if (allRawUsers.value.length === 0) {
+                const response = await api.get('/user/paged?pageNumber=1&pageSize=10000')
+                allRawUsers.value = response.data.items || []
+            }
+            applyFiltersAndPaginate(page, pageSize, search, role)
         } catch (err: any) {
             console.error('Failed to fetch users:', err)
             error.value = err.message || 'Failed to fetch users'
@@ -76,6 +106,7 @@ export const useAdminStore = defineStore('admin', () => {
         isLoading.value = true
         try {
             await api.post('/user', userData)
+            allRawUsers.value = [] 
             await fetchUsers()
             return true
         } catch (err: any) {
@@ -87,11 +118,13 @@ export const useAdminStore = defineStore('admin', () => {
         }
     }
 
+
     async function updateUser(id: number, userData: any) {
         isLoading.value = true
         try {
             await api.put(`/user/${id}`, userData)
-            await fetchUsers() 
+            allRawUsers.value = [] 
+            await fetchUsers()
             return true
         } catch (err: any) {
             console.error('Failed to update user:', err)
@@ -106,7 +139,8 @@ export const useAdminStore = defineStore('admin', () => {
         isLoading.value = true
         try {
             await api.delete(`/user/${id}`)
-            await fetchUsers() 
+            allRawUsers.value = [] 
+            await fetchUsers()
             return true
         } catch (err: any) {
             console.error('Failed to delete user:', err)
