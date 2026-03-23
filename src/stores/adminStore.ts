@@ -35,13 +35,15 @@ export const useAdminStore = defineStore('admin', () => {
         const archivedUsers: any[] = storedArchived ? JSON.parse(storedArchived) : []
 
         let mapped: AdminUser[] = allRawUsers.value.map((u: any) => {
-            const isArchived = archivedUsers.some((au: any) => au.id === u.userId)
+            const isArchived = archivedUsers.some((au: any) => au.email === u.email)
+            const rawStatus = (u.status || 'Active') as string
+            const normalizedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase()
             return {
                 id: u.userId,
                 name: u.fullName,
                 email: u.email,
                 role: u.roleName || 'Student',
-                status: isArchived ? 'Archived' : (u.status || 'Active'),
+                status: isArchived ? 'Archived' : normalizedStatus,
                 lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : 'Never',
                 avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
                 username: u.email.split('@')[0],

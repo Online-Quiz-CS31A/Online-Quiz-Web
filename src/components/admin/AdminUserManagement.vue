@@ -36,7 +36,8 @@ const form = reactive<any>({
   section: '',
   department: '',
   contactNumber: '',
-  emergencyContactNumber: ''
+  emergencyContactNumber: '',
+  archiveReason: ''
 })
 
 const errors = reactive<Record<string, string>>({})
@@ -222,7 +223,8 @@ const openEdit = (u: AdminUser) => {
     section: u.section || '',
     department: u.department || '',
     contactNumber: u.contactNumber || '',
-    emergencyContactNumber: u.emergencyContactNumber || ''
+    emergencyContactNumber: u.emergencyContactNumber || '',
+    archiveReason: ''
   })
   showModal.value = true
 }
@@ -255,6 +257,9 @@ const validateForm = (): boolean => {
   }
   if (form.role === 'Teacher') {
     if (!form.department || !form.department.trim()) errors.department = 'Department is required for teachers.'
+  }
+  if (form.status === 'Archived') {
+    if (!form.archiveReason || !form.archiveReason.trim()) errors.archiveReason = 'A reason is required when archiving a user.'
   }
 
   return Object.keys(errors).length === 0
@@ -355,40 +360,35 @@ const saveUser = async () => {
     const STORAGE_KEY = 'archivedUsers'
     const stored = localStorage.getItem(STORAGE_KEY)
     let archivedUsers = stored ? JSON.parse(stored) : []
-    
-    // If role was explicitly changed, the old ID was deleted and we need the newly generated ID
+
     const storeUser = adminStore.users.find((u: any) => u.email === form.email)
     const userIdToUse = (!roleWasChanged && form.id) ? form.id : (storeUser ? storeUser.id : 0)
 
-    if (userIdToUse) {
-      if (isArchived) {
-        if (!archivedUsers.find((au: any) => au.id === userIdToUse)) {
-          archivedUsers.push({
-            id: userIdToUse,
-            name: form.fullName,
-            email: form.email,
-            role: form.role,
-            status: 'Archived',
-            lastActive: form.lastActive || new Date().toISOString(),
-            avatar: form.avatar || defaultAvatar,
-            username: form.username,
-            course: form.course || '',
-            year: form.year || '',
-            section: form.section || '',
-            department: form.department || '',
-            contactNumber: form.contactNumber || '',
-            emergencyContactNumber: form.emergencyContactNumber || '',
-            archivedAt: new Date().toISOString(),
-            archiveReason: 'Archived from edit modal'
-          })
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
-        }
-      } else {
-        const initialLength = archivedUsers.length
-        archivedUsers = archivedUsers.filter((au: any) => au.id !== userIdToUse)
-        if (archivedUsers.length !== initialLength) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
-        }
+    if (isArchived) {
+      archivedUsers = archivedUsers.filter((au: any) => au.email !== form.email)
+      archivedUsers.push({
+        id: userIdToUse,
+        name: form.fullName,
+        email: form.email,
+        role: form.role,
+        status: 'Archived',
+        lastActive: form.lastActive || new Date().toISOString(),
+        avatar: form.avatar || defaultAvatar,
+        username: form.username,
+        course: form.course || '',
+        year: form.year || '',
+        section: form.section || '',
+        department: form.department || '',
+        contactNumber: form.contactNumber || '',
+        emergencyContactNumber: form.emergencyContactNumber || '',
+        archivedAt: new Date().toISOString(),
+        archiveReason: form.archiveReason || 'No reason given'
+      })
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
+    } else {
+      const filtered = archivedUsers.filter((au: any) => au.email !== form.email)
+      if (filtered.length !== archivedUsers.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
       }
     }
 
@@ -442,32 +442,30 @@ const archiveUser = (reason: string) => {
   if (!userToArchive.value) return
   const u = userToArchive.value
 
-  //localstorage
   const STORAGE_KEY = 'archivedUsers'
   const stored = localStorage.getItem(STORAGE_KEY)
-  const archivedUsers = stored ? JSON.parse(stored) : []
-  
-  if (!archivedUsers.find((au: any) => au.id === u.id)) {
-    archivedUsers.push({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      status: 'Archived',
-      lastActive: u.lastActive,
-      avatar: u.avatar,
-      username: u.username,
-      course: u.course,
-      year: u.year,
-      section: u.section,
-      department: u.department,
-      contactNumber: u.contactNumber,
-      emergencyContactNumber: u.emergencyContactNumber,
-      archivedAt: new Date().toISOString(),
-      archiveReason: reason
-    })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
-  }
+  let archivedUsers = stored ? JSON.parse(stored) : []
+  archivedUsers = archivedUsers.filter((au: any) => au.email !== u.email)
+
+  archivedUsers.push({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    status: 'Archived',
+    lastActive: u.lastActive,
+    avatar: u.avatar,
+    username: u.username,
+    course: u.course,
+    year: u.year,
+    section: u.section,
+    department: u.department,
+    contactNumber: u.contactNumber,
+    emergencyContactNumber: u.emergencyContactNumber,
+    archivedAt: new Date().toISOString(),
+    archiveReason: reason
+  })
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
 
   showArchiveModal.value = false
   userToArchive.value = null
