@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { X, Book, Plus, Trash2 } from 'lucide-vue-next'
+import { X, Book, Plus, Trash2, Search } from 'lucide-vue-next'
+import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminCourseAddModal from '@/components/modals/AdminCourseAddModal.vue'
 import AdminCourseEditModal from '@/components/modals/AdminCourseEditModal.vue'
 import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
-import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import { useAdminStore } from '@/stores/adminStore'
@@ -36,6 +36,7 @@ const errors = reactive<Record<string, string>>({})
 // REFS
 const searchQuery = ref('')
 const filterStatus = ref<'All Courses' | 'Active' | 'Archived'>('All Courses')
+const filterCategory = ref('All Categories')
 const pageSize = ref(1000) 
 const currentPage = ref(1)
 const showModal = ref(false)
@@ -60,6 +61,39 @@ const groupedCourses = computed(() => {
   }
   return Object.values(groups)
 })
+
+const categoryOptions = computed(() => {
+  const cats = new Set<string>()
+  for (const c of groupedCourses.value) {
+    if (c.subjectCode) cats.add(c.subjectCode)
+  }
+  return ['All Categories', ...Array.from(cats).sort()]
+})
+
+const filteredCourses = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return groupedCourses.value.filter(c => {
+    const matchesSearch = !q ||
+      c.title.toLowerCase().includes(q) ||
+      c.code.toLowerCase().includes(q) ||
+      (c.subjectCode || '').toLowerCase().includes(q) ||
+      (c.instructors || []).some(i => getPersonName(i.teacherId).toLowerCase().includes(q))
+    const matchesCategory = filterCategory.value === 'All Categories' || c.subjectCode === filterCategory.value
+    return matchesSearch && matchesCategory
+  })
+})
+
+const hasActiveFilters = computed(() =>
+  searchQuery.value.trim() !== '' ||
+  filterStatus.value !== 'All Courses' ||
+  filterCategory.value !== 'All Categories'
+)
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  filterStatus.value = 'All Courses'
+  filterCategory.value = 'All Categories'
+}
 
 const totalItems = computed(() => adminStore.totalCourses)
 
@@ -329,9 +363,15 @@ onMounted(() => {
       v-model="searchQuery"
       v-model:filter="filterStatus"
       :options="['All Courses', 'Active', 'Archived']"
-      placeholder="Search courses..."
+      v-model:filter2="filterCategory"
+      :options2="categoryOptions"
+      placeholder="Search by title, code, category or instructor..."
       action-label="New Course"
+      :result-count="filteredCourses.length"
+      result-label="course"
+      :has-active-filters="hasActiveFilters"
       @action="openAdd"
+      @clear-filters="clearFilters"
     />
 
     <!-- Course Details -->
@@ -347,8 +387,14 @@ onMounted(() => {
       <div v-if="adminStore.isLoading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <SkeletonCard v-for="i in 6" :key="i" />
       </div>
+      <div v-else-if="filteredCourses.length === 0 && !adminStore.isLoading" class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+        <Search class="w-12 h-12 text-gray-300 mb-3" />
+        <p class="text-gray-500 font-medium">No courses match your search</p>
+        <p class="text-sm text-gray-400 mt-1">Try adjusting your filters or search term</p>
+        <button @click="clearFilters" class="mt-4 text-sm text-blue-600 hover:underline">Clear all filters</button>
+      </div>
       <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div v-for="c in groupedCourses" :key="c.code" class="overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-all group" @click="openCourseDetailsInline(c)">
+        <div v-for="c in filteredCourses" :key="c.code" class="overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-all group" @click="openCourseDetailsInline(c)">
           <div class="p-5">
             <div class="flex items-center justify-between h-20">
               <div class="flex items-center">
