@@ -4,6 +4,7 @@ import { Archive, RotateCcw, AlertCircle, Search, Users } from 'lucide-vue-next'
 import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
+import api from '@/services/api'
 
 interface ArchivedUser {
   id: number
@@ -73,10 +74,23 @@ const loadArchivedUsers = () => {
   isLoading.value = true
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    archivedUsers.value = stored ? JSON.parse(stored) : []
-    setTimeout(() => {
-      isLoading.value = false
-    }, 300)
+    const raw: ArchivedUser[] = stored ? JSON.parse(stored) : []
+
+    const seen = new Map<string, ArchivedUser>()
+    for (const u of raw) {
+      const existing = seen.get(u.email)
+      if (!existing || new Date(u.archivedAt) > new Date(existing.archivedAt)) {
+        seen.set(u.email, u)
+      }
+    }
+    const deduped = Array.from(seen.values())
+
+    if (deduped.length !== raw.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped))
+    }
+
+    archivedUsers.value = deduped
+    setTimeout(() => { isLoading.value = false }, 300)
   } catch (e) {
     console.error('Failed to load archived users:', e)
     archivedUsers.value = []
@@ -94,8 +108,13 @@ const restoreUser = async () => {
 
   const u = userToRestore.value
 
-  // Remove from localStorage
-  const remaining = archivedUsers.value.filter(au => au.id !== u.id)
+  try {
+    await api.put(`/user/${u.id}`, { status: 'Active' })
+  } catch (e) {
+    console.error('Failed to restore user status via API:', e)
+  }
+
+  const remaining = archivedUsers.value.filter(au => au.email !== u.email)
   archivedUsers.value = remaining
   localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
 
