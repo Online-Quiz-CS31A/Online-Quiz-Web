@@ -18,7 +18,6 @@ const archiveReasons = [
   'Dropped out',
   'Account inactivity',
   'Violation of policies',
-  'End of contract',
   'Duplicate account',
   'Other'
 ]
@@ -28,7 +27,7 @@ const reasonError = ref('')
 
 watch(() => props.open, (v) => {
   if (v) {
-    selectedReason.value = ''
+    selectedReason.value = 'Account inactivity'
     reasonError.value = ''
   }
 })
