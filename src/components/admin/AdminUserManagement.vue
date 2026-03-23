@@ -4,8 +4,7 @@ import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
 import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
 import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
 import ArchiveUserModal from '@/components/modals/ArchiveUserModal.vue'
-import { Trash2, Archive } from 'lucide-vue-next'
-import { Pencil } from 'lucide-vue-next'
+import { Trash2, Archive, Pencil } from 'lucide-vue-next'
 import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
@@ -44,7 +43,8 @@ const errors = reactive<Record<string, string>>({})
 
 // REFS
 const searchQuery = ref('')
-const filterRole = ref('All Users')
+const filterRole = ref('All Roles')
+const filterStatus = ref('All Statuses')
 const pageSize = ref(10)
 const currentPage = ref(1)
 const showModal = ref(false)
@@ -63,8 +63,21 @@ const courses = ref<string[]>([])
 // COMPUTED
 const totalItems = computed(() => adminStore.totalUsers)
 
+const hasActiveFilters = computed(() =>
+  searchQuery.value.trim() !== '' ||
+  filterRole.value !== 'All Roles' ||
+  filterStatus.value !== 'All Statuses'
+)
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  filterRole.value = 'All Roles'
+  filterStatus.value = 'All Statuses'
+  currentPage.value = 1
+}
+
 // WATCHERS
-watch([filterRole, searchQuery], () => {
+watch([filterRole, filterStatus, searchQuery], () => {
   currentPage.value = 1
   loadUsers()
 })
@@ -75,7 +88,14 @@ watch([currentPage, pageSize], () => {
 
 // METHODS
 const loadUsers = () => {
-  adminStore.fetchUsers(currentPage.value, pageSize.value, searchQuery.value, filterRole.value)
+  // Role filter takes precedence; fall back to status filter
+  let apiFilter = 'All Users'
+  if (filterRole.value !== 'All Roles') {
+    apiFilter = filterRole.value
+  } else if (filterStatus.value !== 'All Statuses') {
+    apiFilter = filterStatus.value
+  }
+  adminStore.fetchUsers(currentPage.value, pageSize.value, searchQuery.value, apiFilter)
 }
 
 const fetchDropdownData = async () => {
@@ -481,17 +501,23 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-6">
-    <!-- User controls -->
+    <!-- Search and Filters -->
     <AdminSearchFilterBar
       v-model="searchQuery"
       v-model:filter="filterRole"
-      :options="['All Users', 'Students', 'Teachers', 'Administrators', 'Inactive', 'Archived']"
-      placeholder="Search users..."
+      :options="['All Roles', 'Students', 'Teachers', 'Administrators']"
+      v-model:filter2="filterStatus"
+      :options2="['All Statuses', 'Active', 'Inactive', 'Archived']"
+      placeholder="Search by name or email..."
       action-label="Add User"
       import-label="Import Users"
       import-accept=".csv,.json"
+      :result-count="totalItems"
+      result-label="user"
+      :has-active-filters="hasActiveFilters"
       @action="openAdd"
       @import="onImport"
+      @clear-filters="clearFilters"
     />
     
     <!-- User table -->
