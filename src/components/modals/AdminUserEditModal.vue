@@ -100,6 +100,26 @@ const roleChanged = computed(() =>
               <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
             </div>
 
+            <!-- Archive reason -->
+            <div v-if="modelValue.status === 'Archived'" class="sm:col-span-2">
+              <label class="block text-sm font-medium text-gray-700">Archive Reason</label>
+              <select
+                :value="modelValue.archiveReason || 'Account inactivity'"
+                @change="onInput('archiveReason', ($event.target as HTMLSelectElement).value)"
+                class="block w-full px-3 py-2 mt-1 bg-amber-50 border border-amber-300 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+              >
+                <option value="" disabled>Select a reason...</option>
+                <option>Graduated</option>
+                <option>Transferred to another institution</option>
+                <option>Dropped out</option>
+                <option>Account inactivity</option>
+                <option>Violation of policies</option>
+                <option>Duplicate account</option>
+                <option>Other</option>
+              </select>
+              <p v-if="errors.archiveReason" class="mt-1 text-xs text-red-600">{{ errors.archiveReason }}</p>
+            </div>
+
             <!-- Password info notice -->
             <div class="sm:col-span-2">
               <div class="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
