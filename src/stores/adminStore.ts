@@ -69,7 +69,14 @@ export const useAdminStore = defineStore('admin', () => {
                 mapped = mapped.filter(u => u.status === 'Inactive')
             } else if (roleFilter === 'Archived') {
                 mapped = mapped.filter(u => u.status === 'Archived')
+            } else if (roleFilter === 'Active') {
+                mapped = mapped.filter(u => u.status === 'Active')
             }
+        }
+
+        const isSearching = search && search.trim() !== '';
+        if (roleFilter !== 'Archived' && !isSearching) {
+            mapped = mapped.filter(u => u.status !== 'Archived')
         }
 
         // --- Search filter  ---
@@ -77,7 +84,8 @@ export const useAdminStore = defineStore('admin', () => {
             const q = search.trim().toLowerCase()
             mapped = mapped.filter(u =>
                 u.name.toLowerCase().includes(q) ||
-                u.email.toLowerCase().includes(q)
+                u.email.toLowerCase().includes(q) ||
+                u.status.toLowerCase().includes(q)
             )
         }
 

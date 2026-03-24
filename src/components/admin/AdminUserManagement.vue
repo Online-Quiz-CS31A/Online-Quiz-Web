@@ -539,7 +539,7 @@ onMounted(() => {
               <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                 Status
               </th>
-              <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+              <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                 Last Active
               </th>
               <th scope="col" class="relative px-6 py-3">
@@ -576,15 +576,20 @@ onMounted(() => {
                 <time :datetime="user.lastActive">{{ user.lastActive }}</time>
               </td>
               <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                <button @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900 mr-3" title="Edit">
-                  <Pencil class="w-4 h-4" />
-                </button>
-                <button v-if="user.status !== 'Archived'" @click="confirmArchive(user)" class="text-amber-600 hover:text-amber-900 mr-3" title="Archive">
-                  <Archive class="w-4 h-4" />
-                </button>
-                <button @click="confirmDelete(user)" class="text-red-600 hover:text-red-900" title="Delete">
-                  <Trash2 class="w-4 h-4" />
-                </button>
+                <template v-if="user.status !== 'Archived'">
+                  <button @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900 mr-3" title="Edit">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button @click="confirmArchive(user)" class="text-amber-600 hover:text-amber-900 mr-3" title="Archive">
+                    <Archive class="w-4 h-4" />
+                  </button>
+                  <button @click="confirmDelete(user)" class="text-red-600 hover:text-red-900" title="Delete">
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </template>
+                <span v-else class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
+                  <Archive class="w-3 h-3" /> Archived
+                </span>
               </td>
             </tr>
             <tr v-if="adminStore.users.length === 0">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Archive, RotateCcw, AlertCircle, Search, Users } from 'lucide-vue-next'
+import { Archive, RotateCcw, AlertCircle, Users } from 'lucide-vue-next'
+import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
@@ -30,7 +31,7 @@ const STORAGE_KEY = 'archivedUsers'
 // STATE
 const archivedUsers = ref<ArchivedUser[]>([])
 const searchQuery = ref('')
-const filterRole = ref<'All' | 'Students' | 'Teachers' | 'Administrators'>('All')
+const filterRole = ref('All Roles')
 const isLoading = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -50,7 +51,7 @@ const filteredUsers = computed(() => {
     )
   }
 
-  if (filterRole.value !== 'All') {
+  if (filterRole.value !== 'All Roles') {
     const roleMap: Record<string, string> = {
       'Students': 'Student',
       'Teachers': 'Teacher',
@@ -61,6 +62,16 @@ const filteredUsers = computed(() => {
 
   return result
 })
+
+const hasActiveFilters = computed(() =>
+  searchQuery.value.trim() !== '' || filterRole.value !== 'All Roles'
+)
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  filterRole.value = 'All Roles'
+  currentPage.value = 1
+}
 
 const paginatedUsers = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -158,32 +169,16 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Search and Filters -->
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div class="relative flex-1">
-          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search class="w-4 h-4 text-gray-400" />
-          </div>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search archived users..."
-            class="block w-full py-2.5 pl-10 pr-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-          />
-        </div>
-        <div class="relative sm:w-48">
-          <select
-            v-model="filterRole"
-            class="block w-full py-2.5 pl-3 pr-10 text-base bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-          >
-            <option value="All">All Roles</option>
-            <option value="Students">Students</option>
-            <option value="Teachers">Teachers</option>
-            <option value="Administrators">Administrators</option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <AdminSearchFilterBar
+      v-model="searchQuery"
+      v-model:filter="filterRole"
+      :options="['All Roles', 'Students', 'Teachers', 'Administrators']"
+      placeholder="Search archived users..."
+      :result-count="totalItems"
+      result-label="user"
+      :has-active-filters="hasActiveFilters"
+      @clear-filters="clearFilters"
+    />
 
     <!-- Loading State -->
     <div v-if="isLoading" class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-gray-200">
@@ -230,7 +225,7 @@ onMounted(() => {
               <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                 Reason
               </th>
-              <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+              <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                 Archived Date
               </th>
               <th scope="col" class="relative px-6 py-3">
