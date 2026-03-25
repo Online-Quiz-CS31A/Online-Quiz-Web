@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from 'vue'
-import { Clock, BookOpen, Users, Book, ChevronDown, Edit2, Mail, FileText, Plus, Search, X } from 'lucide-vue-next'
+import { Clock, BookOpen, Users, Book, ChevronDown, Edit2, Mail, FileText, Plus, Search, X, Trash2 } from 'lucide-vue-next'
 import type { Course, CourseInstructor, AdminQuiz, AdminUser } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
+import api from '@/services/api'
 
 // PROPS
 const props = defineProps<{
@@ -19,6 +20,8 @@ const emit = defineEmits<{
 const adminStore = useAdminStore()
 
 // REACTIVE
+const localInstructors = ref<CourseInstructor[]>([])
+
 const teachers = computed(() => adminStore.users.filter(u => u.role === 'Teacher'))
 
 // REFS
@@ -51,9 +54,9 @@ const filteredTeachers = computed(() => {
 
 const groupedInstructors = computed(() => {
   const map = new Map<number, { teacherId: number; sections: { section: string; students: number }[] }>()
-  for (const i of props.course.instructors || []) {
+  for (const i of localInstructors.value) {
     if (!map.has(i.teacherId)) map.set(i.teacherId, { teacherId: i.teacherId, sections: [] })
-    map.get(i.teacherId)!.sections.push({ section: i.section, students: i.students })
+    map.get(i.teacherId)!.sections.push({ section: i.section, students: i.students || 0 })
   }
   return Array.from(map.values())
 })
@@ -94,6 +97,7 @@ watch(() => props.course, (c) => {
   detailsForm.subjectCode = c.subjectCode
   detailsForm.units = c.units
   detailsForm.description = c.description || ''
+  localInstructors.value = [...(c.instructors || [])]
   loadSectionCounts()
 })
 
@@ -119,9 +123,9 @@ const loadQuizzes = async () => {
 }
 
 const loadSectionCounts = async () => {
-  if (!props.course.instructors) return
+  if (!localInstructors.value) return
 
-  for (const instructor of props.course.instructors) {
+  for (const instructor of localInstructors.value) {
     if (instructor.section) {
       try {
         const students = await adminStore.fetchStudentsBySection(instructor.section)
@@ -137,6 +141,25 @@ const loadSectionCounts = async () => {
 const goToTeacherPage = (page: number) => {
   if (page >= 1 && page <= totalTeacherPages.value) {
     currentTeacherPage.value = page
+  }
+}
+
+const allSections = ref<string[]>([])
+const loadSections = async () => {
+  try {
+    const res = await api.get('/user/paged?pageNumber=1&pageSize=1000')
+    const items = res.data.items || []
+    const sections = new Set<string>()
+    for (const u of items) {
+      if (u.roleName === 'Student' && u.student && u.student.section) {
+        sections.add(u.student.section)
+      } else if (u.section) {
+        sections.add(u.section)
+      }
+    }
+    allSections.value = Array.from(sections).sort()
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -171,24 +194,113 @@ const assignTeacher = async (teacher: AdminUser) => {
   if (isAssigningTeacher.value) return
   isAssigningTeacher.value = true
   try {
-    const newInstructor: CourseInstructor = {
-      teacherId: teacher.id,
+    const createPayload = {
+      name: props.course.title,
+      code: props.course.code,
+      category: props.course.subjectCode,
       section: 'A', 
-      students: 0
+      instructorId: teacher.id,
+      status: props.course.status,
+      createdBy: 1
     }
-    
-    const updatedInstructors = [...(props.course.instructors || []), newInstructor]
-    
-    const success = await adminStore.updateCourse(props.course.id, {
-      ...props.course,
-      instructors: updatedInstructors
-    })
+    const success = await adminStore.createCourse(createPayload)
     
     if (success) {
+      localInstructors.value.push({ teacherId: teacher.id, section: 'A', students: 0 })
       showAddTeacherModal.value = false
     }
+  } catch (e) {
+    console.error(e)
   } finally {
     isAssigningTeacher.value = false
+  }
+}
+
+const isManageMode = ref(false)
+const manageForm = reactive({
+  assignments: [] as Array<{ teacherId: number; sections: string[] }>
+})
+
+const startManageMode = () => {
+  if (allSections.value.length === 0) loadSections()
+  manageForm.assignments = groupedInstructors.value.map(gi => ({
+    teacherId: gi.teacherId,
+    sections: gi.sections.map(s => s.section)
+  }))
+  isManageMode.value = true
+}
+
+const cancelManageMode = () => {
+  isManageMode.value = false
+}
+
+const removeTeacherFromManage = (idx: number) => {
+  manageForm.assignments.splice(idx, 1)
+}
+
+const isSavingSections = ref(false)
+
+const saveManageMode = async () => {
+  if (isSavingSections.value) return
+  isSavingSections.value = true
+  
+  try {
+    const existingCourses = adminStore.courses.filter(c => c.code === props.course.code)
+    
+    const newPairs: Array<{ instructorId: number; section: string }> = []
+    for (const a of manageForm.assignments) {
+      for (const sec of a.sections) {
+        newPairs.push({ instructorId: a.teacherId, section: sec })
+      }
+    }
+    
+    const usedExistingIds = new Set<number>()
+    const promises = []
+    const newLocalInstructors: any[] = []
+    
+    for (const newPair of newPairs) {
+      const matchingExisting = existingCourses.find(ec => 
+        ec.instructors?.[0]?.teacherId === newPair.instructorId && 
+        ec.instructors?.[0]?.section === newPair.section && 
+        !usedExistingIds.has(ec.id)
+      )
+      
+      if (matchingExisting) {
+        usedExistingIds.add(matchingExisting.id)
+        newLocalInstructors.push({ 
+          teacherId: newPair.instructorId, 
+          section: newPair.section, 
+          students: matchingExisting.instructors?.[0]?.students || 0 
+        })
+      } else {
+        const createPayload = {
+          name: props.course.title,
+          code: props.course.code,
+          category: props.course.subjectCode,
+          section: newPair.section,
+          instructorId: newPair.instructorId,
+          status: props.course.status,
+          createdBy: 1
+        }
+        promises.push(adminStore.createCourse(createPayload))
+        newLocalInstructors.push({ teacherId: newPair.instructorId, section: newPair.section, students: 0 })
+      }
+    }
+    
+    for (const existing of existingCourses) {
+      if (!usedExistingIds.has(existing.id)) {
+        promises.push(adminStore.deleteCourse(existing.id))
+      }
+    }
+    
+    await Promise.all(promises)
+    
+    localInstructors.value = newLocalInstructors
+    isManageMode.value = false
+  } catch (e) {
+    console.error("Failed to save manage mode", e)
+  } finally {
+    isSavingSections.value = false
   }
 }
 
@@ -213,6 +325,7 @@ const saveSettings = async () => {
 
 // LIFECYCLE
 onMounted(() => {
+  localInstructors.value = [...(props.course.instructors || [])]
   loadTeachers()
   loadQuizzes()
 })
@@ -255,7 +368,7 @@ onMounted(() => {
             </div>
             <div class="flex items-center">
               <Book class="text-gray-500 mr-2 h-4 w-4" />
-              <span class="text-gray-700">{{ (props.course.instructors || []).length }} Sections</span>
+              <span class="text-gray-700">{{ localInstructors.length }} Sections</span>
             </div>
           </div>
         </div>
@@ -288,19 +401,40 @@ onMounted(() => {
     <!-- Instructors & Sections Tab -->
     <div v-if="activeTab === 'instructors'">
       <div class="mb-8">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800">Instructors</h2>
-          <button @click="showAddTeacherModal = true"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center text-sm">
-            <Plus class="mr-2 h-4 w-4" /> Add Instructor
-          </button>
+          <div v-if="!isManageMode" class="flex space-x-3">
+             <button @click="startManageMode" class="border border-gray-300 bg-white text-gray-700 px-4 py-2 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors flex items-center shadow-sm">
+               <Edit2 class="mr-2 h-4 w-4 text-gray-500" /> Manage Assignments
+             </button>
+             <button @click="showAddTeacherModal = true"
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center text-sm font-medium shadow-sm transition-colors">
+               <Plus class="mr-2 h-4 w-4" /> Add Instructor
+             </button>
+          </div>
+          <div v-else class="flex space-x-3">
+             <button @click="cancelManageMode" class="border border-gray-300 bg-white text-gray-700 px-4 py-2 hover:bg-gray-50 rounded-lg text-sm font-medium shadow-sm transition-colors">
+               Cancel
+             </button>
+             <button @click="saveManageMode" :disabled="isSavingSections" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center text-sm font-medium shadow-sm transition-colors disabled:opacity-50">
+               <svg v-if="isSavingSections" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+               Save Changes
+             </button>
+          </div>
         </div>
-        <div class="space-y-6">
-          <div v-if="groupedInstructors.length === 0" class="text-center py-8 text-gray-500 bg-white rounded-xl shadow-md">
-            No instructors assigned to this course.
+        
+        <!-- Standard Display Mode -->
+        <div v-if="!isManageMode" class="space-y-6">
+          <div v-if="groupedInstructors.length === 0" class="text-center py-12 text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-xl">
+            <Users class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p class="font-medium text-gray-900">No instructors assigned</p>
+            <p class="text-sm mt-1">Click 'Add Instructor' to assign teachers to this course.</p>
           </div>
           <div v-for="gi in groupedInstructors" :key="gi.teacherId"
-            class="bg-white rounded-xl shadow-md overflow-hidden">
+            class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="p-6">
               <div class="flex items-start justify-between mb-4">
                 <div class="flex items-center">
@@ -311,7 +445,7 @@ onMounted(() => {
                     <p class="text-gray-600 text-sm mt-1">{{ gi.sections.length }} Section(s)</p>
                   </div>
                 </div>
-                <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span>
+                <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mb-2">Active</span>
               </div>
 
               <!-- Sections -->
@@ -365,6 +499,47 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
+        <!-- Manage Display Mode -->
+        <div v-else class="space-y-6">
+          <div v-if="manageForm.assignments.length === 0" class="text-center py-12 text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-xl">
+            <Users class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p class="font-medium text-gray-900">No instructors to manage</p>
+            <p class="text-sm mt-1">Assign an instructor first before managing assignments.</p>
+          </div>
+          <div v-for="(assignment, idx) in manageForm.assignments" :key="assignment.teacherId" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative">
+            <div class="flex justify-between items-start mb-6">
+              <div class="flex items-center">
+                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" class="w-12 h-12 rounded-full mr-4 border border-gray-200" />
+                <div>
+                  <h3 class="font-bold text-gray-800 text-lg">{{ props.getPersonName(assignment.teacherId) }}</h3>
+                  <p class="text-sm text-gray-500 mt-0.5">{{ assignment.sections.length }} Section(s) Selected</p>
+                </div>
+              </div>
+              <button @click="removeTeacherFromManage(idx)" title="Remove instructor from course" class="text-gray-400 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors flex items-center text-sm font-medium border border-transparent hover:border-red-100">
+                <Trash2 class="w-4 h-4 mr-1"/> Remove 
+              </button>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+              <label class="block text-sm font-semibold text-gray-700 mb-3 flex justify-between items-center">
+                Select Sections
+                <span v-if="allSections.length === 0" class="text-xs text-gray-400 font-normal">Loading...</span>
+              </label>
+              
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-48 overflow-y-auto pr-2">
+                <label v-for="sec in allSections" :key="sec" :class="[
+                  'flex items-center p-2.5 bg-white border rounded-lg cursor-pointer transition-all hover:shadow-sm',
+                  assignment.sections.includes(sec) ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200 hover:border-blue-300'
+                ]">
+                  <input type="checkbox" :value="sec" v-model="assignment.sections" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-50 mt-0.5 shrink-0">
+                  <span class="ml-3 text-sm font-medium text-gray-700 truncate" :title="sec">{{ sec }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -560,5 +735,7 @@ onMounted(() => {
         </div>
       </div>
     </Teleport>
+
+
   </div>
 </template>
