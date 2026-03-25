@@ -45,6 +45,7 @@ const selectedCourseInline = ref<Course | null>(null)
 const showDeleteModal = ref(false)
 const courseToDelete = ref<Course | null>(null)
 const originalCode = ref('')
+const isSaving = ref(false)
 
 // COMPUTED
 const groupedCourses = computed(() => {
@@ -226,8 +227,10 @@ const openEdit = (c: Course) => {
 const closeModal = () => { showModal.value = false }
 
 const saveCourse = async () => {
+  if (isSaving.value) return
   if (!validateForm()) return
   
+  isSaving.value = true
   adminStore.isLoading = true
   try {
     if (isEditing.value) {
@@ -307,6 +310,7 @@ const saveCourse = async () => {
     console.error('Failed to save course', e)
   } finally {
     adminStore.isLoading = false
+    isSaving.value = false
   }
 }
 

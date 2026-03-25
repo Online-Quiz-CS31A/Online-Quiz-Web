@@ -84,6 +84,9 @@ const paginatedTeachers = computed(() => {
   return filteredTeachers.value.slice(start, start + teacherPageSize)
 })
 
+const isAssigningTeacher = ref(false)
+const isSavingCourseSettings = ref(false)
+
 // WATCHERS
 watch(() => props.course, (c) => {
   detailsForm.title = c.title
@@ -165,34 +168,46 @@ const toggleSection = async (key: string, sectionName: string) => {
 const makeKey = (teacherId: number, sIdx: number) => `${teacherId}-${sIdx}`
 
 const assignTeacher = async (teacher: AdminUser) => {
-  const newInstructor: CourseInstructor = {
-    teacherId: teacher.id,
-    section: 'A', 
-    students: 0
-  }
-  
-  const updatedInstructors = [...(props.course.instructors || []), newInstructor]
-  
-  const success = await adminStore.updateCourse(props.course.id, {
-    ...props.course,
-    instructors: updatedInstructors
-  })
-  
-  if (success) {
-    showAddTeacherModal.value = false
+  if (isAssigningTeacher.value) return
+  isAssigningTeacher.value = true
+  try {
+    const newInstructor: CourseInstructor = {
+      teacherId: teacher.id,
+      section: 'A', 
+      students: 0
+    }
+    
+    const updatedInstructors = [...(props.course.instructors || []), newInstructor]
+    
+    const success = await adminStore.updateCourse(props.course.id, {
+      ...props.course,
+      instructors: updatedInstructors
+    })
+    
+    if (success) {
+      showAddTeacherModal.value = false
+    }
+  } finally {
+    isAssigningTeacher.value = false
   }
 }
 
 const saveSettings = async () => {
-  const success = await adminStore.updateCourse(props.course.id, {
-    ...props.course,
-    name: detailsForm.title,
-    status: detailsForm.status,
-    category: detailsForm.subjectCode, 
-    units: detailsForm.units,
-    description: detailsForm.description
-  })
-  if (success) {
+  if (isSavingCourseSettings.value) return
+  isSavingCourseSettings.value = true
+  try {
+    const success = await adminStore.updateCourse(props.course.id, {
+      ...props.course,
+      name: detailsForm.title,
+      status: detailsForm.status,
+      category: detailsForm.subjectCode, 
+      units: detailsForm.units,
+      description: detailsForm.description
+    })
+    if (success) {
+    }
+  } finally {
+    isSavingCourseSettings.value = false
   }
 }
 
