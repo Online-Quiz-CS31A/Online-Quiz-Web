@@ -1,17 +1,28 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watchEffect } from 'vue'
-import { X } from 'lucide-vue-next'
-import AdminSearchFilterBar from '@/components/admin/AdminSearchFilterBar.vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import AdminUserAddModal from '@/components/modals/AdminUserAddModal.vue'
+import AdminUserEditModal from '@/components/modals/AdminUserEditModal.vue'
+import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
+import ArchiveUserModal from '@/components/modals/ArchiveUserModal.vue'
+import { Trash2, Archive, Pencil } from 'lucide-vue-next'
+import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
-import type { AdminUser } from '@/interfaces/interfaces'
+import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
+import type { AdminUser, User } from '@/interfaces/interfaces'
+import { useAdminStore } from '@/stores/adminStore'
+import api from '@/services/api'
+import { sendPasswordEmail } from '@/services/emailService'
+
+// STORE
+const adminStore = useAdminStore()
 
 // CONSTANTS / TYPRS
 const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
 // REACTIVE
-const form = reactive<User>({
+const form = reactive<any>({
   id: 0,
-  name: '',
+  fullName: '',
   email: '',
   role: 'Student',
   status: 'Active',
@@ -22,91 +33,98 @@ const form = reactive<User>({
   course: '',
   year: '',
   section: '',
-  department: ''
+  department: '',
+  contactNumber: '',
+  emergencyContactNumber: '',
+  archiveReason: ''
 })
 
 const errors = reactive<Record<string, string>>({})
 
 // REFS
 const searchQuery = ref('')
-const filterRole = ref('All Users')
-const users = ref<AdminUser[]>([
-  {
-    id: 1,
-    name: 'Donald Francisco',
-    email: 'donald.francisco@gmail.com',
-    role: 'Teacher',
-    status: 'Active',
-    lastActive: 'October 15, 2024',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  {
-    id: 2,
-    name: 'Neil Vallecer',
-    email: 'neil.vallecer@gmail.com',
-    role: 'Student',
-    status: 'Active',
-    lastActive: 'October 5, 2025',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  {
-    id: 3,
-    name: 'Ada Wong',
-    email: 'ada.wong@gmail.com',
-    role: 'Administrator',
-    status: 'Active',
-    lastActive: 'September 14, 2025',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  },
-  {
-    id: 4,
-    name: 'Jan Rosalijos',
-    email: 'jan.rosalijos@gmail.com',
-    role: 'Student',
-    status: 'Inactive',
-    lastActive: 'September 28, 2025',
-    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-  }
-])
+const filterRole = ref('All Roles')
+const filterStatus = ref('All Statuses')
 const pageSize = ref(10)
 const currentPage = ref(1)
 const showModal = ref(false)
 const isEditing = ref(false)
+const showDeleteModal = ref(false)
+const userToDelete = ref<AdminUser | null>(null)
+const showArchiveModal = ref(false)
+const userToArchive = ref<AdminUser | null>(null)
+const originalRole = ref('')
 
+// DROPDOWN DATA
+const departments = ref<string[]>([])
+const years = ref<string[]>([])
+const courses = ref<string[]>([])
 
 // COMPUTED
-const filteredUsers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  const role = filterRole.value
-  return users.value.filter(u => {
-    const matchesSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-    const matchesRole =
-      role === 'All Users' ||
-      (role === 'Students' && u.role === 'Student') ||
-      (role === 'Teachers' && u.role === 'Teacher') ||
-      (role === 'Administrators' && u.role === 'Administrator') ||
-      (role === 'Inactive' && u.status === 'Inactive')
-    return matchesSearch && matchesRole
-  })
-})
+const totalItems = computed(() => adminStore.totalUsers)
 
-const totalItems = computed(() => filteredUsers.value.length)
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredUsers.value.slice(start, start + pageSize.value)
-})
+const hasActiveFilters = computed(() =>
+  searchQuery.value.trim() !== '' ||
+  filterRole.value !== 'All Roles' ||
+  filterStatus.value !== 'All Statuses'
+)
 
+const clearFilters = () => {
+  searchQuery.value = ''
+  filterRole.value = 'All Roles'
+  filterStatus.value = 'All Statuses'
+  currentPage.value = 1
+}
 
 // WATCHERS
-watchEffect(() => {
+watch([filterRole, filterStatus, searchQuery], () => {
   currentPage.value = 1
+  loadUsers()
 })
 
-watchEffect(() => {
-  if (showModal.value) validateForm()
+watch([currentPage, pageSize], () => {
+  loadUsers()
 })
 
 // METHODS
+const loadUsers = () => {
+  // Role filter takes precedence; fall back to status filter
+  let apiFilter = 'All Users'
+  if (filterRole.value !== 'All Roles') {
+    apiFilter = filterRole.value
+  } else if (filterStatus.value !== 'All Statuses') {
+    apiFilter = filterStatus.value
+  }
+  adminStore.fetchUsers(currentPage.value, pageSize.value, searchQuery.value, apiFilter)
+}
+
+const fetchDropdownData = async () => {
+  try {
+    const response = await api.get('/user/paged?pageNumber=1&pageSize=1000')
+    const allUsers = response.data.items || []
+    
+    const uniqueDepartments = new Set<string>()
+    allUsers
+      .filter((u: any) => u.roleName === 'Teacher' && u.teacher?.department)
+      .forEach((u: any) => uniqueDepartments.add(u.teacher.department))
+    departments.value = Array.from(uniqueDepartments).sort()
+    
+    const uniqueYears = new Set<string>()
+    allUsers
+      .filter((u: any) => u.roleName === 'Student' && u.student?.yearLevel)
+      .forEach((u: any) => uniqueYears.add(u.student.yearLevel.toString()))
+    years.value = Array.from(uniqueYears).sort()
+    
+    const uniqueCourses = new Set<string>()
+    allUsers
+      .filter((u: any) => u.roleName === 'Student' && u.student?.course)
+      .forEach((u: any) => uniqueCourses.add(u.student.course))
+    courses.value = Array.from(uniqueCourses).sort()
+  } catch (error) {
+    console.error('Failed to fetch dropdown data:', error)
+  }
+}
+
 const normalizeRole = (val: string): 'Student' | 'Teacher' | 'Administrator' => {
   const v = (val || '').toLowerCase()
   if (v.startsWith('teach')) return 'Teacher'
@@ -141,28 +159,25 @@ const onImport = async (e: Event) => {
   } else {
     records = parseCSV(text)
   }
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+  
   for (const r of records) {
     const role = normalizeRole(r.role || r.type || r.userrole || '')
-    const newUser: AdminUser = {
-      id: 0,
-      name: r.name || r.fullname || '',
+    const newUser = {
       email: r.email || '',
-      role,
-      status: (r.status && r.status.toLowerCase().startsWith('inact')) ? 'Inactive' : 'Active',
-      lastActive: r.lastActive || today,
-      avatar: defaultAvatar,
-      username: genUsernameByRole(role),
+      name: r.name || r.fullname || '',
       password: genPassword(),
-      course: r.course || '',
-      year: r.year || '',
-      section: r.section || '',
-      department: r.department || ''
+      roleId: role === 'Student' ? 3 : role === 'Teacher' ? 2 : 1, 
+      studentId: r.studentId || genUsernameByRole(role),
+      yearLevel: Number(r.year) || 1,
+      section: r.section || 'A',
+      course: r.course || 'CS',
+      department: r.department || 'General',
+      contactNumber: '0000000000',
+      createdBy: 1 
     }
-    const newId = users.value.length ? Math.max(...users.value.map(u => u.id)) + 1 : 1
-    newUser.id = newId
-    users.value.push(newUser)
+    await adminStore.createUser(newUser)
   }
+  loadUsers()
   if (input) input.value = ''
 }
 
@@ -188,9 +203,10 @@ const genPassword = () => randomAlnum(10)
 
 const openAdd = () => {
   isEditing.value = false
+  clearErrors()
   Object.assign(form, {
     id: 0,
-    name: '',
+    fullName: '',
     email: '',
     role: 'Student',
     status: 'Active',
@@ -201,16 +217,20 @@ const openAdd = () => {
     course: '',
     year: '',
     section: '',
-    department: ''
+    department: '',
+    contactNumber: '',
+    emergencyContactNumber: ''
   })
   showModal.value = true
 }
 
 const openEdit = (u: AdminUser) => {
   isEditing.value = true
+  clearErrors()
+  originalRole.value = u.role
   Object.assign(form, {
     id: u.id,
-    name: u.name,
+    fullName: u.name, 
     email: u.email,
     role: u.role,
     status: u.status,
@@ -221,7 +241,10 @@ const openEdit = (u: AdminUser) => {
     course: u.course || '',
     year: u.year || '',
     section: u.section || '',
-    department: u.department || ''
+    department: u.department || '',
+    contactNumber: u.contactNumber || '',
+    emergencyContactNumber: u.emergencyContactNumber || '',
+    archiveReason: ''
   })
   showModal.value = true
 }
@@ -230,90 +253,185 @@ const closeModal = () => { showModal.value = false }
 
 const onRoleChange = () => {
   form.username = genUsernameByRole(form.role)
+  form.course = ''
+  form.year = ''
+  form.section = ''
+  form.department = ''
 }
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/
 
 const clearErrors = () => {
   Object.keys(errors).forEach(k => delete (errors as any)[k])
 }
 
-const usernameMatchesRole = (username: string, role: string) => {
-  const isDigits = /^\d{10}$/.test(username)
-  const prefix = role === 'Teacher' ? '01' : role === 'Student' ? '02' : '00'
-  return isDigits && username.startsWith(prefix)
-}
-
-const getComparable = (u: AdminUser) => ({
-  name: u.name.trim().toLowerCase(),
-  email: u.email.trim().toLowerCase(),
-  role: u.role,
-  status: u.status,
-  username: (u.username || '').trim(),
-  course: (u.course || '').trim().toLowerCase(),
-  year: (u.year || '').trim().toLowerCase(),
-  section: (u.section || '').trim().toLowerCase(),
-  department: (u.department || '').trim().toLowerCase(),
-})
-
-const isExactDuplicate = (a: AdminUser, b: AdminUser) => {
-  const ca = getComparable(a)
-  const cb = getComparable(b)
-  return JSON.stringify(ca) === JSON.stringify(cb)
-}
-
 const validateForm = (): boolean => {
   clearErrors()
-  if (!form.name || !form.name.trim()) errors.name = 'Name is required.'
+  if (!form.fullName || !form.fullName.trim()) errors.fullName = 'Name is required.'
   if (!form.email || !form.email.trim()) errors.email = 'Email is required.'
-  else if (!emailRegex.test(form.email.trim())) errors.email = 'Enter a valid email address.'
+  else if (!gmailRegex.test(form.email.trim())) errors.email = 'Only Gmail addresses (@gmail.com) are accepted.'
   if (!form.role) errors.role = 'Role is required.'
-  if (!form.status) errors.status = 'Status is required.'
-
-  if (!form.username || !usernameMatchesRole(form.username, form.role)) {
-    errors.username = `Username must be 10 digits and start with ${form.role === 'Teacher' ? '01' : form.role === 'Student' ? '02' : '00'}.`
-  }
-  if (!form.password || form.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters.'
-  }
-
+  
   if (form.role === 'Student') {
     if (!form.course || !form.course.trim()) errors.course = 'Course is required for students.'
-    if (!form.year || !form.year.trim()) errors.year = 'Year is required for students.'
-    if (!form.section || !form.section.trim()) errors.section = 'Section is required for students.'
   }
   if (form.role === 'Teacher') {
     if (!form.department || !form.department.trim()) errors.department = 'Department is required for teachers.'
   }
-
-  const emailTaken = users.value.some(u => u.id !== form.id && u.email.trim().toLowerCase() === form.email.trim().toLowerCase())
-  if (emailTaken) errors.email = 'Email is already in use.'
-  const usernameTaken = users.value.some(u => u.id !== form.id && (u.username || '').trim() === (form.username || '').trim())
-  if (usernameTaken) errors.username = 'Username is already in use.'
-  const exactDup = users.value.some(u => u.id !== form.id && isExactDuplicate(u, form))
-  if (exactDup) errors._form = 'A user with the same information already exists.'
+  if (form.status === 'Archived') {
+    if (!form.archiveReason || !form.archiveReason.trim()) errors.archiveReason = 'A reason is required when archiving a user.'
+  }
 
   return Object.keys(errors).length === 0
 }
 
-const saveUser = () => {
-  if (!form.username) form.username = genUsernameByRole(form.role)
-  if (!form.password) form.password = genPassword()
-  if (!form.lastActive) {
-    const d = new Date()
-    form.lastActive = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-  }
-
+const saveUser = async () => {
   if (!validateForm()) return
 
-  if (isEditing.value) {
-    const idx = users.value.findIndex(u => u.id === form.id)
-    if (idx !== -1) users.value[idx] = { ...users.value[idx], ...form }
-  } else {
-    const newId = users.value.length ? Math.max(...users.value.map(u => u.id)) + 1 : 1
-    users.value.push({ ...form, id: newId })
+  let success = false
+
+  let apiStatus = form.status
+  const isArchived = form.status === 'Archived'
+  if (isArchived) {
+    apiStatus = 'Inactive'
   }
-  showModal.value = false
+
+  let roleWasChanged = false
+  if (isEditing.value) {
+    const existingUser = adminStore.users.find((u: any) => u.id === form.id)
+    const roleHasChanged = existingUser && existingUser.role !== form.role
+    roleWasChanged = !!roleHasChanged
+    
+    if (roleHasChanged && form.id > 0) {
+      const generatedPassword = form.password || genPassword()
+      const userData = {
+        email: form.email,
+        fullName: form.fullName,
+        password: generatedPassword,
+        roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+        studentId: form.username,
+        yearLevel: Number(form.year) || null,
+        section: form.section || null,
+        course: form.course || null,
+        department: form.department || null,
+        contactNumber: form.contactNumber || null,
+        emergencyContactNumber: form.emergencyContactNumber || null,
+        status: apiStatus,
+        createdBy: 1
+      }
+      
+      const deleteSuccess = await adminStore.deleteUser(form.id)
+      if (deleteSuccess) {
+        success = await adminStore.createUser(userData)
+        if (success) {
+          console.log('Role completely changed. Sending password email to:', form.email)
+          sendPasswordEmail(form.email, form.fullName, generatedPassword)
+        }
+      } else {
+        adminStore.error = 'Failed to delete old user record to change role.'
+      }
+    } else {
+      const userData = {
+        email: form.email,
+        fullName: form.fullName,
+        roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+        studentId: form.username,
+        yearLevel: Number(form.year) || null,
+        section: form.section || null,
+        course: form.course || null,
+        department: form.department || null,
+        contactNumber: form.contactNumber || null,
+        emergencyContactNumber: form.emergencyContactNumber || null,
+        status: apiStatus
+      }
+      success = await adminStore.updateUser(form.id, userData)
+    }
+  } else {
+    const generatedPassword = genPassword()
+    console.log('Generated password for new user:', generatedPassword)
+
+    const userData = {
+      email: form.email,
+      fullName: form.fullName,
+      password: generatedPassword,
+      roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+      studentId: form.username,
+      yearLevel: Number(form.year) || null,
+      section: form.section || null,
+      course: form.course || null,
+      department: form.department || null,
+      contactNumber: form.contactNumber || null,
+      emergencyContactNumber: form.emergencyContactNumber || null,
+      status: apiStatus,
+      createdBy: 1
+    }
+    success = await adminStore.createUser(userData)
+    console.log('Create user result:', success)
+
+    console.log('Sending password email to:', form.email)
+    const emailSent = await sendPasswordEmail(form.email, form.fullName, generatedPassword)
+    console.log('Email send result:', emailSent)
+    if (!emailSent) {
+      console.warn('Password email could not be sent.')
+    }
+  }
+
+  if (success) {
+    const STORAGE_KEY = 'archivedUsers'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    let archivedUsers = stored ? JSON.parse(stored) : []
+
+    const storeUser = adminStore.users.find((u: any) => u.email === form.email)
+    const userIdToUse = (!roleWasChanged && form.id) ? form.id : (storeUser ? storeUser.id : 0)
+
+    if (isArchived) {
+      archivedUsers = archivedUsers.filter((au: any) => au.email !== form.email)
+      archivedUsers.push({
+        id: userIdToUse,
+        name: form.fullName,
+        email: form.email,
+        role: form.role,
+        status: 'Archived',
+        lastActive: form.lastActive || new Date().toISOString(),
+        avatar: form.avatar || defaultAvatar,
+        username: form.username,
+        course: form.course || '',
+        year: form.year || '',
+        section: form.section || '',
+        department: form.department || '',
+        contactNumber: form.contactNumber || '',
+        emergencyContactNumber: form.emergencyContactNumber || '',
+        archivedAt: new Date().toISOString(),
+        archiveReason: form.archiveReason || 'No reason given'
+      })
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
+    } else {
+      const filtered = archivedUsers.filter((au: any) => au.email !== form.email)
+      if (filtered.length !== archivedUsers.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+      }
+    }
+
+    showModal.value = false
+    loadUsers()
+  } else {
+    errors._form = adminStore.error || 'Failed to save user. Please try again.'
+  }
+}
+
+const confirmDelete = (u: AdminUser) => {
+  userToDelete.value = u
+  showDeleteModal.value = true
+}
+
+const deleteUser = async () => {
+  if (!userToDelete.value) return
+  const success = await adminStore.deleteUser(userToDelete.value.id)
+  if (success) {
+    showDeleteModal.value = false
+    userToDelete.value = null
+    loadUsers()
+  }
 }
 
 const getRoleBadgeClass = (role: string) => {
@@ -330,31 +448,82 @@ const getRoleBadgeClass = (role: string) => {
 }
 
 const getStatusBadgeClass = (status: string) => {
-  return status === 'Active' 
-    ? 'bg-green-100 text-green-800' 
-    : 'bg-red-100 text-red-800'
+  if (status === 'Active') return 'bg-green-100 text-green-800'
+  if (status === 'Archived') return 'bg-amber-100 text-amber-800'
+  return 'bg-red-100 text-red-800'
 }
-</script>
 
+const confirmArchive = (u: AdminUser) => {
+  userToArchive.value = u
+  showArchiveModal.value = true
+}
+
+const archiveUser = (reason: string) => {
+  if (!userToArchive.value) return
+  const u = userToArchive.value
+
+  const STORAGE_KEY = 'archivedUsers'
+  const stored = localStorage.getItem(STORAGE_KEY)
+  let archivedUsers = stored ? JSON.parse(stored) : []
+  archivedUsers = archivedUsers.filter((au: any) => au.email !== u.email)
+
+  archivedUsers.push({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    status: 'Archived',
+    lastActive: u.lastActive,
+    avatar: u.avatar,
+    username: u.username,
+    course: u.course,
+    year: u.year,
+    section: u.section,
+    department: u.department,
+    contactNumber: u.contactNumber,
+    emergencyContactNumber: u.emergencyContactNumber,
+    archivedAt: new Date().toISOString(),
+    archiveReason: reason
+  })
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
+
+  showArchiveModal.value = false
+  userToArchive.value = null
+  loadUsers()
+}
+
+// LIFECYCLE
+onMounted(() => {
+  loadUsers()
+  fetchDropdownData()
+})
+</script>
 
 <template>
   <div class="p-6 space-y-6">
-    <!-- User controls -->
+    <!-- Search and Filters -->
     <AdminSearchFilterBar
       v-model="searchQuery"
       v-model:filter="filterRole"
-      :options="['All Users', 'Students', 'Teachers', 'Administrators', 'Inactive']"
-      placeholder="Search users..."
+      :options="['All Roles', 'Students', 'Teachers', 'Administrators']"
+      v-model:filter2="filterStatus"
+      :options2="['All Statuses', 'Active', 'Inactive', 'Archived']"
+      placeholder="Search by name or email..."
       action-label="Add User"
       import-label="Import Users"
       import-accept=".csv,.json"
+      :result-count="totalItems"
+      result-label="user"
+      :has-active-filters="hasActiveFilters"
       @action="openAdd"
       @import="onImport"
+      @clear-filters="clearFilters"
     />
     
     <!-- User table -->
     <div class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-gray-200">
-      <div class="overflow-x-auto">
+      <SkeletonTable v-if="adminStore.isLoading" :rows="10" :columns="6" />
+      <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 data-table">
           <thead class="bg-gray-50">
             <tr>
@@ -370,7 +539,7 @@ const getStatusBadgeClass = (status: string) => {
               <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                 Status
               </th>
-              <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+              <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                 Last Active
               </th>
               <th scope="col" class="relative px-6 py-3">
@@ -379,7 +548,7 @@ const getStatusBadgeClass = (status: string) => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in paginatedUsers" :key="user.id" class="transition-colors hover:bg-gray-50">
+            <tr v-for="user in adminStore.users" :key="user.id" class="transition-colors hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 w-10 h-10">
@@ -407,8 +576,24 @@ const getStatusBadgeClass = (status: string) => {
                 <time :datetime="user.lastActive">{{ user.lastActive }}</time>
               </td>
               <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                <a href="#" @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900">Edit</a>
+                <template v-if="user.status !== 'Archived'">
+                  <button @click.prevent="openEdit(user)" class="text-blue-600 hover:text-blue-900 mr-3" title="Edit">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button @click="confirmArchive(user)" class="text-amber-600 hover:text-amber-900 mr-3" title="Archive">
+                    <Archive class="w-4 h-4" />
+                  </button>
+                  <button @click="confirmDelete(user)" class="text-red-600 hover:text-red-900" title="Delete">
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </template>
+                <span v-else class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
+                  <Archive class="w-3 h-3" /> Archived
+                </span>
               </td>
+            </tr>
+            <tr v-if="adminStore.users.length === 0">
+              <td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found.</td>
             </tr>
           </tbody>
         </table>
@@ -422,95 +607,50 @@ const getStatusBadgeClass = (status: string) => {
       :page-size="pageSize"
     />
     
-    <!-- Modal: Add/Edit User -->
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[9999]">
-        <div class="w-full max-w-lg max-h-[70vh] overflow-hidden bg-white rounded-lg shadow-lg flex flex-col">
-          <div class="flex items-center justify-between px-6 py-4 border-b">
-            <h3 class="text-lg font-semibold">{{ isEditing ? 'Edit User' : 'Add User' }}</h3>
-            <button @click="closeModal" class="text-gray-500 hover:text-gray-700"><X class="w-5 h-5" /></button>
-          </div>
-          <div class="px-6 py-4 overflow-y-auto">
-            <p v-if="errors._form" class="mb-3 text-sm text-red-600">{{ errors._form }}</p>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">Name</label>
-                <input v-model="form.name" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Full name" />
-                <p v-if="errors.name" class="mt-1 text-xs text-red-600">{{ errors.name }}</p>
-              </div>
-              <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">Email</label>
-                <input v-model="form.email" type="email" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="email@example.com" />
-                <p v-if="errors.email" class="mt-1 text-xs text-red-600">{{ errors.email }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Role</label>
-                <select v-model="form.role" @change="onRoleChange" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                  <option>Student</option>
-                  <option>Teacher</option>
-                  <option>Administrator</option>
-                </select>
-                <p v-if="errors.role" class="mt-1 text-xs text-red-600">{{ errors.role }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Status</label>
-                <select v-model="form.status" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-                <p v-if="errors.status" class="mt-1 text-xs text-red-600">{{ errors.status }}</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Username</label>
-                <input v-model="form.username" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.username" class="mt-1 text-xs text-red-600">{{ errors.username }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input v-model="form.password" type="text" readonly class="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                <p v-if="errors.password" class="mt-1 text-xs text-red-600">{{ errors.password }}</p>
-              </div>
-
-              <!-- Student fields -->
-              <template v-if="form.role === 'Student'">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Course</label>
-                  <input v-model="form.course" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.course" class="mt-1 text-xs text-red-600">{{ errors.course }}</p>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Year</label>
-                  <input v-model="form.year" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.year" class="mt-1 text-xs text-red-600">{{ errors.year }}</p>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700">Section</label>
-                  <input v-model="form.section" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.section" class="mt-1 text-xs text-red-600">{{ errors.section }}</p>
-                </div>
-              </template>
-
-              <!-- Teacher fields -->
-              <template v-else-if="form.role === 'Teacher'">
-                <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700">Department</label>
-                  <input v-model="form.department" type="text" class="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md focus:outline-none sm:text-sm" />
-                  <p v-if="errors.department" class="mt-1 text-xs text-red-600">{{ errors.department }}</p>
-                </div>
-              </template>
-            </div>
-          </div>
-          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t">
-            <button @click="closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-            <button @click="saveUser" :disabled="Object.keys(errors).length > 0" :class="['px-4 py-2 text-sm font-medium text-white rounded-md', Object.keys(errors).length > 0 ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700']">Save</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <AdminUserAddModal
+      v-if="showModal && !isEditing"
+      :open="true"
+      :model-value="form"
+      :errors="errors"
+      :departments="departments"
+      :years="years"
+      :courses="courses"
+      @close="closeModal"
+      @save="saveUser"
+      @role-change="onRoleChange"
+      @update:modelValue="val => Object.assign(form, val)"
+    />
+    <AdminUserEditModal
+      v-if="showModal && isEditing"
+      :open="true"
+      :model-value="form"
+      :original-role="originalRole"
+      :errors="errors"
+      :departments="departments"
+      :years="years"
+      :courses="courses"
+      @close="closeModal"
+      @save="saveUser"
+      @role-change="onRoleChange"
+      @update:modelValue="val => Object.assign(form, val)"
+    />
+    <DangerConfirmModal
+      :open="showDeleteModal"
+      title="Delete User"
+      message="Are you sure you want to delete this user? This action cannot be undone."
+      confirm-label="Delete"
+      cancel-label="Cancel"
+      @confirm="deleteUser"
+      @cancel="showDeleteModal = false"
+    />
+    <ArchiveUserModal
+      :open="showArchiveModal"
+      :user-name="userToArchive?.name"
+      @confirm="archiveUser"
+      @cancel="showArchiveModal = false"
+    />
   </div>
 </template>
-
 
 <style scoped>
 @keyframes fadeIn {

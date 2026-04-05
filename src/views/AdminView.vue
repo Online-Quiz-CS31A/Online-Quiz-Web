@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
-import { Bell } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
+import { Bell, LogOut, User } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/authStore'
 const AdminSidebar = defineAsyncComponent(() => import('@/components/admin/AdminSidebar.vue'))
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const showProfileDropdown = ref(false)
 
 // CONSTANTS
 const titleMap: Record<string, string> = {
@@ -14,12 +18,46 @@ const titleMap: Record<string, string> = {
   'admin-courses': 'Course Catalog',
   'admin-quiz-settings': 'Quiz Settings',
   'admin-data': 'Data Management',
-  'admin-analytics': 'Analytics'
+  'admin-analytics': 'Analytics',
+  'admin-archived': 'Archived Courses'
 }
 
 // COMPUTED
 const pageTitle = computed(() => {
   return titleMap[route.name as string] || 'Dashboard'
+})
+
+const userName = computed(() => authStore.currentUser?.name || 'Admin')
+
+// METHODS
+function toggleProfileDropdown() {
+  showProfileDropdown.value = !showProfileDropdown.value
+}
+
+function closeProfileDropdown() {
+  showProfileDropdown.value = false
+}
+
+async function logout() {
+  await authStore.logout()
+  closeProfileDropdown()
+  router.push({ name: 'login' })
+}
+
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (showProfileDropdown.value && !target.closest('.relative')) {
+    closeProfileDropdown()
+  }
+}
+
+// LIFECYCLE
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -40,11 +78,12 @@ const pageTitle = computed(() => {
             </div>
           </div>
           <div class="flex items-center ml-4 space-x-4 md:ml-6">
-            <button class="p-1 text-gray-400 bg-white rounded-full hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button class="p-1 text-gray-400 bg-white rounded-full hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
               <Bell class="w-6 h-6" />
             </button>
             <div class="relative ml-3">
               <button 
+                @click="toggleProfileDropdown"
                 type="button" 
                 class="flex items-center max-w-xs text-sm bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
@@ -55,6 +94,28 @@ const pageTitle = computed(() => {
                   alt="Admin profile"
                 >
               </button>
+              <!-- Profile Dropdown -->
+              <Transition name="dropdown">
+                <div 
+                  v-if="showProfileDropdown"
+                  @click.stop
+                  class="absolute right-0 z-50 w-56 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+                >
+                  <div class="px-4 py-3">
+                    <p class="text-sm font-medium text-gray-900">{{ userName }}</p>
+                    <p class="text-xs text-gray-500 truncate">{{ authStore.currentUser?.email }}</p>
+                  </div>
+                  <div class="py-1">
+                    <button
+                      @click="logout"
+                      class="flex items-center w-full px-4 py-2 text-sm text-left text-red-700 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut class="w-4 h-4 mr-3" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </Transition>
             </div>
           </div>
         </div>
@@ -64,9 +125,11 @@ const pageTitle = computed(() => {
       <main class="flex-1 overflow-y-auto focus:outline-none">
         <div class="py-6">
           <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <Transition name="fade" mode="out-in">
-              <router-view />
-            </Transition>
+            <router-view v-slot="{ Component }">
+              <Transition name="fade" mode="out-in">
+                <component :is="Component" :key="route.name" />
+              </Transition>
+            </router-view>
           </div>
         </div>
       </main>
@@ -88,6 +151,17 @@ const pageTitle = computed(() => {
 }
 
 .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
   opacity: 0;
   transform: translateY(-10px);
 }

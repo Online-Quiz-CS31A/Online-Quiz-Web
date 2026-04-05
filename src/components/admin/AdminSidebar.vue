@@ -1,8 +1,29 @@
 <script setup lang="ts">
-import { BookOpen, Home, Users, BookOpenCheck, Settings, Database, BarChart2 } from 'lucide-vue-next'
+import { ref, computed, watch } from 'vue'
+import { BookOpen, Home, Users, BookOpenCheck, Settings, Database, BarChart2, Archive, ChevronDown } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
+const authStore = useAuthStore()
+
+const archivedOpen = ref(false)
+
+const isArchivedActive = computed(() =>
+  route.name === 'admin-archived-courses' || route.name === 'admin-archived-users'
+)
+
+if (isArchivedActive.value) {
+  archivedOpen.value = true
+}
+
+watch(isArchivedActive, (val) => {
+  if (val) archivedOpen.value = true
+})
+
+const toggleArchived = () => {
+  archivedOpen.value = !archivedOpen.value
+}
 </script>
 
 
@@ -131,6 +152,77 @@ const route = useRoute()
           />
           Analytics
         </router-link>
+        
+        <!-- Archived Dropdown -->
+        <div>
+          <button
+            @click="toggleArchived"
+            :class="[
+              'flex items-center justify-between w-full px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
+              isArchivedActive
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+            ]"
+          >
+            <div class="flex items-center">
+              <Archive
+                :class="[
+                  'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
+                  isArchivedActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+                ]"
+              />
+              Archived
+            </div>
+            <ChevronDown
+              :class="[
+                'w-4 h-4 transition-transform duration-200',
+                archivedOpen ? 'rotate-180' : '',
+                isArchivedActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+              ]"
+            />
+          </button>
+          
+          <!-- Dropdown Sub-items -->
+          <div
+            v-show="archivedOpen"
+            class="ml-8 mt-1 space-y-1 overflow-hidden transition-all duration-200"
+          >
+            <router-link
+              to="/admin/archived/courses"
+              :class="[
+                'flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer transition-all group',
+                route.name === 'admin-archived-courses'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+              ]"
+            >
+              <BookOpenCheck
+                :class="[
+                  'w-4 h-4 mr-2 transition-all duration-200',
+                  route.name === 'admin-archived-courses' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+                ]"
+              />
+              Courses
+            </router-link>
+            <router-link
+              to="/admin/archived/users"
+              :class="[
+                'flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer transition-all group',
+                route.name === 'admin-archived-users'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+              ]"
+            >
+              <Users
+                :class="[
+                  'w-4 h-4 mr-2 transition-all duration-200',
+                  route.name === 'admin-archived-users' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+                ]"
+              />
+              Users
+            </router-link>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -139,12 +231,12 @@ const route = useRoute()
       <div class="flex items-center">
         <img 
           class="w-10 h-10 rounded-full" 
-          src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" 
-          alt="Admin profile"
+          :src="authStore.currentUser?.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" 
+          :alt="authStore.currentUser?.name"
         >
         <div class="ml-3">
-          <p class="text-sm font-medium text-gray-700">Admin User</p>
-          <p class="text-xs font-medium text-gray-500">Super Administrator</p>
+          <p class="text-sm font-medium text-gray-700">{{ authStore.currentUser?.name || 'Admin User' }}</p>
+          <p class="text-xs font-medium text-gray-500">{{ authStore.currentUser?.role || 'Administrator' }}</p>
         </div>
       </div>
     </div>

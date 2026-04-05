@@ -1,159 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
-import type { QuizViewQuestion } from '@/interfaces/interfaces'
+import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 
 // CONSTANTS
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
-interface ReviewQuestion extends QuizViewQuestion {
-  userAnswer: number | null
-  isCorrect: boolean
-}
-
-const questions: ReviewQuestion[] = [
-  {
-    question: "John sells each slice at Php15.50. Assume that he sells at a constant rate of 3 slices per 10 minutes. If a pizza is sliced in eight parts, how many pizzas will be sold within 3 hours?",
-    options: ["6.75", "8", "11.25", "720"],
-    correctAnswer: 0,
-    userAnswer: 0,
-    isCorrect: false
-  },
-  {
-    question: "What is 25% of 80?",
-    options: ["15", "20", "25", "30"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "If a shirt costs $45 and is discounted by 20%, what is the final price?",
-    options: ["$9", "$36", "$54", "$45"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is the sum of 1/4 + 1/3?",
-    options: ["2/7", "7/12", "1/2", "2/3"],
-    correctAnswer: 1,
-    userAnswer: 3,
-    isCorrect: false
-  },
-  {
-    question: "If 3x + 7 = 22, what is the value of x?",
-    options: ["3", "5", "7", "15"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is the area of a rectangle with length 8 and width 6?",
-    options: ["14", "28", "48", "56"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If a car travels 240 miles in 4 hours, what is its average speed?",
-    options: ["40 mph", "60 mph", "80 mph", "120 mph"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is 15% of 200?",
-    options: ["15", "20", "30", "35"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If 2y - 5 = 11, what is the value of y?",
-    options: ["3", "6", "8", "13"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "What is the perimeter of a square with side length 5?",
-    options: ["10", "15", "20", "25"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "What is 3/4 of 100?",
-    options: ["25", "50", "75", "100"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If a book costs $24 and tax is 8%, what is the total cost?",
-    options: ["$19.20", "$24.00", "$25.92", "$32.00"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "What is the value of 2³?",
-    options: ["4", "6", "8", "16"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If 4x = 20, what is the value of x?",
-    options: ["4", "5", "16", "20"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is the square root of 64?",
-    options: ["6", "7", "8", "9"],
-    correctAnswer: 2,
-    userAnswer: 2,
-    isCorrect: true
-  },
-  {
-    question: "If a triangle has angles of 45°, 45°, and 90°, what type of triangle is it?",
-    options: ["Equilateral", "Isosceles", "Scalene", "Right"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "What is 1/2 + 1/6?",
-    options: ["1/3", "2/3", "1/2", "3/4"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  },
-  {
-    question: "If a circle has radius 5, what is its circumference?",
-    options: ["10π", "15π", "20π", "25π"],
-    correctAnswer: 0,
-    userAnswer: 3,
-    isCorrect: false
-  },
-  {
-    question: "What is 20% of 150?",
-    options: ["20", "25", "30", "35"],
-    correctAnswer: 2,
-    userAnswer: 0,
-    isCorrect: false
-  },
-  {
-    question: "If 5z + 3 = 18, what is the value of z?",
-    options: ["2", "3", "4", "5"],
-    correctAnswer: 1,
-    userAnswer: 1,
-    isCorrect: true
-  }
-]
+const questions: ScoreReviewQuestion[] = quizzesStore.getScoreItems() as ScoreReviewQuestion[]
 
 // REFS
 const currentQuestion = ref(0)
@@ -161,12 +17,23 @@ const currentQuestion = ref(0)
 // COMPUTED
 const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz > Score`)
 
+const scoreDetails = computed(() => quizzesStore.calculateScore())
+
 const score = computed(() => {
-  const correct = questions.filter(q => q.isCorrect).length
-  return `${correct}/${questions.length}`
+  return `${scoreDetails.value.score}/${scoreDetails.value.totalPoints}`
 })
 
 const correctCount = computed(() => questions.filter(q => q.isCorrect).length)
+
+const startedAtText = computed(() => {
+  const iso = quizzesStore.currentAttempt.startAtISO
+  return iso ? new Date(iso).toLocaleString() : '-'
+})
+
+const completedAtText = computed(() => {
+  const iso = quizzesStore.currentAttempt.endAtISO
+  return iso ? new Date(iso).toLocaleString() : '-'
+})
 
 // METHODS
 const goToQuestion = (questionIndex: number) => {
@@ -186,7 +53,14 @@ const previousQuestion = () => {
 }
 
 const finishReview = () => {
-  router.push({ name: 'student' })
+  quizzesStore.clearAttemptStorage()
+  
+  const quizId = quizzesStore.currentAttempt.quizId
+  if (quizId) {
+    router.push({ name: 'student-prequiz', params: { quizId: quizId.toString() } })
+  } else {
+    router.push({ name: 'student' })
+  }
 }
 
 const getQuestionButtonClass = (index: number) => {
@@ -209,12 +83,14 @@ const getOptionClass = (optionIndex: number) => {
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
-  if (isCorrectAnswer && isUserAnswer) {
+  if (isUserAnswer && isCorrectAnswer) {
     return 'bg-[#86efac] border-[#4ade80]'
-  } else if (isCorrectAnswer) {
-    return 'bg-[#F4F7F9] border-[#7B90DF]'
-  } else if (isUserAnswer) {
+  }
+  if (isUserAnswer && !isCorrectAnswer) {
     return 'bg-[#fca5a5] border-[#f87171]'
+  }
+  if (isCorrectAnswer) {
+    return 'bg-[#F4F7F9] border-[#4ade80]'
   }
   
   return 'bg-[#F4F7F9] border-[#7B90DF]'
@@ -227,8 +103,9 @@ const getOptionIconClass = (optionIndex: number) => {
   
   if (isCorrectAnswer && isUserAnswer) {
     return 'bg-[#4ade80] border-[#4ade80] text-white'
-  } else if (isCorrectAnswer) {
-    return 'bg-[#F4F7F9] border-[#7B90DF] text-black'
+  }
+  if (isCorrectAnswer) {
+    return 'bg-[#F4F7F9] border-[#4ade80] text-[#4ade80]'
   } else if (isUserAnswer) {
     return 'bg-[#f87171] border-[#f87171] text-white'
   }
@@ -249,6 +126,123 @@ const getIconType = (optionIndex: number) => {
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
   return isCorrectAnswer ? 'check' : 'times'
+}
+
+const isCorrectOption = (optionIndex: number) => {
+  const question = questions[currentQuestion.value]
+  return question.correctAnswer === optionIndex
+}
+
+const isShortAnswerCorrect = (answer: any) => {
+  if (!answer) return false
+  const text = String(answer).trim()
+  if (!text) return false
+  const sentences = text
+    .split(/[.!?\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+
+  if (sentences.length < 3) return false
+
+  const allSentencesLongEnough = sentences.every(sentence => {
+    const words = sentence
+      .split(/\s+/)
+      .map(w => w.trim())
+      .filter(Boolean)
+    return words.length >= 3
+  })
+
+  return allSentencesLongEnough
+}
+
+const getQuestionScore = (index: number) => {
+  const q = questions[index]
+  if (!q) {
+    return { earned: 0, total: 0 }
+  }
+
+  const basePoints = q.points || 0
+  let total = basePoints
+  let earned = 0
+
+  if (q.questionType === 'matching' && Array.isArray(q.matchingPairs) && q.matchingPairs.length > 0) {
+    total = basePoints * q.matchingPairs.length
+    const correctCount = q.matchingPairs.filter(p => p.isCorrect).length
+    earned = basePoints * correctCount
+    return { earned, total }
+  }
+
+  if (q.questionType === 'enumeration' && Array.isArray(q.options) && q.options.length > 0) {
+    const items = q.options
+    total = basePoints * items.length
+
+    const userItems: string[] = Array.isArray(q.userAnswer)
+      ? (q.userAnswer as any[]).map(v => (v != null ? String(v) : ''))
+      : []
+
+    const normalize = (text: string) => text.trim().toLowerCase()
+    const correctNormalized = items.map(item => normalize(String(item || ''))).filter(Boolean)
+    const userNormalized = userItems.map(item => normalize(String(item || ''))).filter(Boolean)
+
+    const userSet = new Set(userNormalized)
+
+    let correctItemCount = 0
+    const counted = new Set<string>()
+    correctNormalized.forEach(val => {
+      if (userSet.has(val) && !counted.has(val)) {
+        correctItemCount += 1
+        counted.add(val)
+      }
+    })
+
+    earned = basePoints * correctItemCount
+    return { earned, total }
+  }
+
+  if (q.questionType === 'fill-blank') {
+    total = basePoints
+    earned = q.isCorrect ? basePoints : 0
+    return { earned, total }
+  }
+
+  if (q.questionType === 'text') {
+    total = basePoints
+    earned = isShortAnswerCorrect(q.userAnswer) ? basePoints : 0
+    return { earned, total }
+  }
+
+  if ((q.questionType === 'multiple-choice' || q.questionType === 'true-false' || !q.questionType) && Array.isArray(q.options) && q.options.length > 0) {
+    total = basePoints
+    if (q.userAnswer !== null && q.userAnswer !== undefined && q.userAnswer === q.correctAnswer) {
+      earned = basePoints
+    }
+    return { earned, total }
+  }
+
+  total = basePoints
+  earned = q.isCorrect ? basePoints : 0
+  return { earned, total }
+}
+
+const isEnumerationItemCorrect = (itemIndex: number) => {
+  const q = questions[currentQuestion.value]
+  if (!q || !Array.isArray(q.options)) return false
+
+  const items = q.options
+  const userItems: string[] = Array.isArray(q.userAnswer)
+    ? (q.userAnswer as any[]).map(v => (v != null ? String(v) : ''))
+    : []
+
+  const normalize = (text: string) => text.trim().toLowerCase()
+  const correctSet = new Set(items.map(item => normalize(String(item || ''))).filter(Boolean))
+
+  const raw = userItems[itemIndex] != null ? String(userItems[itemIndex]) : ''
+  const userTrim = normalize(raw)
+
+  if (!userTrim) return false
+  if (correctSet.size === 0) return false
+
+  return correctSet.has(userTrim)
 }
 </script>
 
@@ -276,7 +270,7 @@ const getIconType = (optionIndex: number) => {
               </div>
               <div class="px-6 py-3 text-sm">
                 <span class="text-[#4285f4] font-semibold">Started:</span>
-                <span class="ml-2 text-gray-800">July 27, 2025, 10:30 AM</span>
+                <span class="ml-2 text-gray-800">{{ startedAtText }}</span>
               </div>
             </div>
             <!-- Row 2 -->
@@ -287,7 +281,7 @@ const getIconType = (optionIndex: number) => {
               </div>
               <div class="px-6 py-3 text-sm">
                 <span class="text-[#4285f4] font-semibold">Completed:</span>
-                <span class="ml-2 text-gray-800">July 27, 2025, 11:30 AM</span>
+                <span class="ml-2 text-gray-800">{{ completedAtText }}</span>
               </div>
             </div>
           </div>
@@ -300,40 +294,306 @@ const getIconType = (optionIndex: number) => {
         <div class="col-span-2">
           <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
             <div class="mb-6">
-              <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Question {{ currentQuestion + 1 }}</h2>
+                <span class="text-sm font-semibold text-[#4285f4]">
+                  Score:
+                  {{ getQuestionScore(currentQuestion).earned }}
+                  /
+                  {{ getQuestionScore(currentQuestion).total }}
+                </span>
+              </div>
               <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].question }}</p>
             </div>
             
             <div class="space-y-3">
-              <div 
-                v-for="(option, index) in questions[currentQuestion].options" 
-                :key="index"
-                :class="[
-                  'flex items-center p-2 rounded-xl transition-all border-1',
-                  getOptionClass(index)
-                ]"
-              >
-                <div class="mr-4 flex items-center justify-center w-8 h-8">
+              <!-- Multiple Choice / True-False Rendering -->
+              <template v-if="questions[currentQuestion].questionType === 'multiple-choice' || questions[currentQuestion].questionType === 'true-false' || !questions[currentQuestion].questionType">
+                <div 
+                  v-for="(option, index) in questions[currentQuestion].options" 
+                  :key="index"
+                  :class="[
+                    'relative flex items-center p-2 rounded-xl transition-all border-1',
+                    getOptionClass(index)
+                  ]"
+                >
                   <div 
-                    :class="[
-                      'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
-                      getOptionIconClass(index)
-                    ]"
+                    v-if="isCorrectOption(index) && questions[currentQuestion].userAnswer !== index" 
+                    class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
                   >
-                    <i 
-                      v-if="showIcon(index)" 
-                      :class="['fas', `fa-${getIconType(index)}`, 'text-xs']"
-                    ></i>
-                    <span v-else>{{ String.fromCharCode(65 + index) }}</span>
+                    Correct
+                  </div>
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div 
+                      :class="[
+                        'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                        getOptionIconClass(index)
+                      ]"
+                    >
+                      <i 
+                        v-if="showIcon(index)" 
+                        :class="['fas', `fa-${getIconType(index)}`,'text-xs']"
+                      ></i>
+                      <span v-else>{{ String.fromCharCode(65 + index) }}</span>
+                    </div>
+                  </div>
+                  <span 
+                    :class="[
+                      'text-base font-medium',
+                      questions[currentQuestion].userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
+                    ]"
+                  >{{ option }}</span>
+                </div>
+              </template>
+
+              <!-- Enumeration Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'enumeration'">
+                <div class="space-y-3">
+                  <div
+                    v-for="(_, index) in (questions[currentQuestion].options || [])"
+                    :key="index"
+                    class="flex items-center gap-3"
+                  >
+                    <span class="text-gray-600 font-medium">{{ index + 1 }}.</span>
+                    <div
+                      :class="[
+                        'flex-1 p-3 rounded-xl border-2 flex items-center',
+                        isEnumerationItemCorrect(index)
+                          ? 'bg-[#86efac] border-[#4ade80] text-green-900'
+                          : 'bg-[#fca5a5] border-[#f87171] text-black'
+                      ]"
+                    >
+                      <div class="mr-4 flex items-center justify-center w-8 h-8">
+                        <div
+                          :class="[
+                            'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                            isEnumerationItemCorrect(index)
+                              ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                              : 'bg-[#f87171] border-[#f87171] text-white'
+                          ]"
+                        >
+                          <i
+                            :class="[
+                              'fas',
+                              isEnumerationItemCorrect(index) ? 'fa-check' : 'fa-times',
+                              'text-xs'
+                            ]"
+                          ></i>
+                        </div>
+                      </div>
+
+                      <div class="flex flex-col text-sm">
+                        <span class="font-medium text-gray-800">
+                          Your answer:
+                          <span
+                            v-if="
+                              (questions[currentQuestion].userAnswer || [])[index] &&
+                              String((questions[currentQuestion].userAnswer || [])[index]).trim() !== ''
+                            "
+                          >
+                            {{ (questions[currentQuestion].userAnswer || [])[index] }}
+                          </span>
+                          <span v-else class="italic">(unanswered)</span>
+                        </span>
+                        <span
+                          v-if="!isEnumerationItemCorrect(index) && (questions[currentQuestion].options || [])[index]"
+                          class="text-xs text-[#16a34a] mt-1"
+                        >
+                          Correct: {{ (questions[currentQuestion].options || [])[index] || '' }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <span 
+              </template>
+
+              <!-- Fill in the Blank Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'fill-blank'">
+                <div
+                  v-if="!questions[currentQuestion].isCorrect"
+                  class="mt-3 text-sm"
+                >
+                  <span class="font-semibold text-[#16a34a]">Correct answer: </span>
+                  <span class="font-semibold text-gray-800">
+                    {{ questions[currentQuestion].correctAnswerText || '' }}
+                  </span>
+                </div>
+                <div
                   :class="[
-                    'text-base font-medium',
-                    questions[currentQuestion].userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
+                    'flex items-center p-2 rounded-xl transition-all border-1',
+                    questions[currentQuestion].isCorrect
+                      ? 'bg-[#86efac] border-[#4ade80]'
+                      : 'bg-[#fca5a5] border-[#f87171]'
                   ]"
-                >{{ option }}</span>
-              </div>
+                >
+                
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div
+                      :class="[
+                        'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                        questions[currentQuestion].isCorrect
+                          ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                          : 'bg-[#f87171] border-[#f87171] text-white'
+                      ]"
+                    >
+                      <i
+                        :class="[
+                          'fas',
+                          questions[currentQuestion].isCorrect ? 'fa-check' : 'fa-times',
+                          'text-xs'
+                        ]"
+                      ></i>
+                    </div>
+                  </div>
+
+                  
+                  <span class="text-base font-medium text-gray-800">
+                    {{
+                      questions[currentQuestion].userAnswer &&
+                      String(questions[currentQuestion].userAnswer).trim() !== ''
+                        ? questions[currentQuestion].userAnswer
+                        : ''
+                    }}
+                    <span
+                      v-if="!(questions[currentQuestion].userAnswer && String(questions[currentQuestion].userAnswer).trim() !== '')"
+                      class="italic"
+                    >(unanswered)</span>
+                  </span>
+                </div>
+              </template>
+
+              <!-- Text Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'text'">
+                <div
+                  v-if="!isShortAnswerCorrect(questions[currentQuestion].userAnswer)"
+                  class="mb-2 text-sm"
+                >
+                  <span class="font-semibold text-[#16a34a]">Correct answer:</span>
+                  <span class="font-semibold text-gray-800">
+                    answer must be at least 3 sentences
+                  </span>
+                </div>
+
+                <div
+                  :class="[
+                    'flex items-center p-2 rounded-xl transition-all border-1',
+                    isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                      ? 'bg-[#86efac] border-[#4ade80]'
+                      : 'bg-[#fca5a5] border-[#f87171]'
+                  ]"
+                >
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div
+                      :class="[
+                        'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                        isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                          ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                          : 'bg-[#f87171] border-[#f87171] text-white'
+                      ]"
+                    >
+                      <i
+                        :class="[
+                          'fas',
+                          isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                            ? 'fa-check'
+                            : 'fa-times',
+                          'text-xs'
+                        ]"
+                      ></i>
+                    </div>
+                  </div>
+                  <span class="text-base font-medium text-gray-800">
+                    <template
+                      v-if="
+                        questions[currentQuestion].userAnswer &&
+                        String(questions[currentQuestion].userAnswer).trim() !== ''
+                      "
+                    >
+                      {{ questions[currentQuestion].userAnswer }}
+                    </template>
+                    <span
+                      v-else
+                      class="italic"
+                    >(unanswered)</span>
+                  </span>
+                </div>
+              </template>
+
+              <!-- Matching Rendering -->
+              <template v-else-if="questions[currentQuestion].questionType === 'matching'">
+                <div>
+                  <div class="grid grid-cols-2 gap-6 mb-3">
+                    <h3 class="font-semibold text-gray-700">Column A</h3>
+                    <h3 class="font-semibold text-gray-700">Match with</h3>
+                  </div>
+
+                  <div
+                    v-for="(pair, index) in (questions[currentQuestion].matchingPairs || [])"
+                    :key="index"
+                    class="grid grid-cols-2 gap-6 mb-2 items-stretch"
+                  >
+                    <!-- Column A -->
+                    <div class="h-full">
+                      <div class="h-full flex items-center p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg">
+                        {{ index + 1 }}. {{ pair.left }}
+                      </div>
+                    </div>
+
+                    <!-- Column B -->
+                    <div class="h-full">
+                      <div
+                        :class="[
+                          'h-full flex items-center p-2 rounded-xl transition-all border-1',
+                          pair.isCorrect
+                            ? 'bg-[#86efac] border-[#4ade80]'
+                            : 'bg-[#fca5a5] border-[#f87171]'
+                        ]"
+                      >
+                        <div class="mr-4 flex items-center justify-center w-8 h-8">
+                          <div
+                            :class="[
+                              'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
+                              pair.isCorrect
+                                ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                                : 'bg-[#f87171] border-[#f87171] text-white'
+                            ]"
+                          >
+                            <i
+                              :class="[
+                                'fas',
+                                pair.isCorrect ? 'fa-check' : 'fa-times',
+                                'text-xs'
+                              ]"
+                            ></i>
+                          </div>
+                        </div>
+
+                        <div class="flex flex-col text-sm">
+                          <span class="font-medium text-gray-800">
+                            Your answer:
+                            <span v-if="pair.userRight && pair.userRight.trim() !== ''">
+                              {{ pair.userRight }}
+                            </span>
+                            <span v-else class="italic">(unanswered)</span>
+                          </span>
+                          <span v-if="!pair.isCorrect" class="text-xs text-[#16a34a] mt-1">
+                            Correct: {{ pair.right }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Fallback for other types -->
+              <template v-else>
+                <div class="flex items-center p-2 rounded-xl transition-all border-1 bg-[#F4F7F9] border-[#7B90DF]">
+                  <span class="text-base font-medium text-gray-800">
+                    {{ questions[currentQuestion].options[0] || '(answer recorded)' }}
+                  </span>
+                </div>
+              </template>
             </div>
           </div>
           

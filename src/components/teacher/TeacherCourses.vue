@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { ClassItem } from '@/interfaces/interfaces'
+import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -15,7 +18,10 @@ const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const router = useRouter()
 
 // PROPS
-const props = defineProps<{ classes?: ClassItem[];  maxItems?: number }>()
+const props = withDefaults(defineProps<{ classes?: ClassItem[]; maxItems?: number; showHeader?: boolean; mode?: 'default' | 'archived' }>(), {
+  showHeader: true,
+  mode: 'default',
+})
 
 // EMITS
 const emit = defineEmits<{
@@ -26,9 +32,14 @@ const emit = defineEmits<{
 // REACTIVE
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
+const quizzesStore = useQuizzesStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
+const coursePendingDeletion = ref<ClassItem | null>(null)
+const showCourseDeleteModal = ref(false)
+const coursePendingUnarchive = ref<ClassItem | null>(null)
+const showCourseUnarchiveModal = ref(false)
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -54,11 +65,50 @@ const handleEnterClass = (classItem: ClassItem) => {
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
-  const ok = confirm(`Leave class ${classItem.name}?`)
-  if (ok) {
-    emit('leave-class', classItem)
-  }
+  coursePendingDeletion.value = classItem
+  showCourseDeleteModal.value = true
   menuOpenForId.value = null
+}
+
+const handleEditClass = (classItem: ClassItem) => {
+  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  menuOpenForId.value = null
+}
+
+const handleCancelDelete = () => {
+  showCourseDeleteModal.value = false
+  coursePendingDeletion.value = null
+}
+
+const handleConfirmDelete = () => {
+  if (!coursePendingDeletion.value) {
+    handleCancelDelete()
+    return
+  }
+  classesStore.archiveCourse(coursePendingDeletion.value.id)
+  quizzesStore.archiveQuizzesForCourse(coursePendingDeletion.value.name)
+  handleCancelDelete()
+}
+
+const handleUnarchiveClass = (classItem: ClassItem) => {
+  coursePendingUnarchive.value = classItem
+  showCourseUnarchiveModal.value = true
+  menuOpenForId.value = null
+}
+
+const handleCancelUnarchiveCourse = () => {
+  showCourseUnarchiveModal.value = false
+  coursePendingUnarchive.value = null
+}
+
+const handleConfirmUnarchiveCourse = () => {
+  if (!coursePendingUnarchive.value) {
+    handleCancelUnarchiveCourse()
+    return
+  }
+  classesStore.unarchiveCourse(coursePendingUnarchive.value.id)
+  quizzesStore.unarchiveQuizzesForCourse(coursePendingUnarchive.value.name)
+  handleCancelUnarchiveCourse()
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -94,12 +144,69 @@ const getInitials = (name: string) => {
 
 const getStudentCount = (courseId: number) => {
   const sections = sectionsStore.getSectionsByCourse(courseId)
-  return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+  return sections.reduce((total, section) => total + (section.students || 0), 0)
 }
 
+const hasFetchedCounts = ref(false)
+
+const fetchStudentCounts = async () => {
+  if (hasFetchedCounts.value) return
+  
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  const { useAdminStore } = await import('@/stores/adminStore')
+  const adminStore = useAdminStore()
+  
+  const coursesToProcess = classes.value.filter(c => c.id)
+  if (!coursesToProcess.length) return
+  
+  console.log('Fetching student counts for', coursesToProcess.length, 'courses')
+  
+  for (const classItem of coursesToProcess) {
+    const sections = sectionsStore.getSectionsByCourse(classItem.id)
+    
+    if (!sections.length) {
+      console.log(`No sections found for course ${classItem.id} (${classItem.name})`)
+      continue
+    }
+    
+    console.log(`Found ${sections.length} sections for course ${classItem.id}`)
+    
+    for (const section of sections) {
+      if (section.name) {
+        try {
+          const students = await adminStore.fetchStudentsBySection(section.name)
+          console.log(`Section ${section.name}: ${students.length} students`)
+          sectionsStore.updateSection(section.id, {
+            students: students.length
+          })
+        } catch (e) {
+          console.error(`Failed to fetch students for section ${section.name}`, e)
+        }
+      }
+    }
+  }
+  
+  hasFetchedCounts.value = true
+  console.log('Finished fetching all student counts')
+}
+
+watch(classes, (newClasses) => {
+  if (newClasses.length > 0 && !hasFetchedCounts.value) {
+    console.log('Classes loaded, triggering student count fetch')
+    fetchStudentCounts()
+  }
+}, { immediate: true })
+
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', onDocClick)
+  
+  await classesStore.fetchTeacherCourses()
+  
+  if (classes.value.length > 0 && !hasFetchedCounts.value) {
+    fetchStudentCounts()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -109,12 +216,28 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="mb-8">
-    <div class="flex justify-between items-center mb-4 student-classes-header">
+    <div v-if="props.showHeader" class="flex justify-between items-center mb-4 student-classes-header">
       <h2 class="text-xl font-bold text-gray-800">My Courses</h2>
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Empty State -->
+    <div v-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+      <div class="relative mb-6">
+        <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-book-open text-4xl text-blue-400"></i>
+        </div>
+        <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+          <i class="fas fa-plus text-white text-sm"></i>
+        </div>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-2">No Courses Yet</h3>
+      <p class="text-gray-500 max-w-md mb-6">
+        You haven't created any courses yet. Create your first course to start teaching.
+      </p>
+    </div>
+    
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
         v-for="classItem in displayedClasses" 
         :key="classItem.id"
@@ -144,19 +267,35 @@ onBeforeUnmount(() => {
               v-if="menuOpenForId === classItem.id" 
               class="absolute right-0 top-7 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20"
             >
-              <button 
-                @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-              >
-                Edit 
-              </button>
-              
-              <button 
-                @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-              >
-                Leave
-              </button>
+              <template v-if="props.mode === 'archived'">
+                <button 
+                  @click.stop="handleEnterClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                >
+                  View
+                </button>
+                <button 
+                  @click.stop="handleUnarchiveClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
+                >
+                  Unarchive
+                </button>
+              </template>
+              <template v-else>
+                <button 
+                  @click.stop="handleEditClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                >
+                  Edit 
+                </button>
+                
+                <button 
+                  @click.stop="handleLeaveClass(classItem)"
+                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                >
+                  Leave
+                </button>
+              </template>
             </div>
           </div>
 
@@ -184,6 +323,21 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+
+  <CourseDeleteModal
+    :open="showCourseDeleteModal"
+    :courseName="coursePendingDeletion?.name"
+    @cancel="handleCancelDelete"
+    @confirm="handleConfirmDelete"
+  />
+
+	<ConfirmUnarchiveModal
+	  :open="showCourseUnarchiveModal"
+	  :item-name="coursePendingUnarchive?.name"
+	  title="Unarchive course?"
+	  @cancel="handleCancelUnarchiveCourse"
+	  @confirm="handleConfirmUnarchiveCourse"
+	/>
 </template>
 
 <style scoped>

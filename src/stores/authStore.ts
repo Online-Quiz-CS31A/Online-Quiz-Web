@@ -1,74 +1,141 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { Role, User } from '../interfaces/interfaces'
+import * as authService from '../services/authService'
 
 export const useAuthStore = defineStore('auth', () => {
-  const users = ref<User[]>([
-    { username: '0112345678', password: 'teacher', role: 'teacher', name: 'Donald Francisco' },
-    { username: '0111111111', password: 'teacher', role: 'teacher', name: 'Alice Mao' },
-    { username: '0112222222', password: 'teacher', role: 'teacher', name: 'Brian Lopez' },
-    { username: '0113333333', password: 'teacher', role: 'teacher', name: 'Celine Garcia' },
-    { username: '0114444444', password: 'teacher', role: 'teacher', name: 'Diego Santos' },
-    
-    { username: '0212345678', password: 'student', role: 'student', name: 'Chitoge Kirisaki' },
-    { username: '0221111111', password: 'student', role: 'student', name: 'Mika Tan' },
-    { username: '0222222222', password: 'student', role: 'student', name: 'Ken Yamada' },
-    { username: '0223333333', password: 'student', role: 'student', name: 'Sofia Romero' },
-    { username: '0224444444', password: 'student', role: 'student', name: 'Liam Cruz' },
-    { username: '0225555555', password: 'student', role: 'student', name: 'Emma Garcia' },
-    { username: '0226666666', password: 'student', role: 'student', name: 'Noah Santos' },
-    { username: '0227777777', password: 'student', role: 'student', name: 'Olivia Reyes' },
-    { username: '0228888888', password: 'student', role: 'student', name: 'James Dela Cruz' },
-    { username: '0229999999', password: 'student', role: 'student', name: 'Ava Martinez' },
-    { username: '0231111111', password: 'student', role: 'student', name: 'Lucas Villanueva' },
-    { username: '0232222222', password: 'student', role: 'student', name: 'Isabella Ramos' },
-    { username: '0233333333', password: 'student', role: 'student', name: 'Mason Torres' },
-    { username: '0234444444', password: 'student', role: 'student', name: 'Sophia Hernandez' },
-    { username: '0235555555', password: 'student', role: 'student', name: 'Ethan Bautista' },
-  ])
-
   const currentUser = ref<User | null>(null)
   const isAuthenticated = computed(() => currentUser.value !== null)
   const userRole = computed<Role | null>(() => (currentUser.value ? currentUser.value.role : null))
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
-  try {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null
-    if (saved) {
-      const parsed = JSON.parse(saved) as User
-      const expectedPrefix = parsed.role === 'teacher' ? '01' : '02'
-      if (parsed.username?.startsWith(expectedPrefix)) {
-        const found = users.value.find(u => u.username === parsed.username)
-        if (found) {
-          currentUser.value = { ...found }
-        }
-      }
-    }
-  } catch (e) {}
+  const STORAGE_KEY = 'authUser'
 
-  function login(username: string, password: string): { success: boolean; message?: string; role?: Role } {
-    const found = users.value.find(u => u.username === username)
-    if (!found) return { success: false, message: 'Account not found' }
-    if (found.password !== password) return { success: false, message: 'Invalid password' }
-    currentUser.value = { ...found }
+  function loadUserFromStorage() {
     try {
-      if (typeof window !== 'undefined') localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-    } catch {}
-    return { success: true, role: found.role }
+      const stored = window.localStorage.getItem(STORAGE_KEY)
+      if (!stored) return
+      const parsed = JSON.parse(stored) as User
+      if (parsed && parsed.username && parsed.role) {
+        currentUser.value = parsed
+      }
+    } catch (e) {
+      console.warn('Failed to load auth user from storage', e)
+    }
   }
 
-  function logout() {
-    currentUser.value = null
+  function saveUserToStorage(user: User | null) {
     try {
-      if (typeof window !== 'undefined') localStorage.removeItem('currentUser')
-    } catch {}
+      if (!user) {
+        window.localStorage.removeItem(STORAGE_KEY)
+      } else {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+      }
+    } catch (e) {
+      console.warn('Failed to persist auth user to storage', e)
+    }
+  }
+
+  loadUserFromStorage()
+
+  /**
+   * Login user with email and password
+   */
+  async function login(email: string, password: string): Promise<{ success: boolean; message?: string; role?: Role }> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const loginData = await authService.login(email, password)
+
+      if (!loginData || !loginData.user) {
+        throw new Error('Login failed')
+      }
+
+      const userSummary = loginData.user
+
+      const backendRoleValue = userSummary.roleName
+        ?? (userSummary.roles && userSummary.roles.length > 0 ? userSummary.roles[0] : undefined)
+        ?? (userSummary.role)
+        ?? (userSummary.teacher ? 'teacher' : undefined)
+        ?? (userSummary.student ? 'student' : undefined)
+        ?? 'student'
+
+      const role = mapRoleToLocal(backendRoleValue)
+
+      const user: User = {
+        username: userSummary.email,
+        password: '',
+        role: role,
+        name: userSummary.fullName ?? userSummary.name ?? '',
+        id: (userSummary.userId ?? userSummary.id) as number,
+        email: userSummary.email,
+        roles: userSummary.roles ?? (userSummary.roleName ? [userSummary.roleName] : []),
+      }
+
+      currentUser.value = user
+      saveUserToStorage(user)
+
+      return { success: true, role }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Invalid email or password'
+      error.value = errorMessage
+      return { success: false, message: errorMessage }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Map backend role to local role type
+   */
+  function mapRoleToLocal(backendRole?: string): Role {
+    const roleLower = (backendRole || 'student').toLowerCase()
+    if (roleLower === 'teacher') return 'teacher'
+    if (roleLower === 'student') return 'student'
+    if (roleLower === 'admin') return 'admin'
+    return 'student'
+  }
+
+  /**
+   * Logout user
+   */
+  async function logout() {
+    currentUser.value = null
+    saveUserToStorage(null)
+    try {
+      await authService.logout()
+    } catch (err: any) {
+      if (err?.status !== 401) {
+        console.warn('Backend logout failed:', err)
+      }
+    }
+  }
+
+  /**
+   * Verify current session with backend
+   */
+  async function verifySession(): Promise<boolean> {
+    try {
+      const result = await authService.verifyToken()
+      return result?.valid === true
+    } catch (err) {
+      if (err && typeof err === 'object' && 'status' in err && err.status !== 401) {
+        console.error('Unexpected session verification error:', err)
+      }
+      return false
+    }
   }
 
   return {
-    users,
     currentUser,
     isAuthenticated,
     userRole,
+    isLoading,
+    error,
     login,
     logout,
+    verifySession,
   }
 })

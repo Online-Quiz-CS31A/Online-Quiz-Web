@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { BarChart2, TrendingUp, Users, AlertTriangle, Activity, Filter, Download, Search, Calendar } from 'lucide-vue-next'
+import { ref, computed, onMounted, watch } from 'vue'
+import { 
+  BarChart2, TrendingUp, Users, AlertTriangle, Activity, Filter, Download, Search, Calendar,
+  LogIn, FileCheck, ClipboardCheck, UserPlus, FileDown, FileText, Trash2, LogOut, Edit, Send, UserCheck, Upload
+} from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
+import SkeletonStats from '@/components/skeletons/SkeletonStats.vue'
+import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import type { LogEntry, AnalyticsSummary } from '@/interfaces/interfaces'
-
+import { useAdminStore } from '@/stores/adminStore'
 const { success } = useToast()
+const adminStore = useAdminStore()
+const logs = computed(() => adminStore.logs)
+const isLoading = computed(() => adminStore.isLoading)
 
 // RED
-const logs = ref<LogEntry[]>([])
 const selectedType = ref<string>('all')
 const selectedSeverity = ref<string>('all')
 const searchQuery = ref('')
@@ -83,40 +90,11 @@ const logTypeStats = computed(() => {
 })
 
 // METHODS
-const generateMockLogs = () => {
-  const types: LogEntry['type'][] = ['login', 'quiz_created', 'quiz_submitted', 'warning', 'user_created', 'data_export']
-  const severities: LogEntry['severity'][] = ['info', 'warning', 'error', 'success']
-  const users = ['john.doe', 'jane.smith', 'admin', 'teacher1', 'student123']
-  
-  const actions: Record<string, string[]> = {
-    login: ['Successful login', 'Failed login attempt', 'Session expired'],
-    quiz_created: ['Created new quiz', 'Published quiz', 'Updated quiz settings'],
-    quiz_submitted: ['Submitted quiz on time', 'Late submission', 'Auto-submitted due to timeout'],
-    warning: ['Tab switch detected', 'Multiple failed login attempts', 'Suspicious activity'],
-    user_created: ['New user registered', 'User profile updated', 'Password changed'],
-    data_export: ['Exported data as JSON', 'Exported data as CSV', 'Database backup created']
-  }
-
-  const mockLogs: LogEntry[] = []
-  
-  for (let i = 0; i < 100; i++) {
-    const type = types[Math.floor(Math.random() * types.length)]
-    const timestamp = new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
-    const user = users[Math.floor(Math.random() * users.length)]
-    const action = actions[type][Math.floor(Math.random() * actions[type].length)]
-    
-    mockLogs.push({
-      id: `log-${i}`,
-      timestamp,
-      type,
-      user,
-      action,
-      details: `Additional context for ${action}`,
-      severity: severities[Math.floor(Math.random() * severities.length)]
-    })
-  }
-
-  return mockLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+const loadLogs = () => {
+  adminStore.fetchActivityLogs(1, 10000, {
+    startDate: dateRange.value.start,
+    endDate: dateRange.value.end
+  })
 }
 
 const exportLogs = () => {
@@ -149,16 +127,24 @@ const clearFilters = () => {
   searchQuery.value = ''
   dateRange.value = { start: '', end: '' }
   currentPage.value = 1
+  loadLogs()
 }
 
 const getTypeIcon = (type: string) => {
   const icons: Record<string, any> = {
-    login: Users,
-    quiz_created: BarChart2,
-    quiz_submitted: Activity,
+    login: LogIn,
+    logout: LogOut,
+    delete: Trash2,
+    create: FileText,
+    update: Edit,
+    submit: Send,
+    enroll: UserCheck,
+    import: Upload,
+    quiz_created: FileText,
+    quiz_submitted: ClipboardCheck,
     warning: AlertTriangle,
-    user_created: Users,
-    data_export: Download
+    user_created: UserPlus,
+    data_export: FileDown
   }
   return icons[type] || Activity
 }
@@ -166,6 +152,13 @@ const getTypeIcon = (type: string) => {
 const getTypeColor = (type: string) => {
   const colors: Record<string, string> = {
     login: 'bg-blue-100 text-blue-700',
+    logout: 'bg-slate-100 text-slate-700',
+    delete: 'bg-red-100 text-red-700',
+    create: 'bg-green-100 text-green-700',
+    update: 'bg-amber-100 text-amber-700',
+    submit: 'bg-purple-100 text-purple-700',
+    enroll: 'bg-teal-100 text-teal-700',
+    import: 'bg-cyan-100 text-cyan-700',
     quiz_created: 'bg-green-100 text-green-700',
     quiz_submitted: 'bg-purple-100 text-purple-700',
     warning: 'bg-orange-100 text-orange-700',
@@ -185,16 +178,22 @@ const getSeverityColor = (severity: string) => {
   return colors[severity] || 'bg-gray-50 text-gray-700 border-gray-200'
 }
 
+// WATCHERS
+watch(dateRange, () => {
+  loadLogs()
+}, { deep: true })
+
 // LIFECYCLE
 onMounted(() => {
-  logs.value = generateMockLogs()
+  loadLogs()
 })
 </script>
 
 <template>
   <div class="p-6 space-y-6">
     <!-- Analytics Summary -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <SkeletonStats v-if="isLoading" />
+    <div v-else class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
@@ -261,7 +260,7 @@ onMounted(() => {
     </div>
 
     <!-- Log Type Distribution -->
-    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+    <div v-if="!isLoading" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
       <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Distribution</h3>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <div
@@ -292,7 +291,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
             <Search :size="14" class="inline mr-1" />
@@ -345,12 +344,12 @@ onMounted(() => {
             <input
               v-model="dateRange.start"
               type="date"
-              class="flex-1 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
             <input
               v-model="dateRange.end"
               type="date"
-              class="flex-1 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
           </div>
         </div>
@@ -375,7 +374,8 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="overflow-x-auto">
+      <SkeletonTable v-if="isLoading" :rows="10" :columns="5" />
+      <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -429,6 +429,9 @@ onMounted(() => {
                   {{ log.severity.toUpperCase() }}
                 </span>
               </td>
+            </tr>
+            <tr v-if="logs.length === 0">
+              <td colspan="5" class="px-6 py-4 text-center text-gray-500">No logs found.</td>
             </tr>
           </tbody>
         </table>

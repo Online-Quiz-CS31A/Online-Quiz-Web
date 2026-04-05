@@ -3,32 +3,26 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
+import ConfirmUnansweredModal from '@/components/modals/ConfirmUnansweredModal.vue'
 import type { ReviewQuestion } from '@/interfaces/interfaces'
+import { useQuizzesStore } from '@/stores/quizzesStore'
 
 // CONSTANTS
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
 
 // REFS
 const currentDate = ref('')
 const currentTime = ref('')
 const timeInterval = ref<ReturnType<typeof setInterval> | null>(null)
+const showConfirmModal = ref(false)
 
 // COMPUTED
-const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz > Review`)
+const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizzesStore.currentAttempt.quizTitle || 'Quiz'} > Review`)
 
+const questions = computed<ReviewQuestion[]>(() => quizzesStore.getReviewQuestions())
 
-const questions = ref<ReviewQuestion[]>([
-  { id: 1, answered: true },
-  { id: 2, answered: true },
-  { id: 3, answered: false },
-  { id: 4, answered: true },
-  { id: 5, answered: false },
-  { id: 6, answered: true },
-  { id: 7, answered: true },
-  { id: 8, answered: true },
-  { id: 9, answered: false },
-  { id: 10, answered: true },
-])
+const unansweredCount = computed(() => questions.value.filter(q => !q.answered).length)
 
 // METHODS
 const updateDateTime = () => {
@@ -52,7 +46,28 @@ const updateDateTime = () => {
 }
 
 const editQuestion = (questionId: number) => {
-  router.push({ name: 'quiz', query: { question: questionId } })
+  const current = quizzesStore.currentAttempt
+  const qid = current.quizId
+
+  if (!qid) {
+    router.push({ name: 'quiz' })
+    return
+  }
+
+  const questions = quizzesStore.getStudentQuizQuestions(qid)
+  const studentQuiz = quizzesStore.myStudentQuizzes.find(q => q.id === qid)
+  const index = Math.max(0, Math.min(questions.length - 1, questionId - 1))
+
+  router.push({
+    name: 'quiz',
+    state: {
+      quizId: qid,
+      quizTitle: current.quizTitle || studentQuiz?.title || 'Quiz',
+      quizSubject: studentQuiz?.subject || 'Quiz',
+      questions,
+      questionIndex: index,
+    },
+  } as any)
 }
 
 const backToQuiz = () => {
@@ -60,7 +75,24 @@ const backToQuiz = () => {
 }
 
 const submitQuiz = () => {
+  if (unansweredCount.value > 0) {
+    showConfirmModal.value = true
+    return
+  }
+  quizzesStore.finishAttempt()
+  quizzesStore.saveAttemptToHistory()
   router.push({ name: 'quiz-score' })
+}
+
+const confirmSubmit = () => {
+  showConfirmModal.value = false
+  quizzesStore.finishAttempt()
+  quizzesStore.saveAttemptToHistory()
+  router.push({ name: 'quiz-score' })
+}
+
+const cancelSubmit = () => {
+  showConfirmModal.value = false
 }
 
 // LIFECYCLE
@@ -162,4 +194,10 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+  <ConfirmUnansweredModal
+    :open="showConfirmModal"
+    :unanswered-count="unansweredCount"
+    @confirm="confirmSubmit"
+    @cancel="cancelSubmit"
+  />
 </template>

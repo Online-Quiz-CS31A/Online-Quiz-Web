@@ -1,49 +1,197 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
+import { useQuizzesStore } from '@/stores/quizzesStore'
+import type { QuizAttempt } from '@/interfaces/interfaces'
 
 
 const route = useRoute()
 const router = useRouter()
+const quizzesStore = useQuizzesStore()
+
+onMounted(() => {
+  quizzesStore.loadAttemptFromStorage()
+
+  const current = (quizzesStore as any).currentAttempt
+  const id = Number((route.params as any)?.quizId)
+  
+  if (current && current.isOngoing && current.quizId === id) {
+    const remaining = quizzesStore.getRemainingSeconds()
+    if (remaining <= 0 && current.durationSeconds > 0) {
+      quizzesStore.finishAttempt()
+      quizzesStore.saveAttemptToHistory()
+      quizzesStore.clearAttemptStorage()
+    }
+  }
+
+  quizzesStore.loadAttemptHistoryFromStorage()
+})
 
 interface RouteParams {
   quizId: string
 }
 
 // COMPUTED
-const quizId = computed(() => (route.params as unknown as RouteParams).quizId)
+const quizId = computed(() => Number((route.params as unknown as RouteParams).quizId))
 
-const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value.title}`)
+const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value?.title || 'Quiz'}`)
 
-const quiz = computed(() => ({
-  id: quizId.value,
-  title: 'Week 1 Quiz',
-  subject: 'Information Assurance',
-  duration: '30 minutes',
-  questions: 20,
-  correctAnswers: 17,
-  passingScore: 12,
-  passingPercentage: 50,
-  attemptsAvailable: 1,
-  currentScore: 85,
-  improvement: 5,
-  history: [
-    { name: '1', date: 'May 15, 2023', score: '18/20', mark: 90 },
-    { name: '2', date: 'April 28, 2023', score: '17/20', mark: 85 },
-    { name: '3', date: 'April 10, 2023', score: '16/20', mark: 80 },
-  ]
-}))
+const studentQuizData = computed(() => {
+  return quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+})
+
+const attemptHistory = computed(() => {
+  return quizzesStore.getQuizAttemptHistory(quizId.value)
+})
+
+const quiz = computed(() => {
+  const studentQuiz = studentQuizData.value
+  if (!studentQuiz) {
+    return {
+      id: quizId.value,
+      title: 'Quiz Not Found',
+      subject: 'Unknown',
+      duration: '0 minutes',
+      questions: 0,
+      correctAnswers: 0,
+      passingScore: 0,
+      passingPercentage: 50,
+      attemptsAvailable: 1,
+      maxAttempts: 1,
+      currentScore: 0,
+      improvement: 0,
+      history: [] as any[],
+      basePoints: 0,
+      hasScore: false
+    }
+  }
+  
+  const quizQuestions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const questionCount = quizQuestions.length
+  const maxAttempts = studentQuiz.maxAttempts || 1
+  const history = attemptHistory.value
+  
+  const latestAttempt = history.length > 0 ? history[history.length - 1] : null
+  const bestAttempt = history.reduce((best, cur) => {
+    if (!best) return cur
+    return cur.percentage > best.percentage ? cur : best
+  }, null as any)
+  const correctAnswers = bestAttempt ? bestAttempt.score : 0
+  
+  const improvement = history.length >= 2 
+    ? history[history.length - 1].percentage - history[0].percentage 
+    : 0
+  
+  const overallTotalPoints = quizQuestions.reduce((sum: number, q: any) => {
+    const base = typeof q.points === 'number' ? q.points : 1
+    if (q.type === 'matching' && Array.isArray((q as any).pairs) && (q as any).pairs.length > 0) {
+      return sum + base * (q as any).pairs.length
+    }
+    if (q.type === 'enumeration' && Array.isArray((q as any).items) && (q as any).items.length > 0) {
+      return sum + base * (q as any).items.length
+    }
+    return sum + base
+  }, 0)
+
+  const basePoints = bestAttempt ? bestAttempt.totalPoints : overallTotalPoints
+  const passingScore = Math.ceil(basePoints * 0.5)
+  
+  return {
+    id: studentQuiz.id,
+    title: studentQuiz.title,
+    subject: studentQuiz.subject,
+    duration: studentQuiz.timeLimit,
+    questions: questionCount,
+    correctAnswers,
+    passingScore, 
+    passingPercentage: 50,
+    attemptsAvailable: maxAttempts - history.length,
+    maxAttempts,
+    currentScore: bestAttempt ? bestAttempt.percentage : (latestAttempt ? latestAttempt.percentage : 0),
+    improvement,
+    history: history.map(h => ({
+      attempt: h.attemptNumber.toString(),
+      attemptNumber: h.attemptNumber,
+      date: new Date(h.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      score: `${h.score}/${h.totalPoints}`,
+      mark: h.percentage.toString(),
+      isBest: bestAttempt ? h.percentage === bestAttempt.percentage : false,
+      percentage: h.percentage
+    })),
+    basePoints,
+    hasScore: history.length > 0
+  }
+})
+
+const canStartQuiz = computed(() => {
+  return quiz.value.attemptsAvailable > 0 && !hasOngoingAttempt.value
+})
+
+const hasOngoingAttempt = computed(() => {
+  const attempt = (quizzesStore as any).currentAttempt
+  return Boolean(attempt && attempt.isOngoing && attempt.quizId === quizId.value)
+})
+
+const parseTimeLimitToSeconds = (tl: string | undefined): number => {
+  if (!tl) return 0
+  const s = tl.trim().toLowerCase()
+  const m = s.match(/(\d+)\s*(min|mins|minute|minutes)/)
+  if (m) return Number(m[1]) * 60
+  const h = s.match(/(\d+)\s*h/)
+  const mm = s.match(/(\d+)\s*m/)
+  if (h || mm) {
+    return (h ? Number(h[1]) * 3600 : 0) + (mm ? Number(mm[1]) * 60 : 0)
+  }
+  const num = Number(s)
+  if (!isNaN(num) && num > 0) return num * 60
+  return 0
+}
 
 
 // METHODS
 const startQuiz = () => {
-  router.push({ name: 'quiz' })
+  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const durationSec = parseTimeLimitToSeconds(quiz.value.duration)
+  quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length, durationSec)
+  router.push({ 
+    name: 'quiz',
+    state: {
+      quizId: quizId.value,
+      quizTitle: quiz.value.title,
+      quizSubject: quiz.value.subject,
+      questions
+    }
+  } as any)
 }
 
-const markAsDone = () => {
-  console.log('Quiz marked as done')
+const continueQuiz = () => {
+  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  router.push({ 
+    name: 'quiz',
+    state: {
+      quizId: quizId.value,
+      quizTitle: quiz.value.title,
+      quizSubject: quiz.value.subject,
+      questions
+    }
+  } as any)
+}
+
+const isDone = computed(() => quizzesStore.isQuizMarkedDone(quizId.value))
+
+const toggleMarkAsDone = () => {
+  quizzesStore.toggleQuizDone(quizId.value)
+}
+
+const reviewAttempt = (attemptNumber: number) => {
+  const loaded = quizzesStore.loadAttemptForReview(quizId.value, attemptNumber)
+  if (loaded) {
+    router.push({ name: 'quiz-score' })
+  } else {
+    console.error('Failed to load attempt for review')
+  }
 }
 </script>
 
@@ -63,8 +211,16 @@ const markAsDone = () => {
                 </h2>
                 <p class="mt-2 opacity-90">Before you begin, here's important information about this quiz</p>
               </div>
-              <button @click="markAsDone" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-xl transition duration-200 flex items-center shadow-sm">
-                <CheckCircle class="w-4 h-4 mr-2" /> Mark as Done
+              <button
+                @click="toggleMarkAsDone"
+                :class="[
+                  isDone
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-white border-2 border-[#4285f4] text-[#4285f4] hover:bg-[#e3f2fd]',
+                  'font-semibold py-2 px-6 rounded-xl transition duration-200 flex items-center shadow-sm cursor-pointer'
+                ]"
+              >
+                <CheckCircle class="w-4 h-4 mr-2" /> {{ isDone ? 'Done' : 'Mark as Done' }}
               </button>
             </div>
           </div>
@@ -104,17 +260,17 @@ const markAsDone = () => {
                 <div class="mt-4">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-gray-700 font-medium">Passing Score</span>
-                    <span class="font-bold text-[#1976d2] text-lg">{{ quiz.passingScore }}/{{ quiz.questions }}</span>
+                    <span class="font-bold text-[#1976d2] text-lg">{{ quiz.passingScore }}/{{ quiz.basePoints }}</span>
                   </div>
                   <div class="flex items-center justify-between mb-3">
                     <span class="text-gray-700 font-medium">Your Score</span>
-                    <span class="font-bold text-[#4285f4] text-2xl">{{ quiz.correctAnswers }}/{{ quiz.questions }}</span>
+                    <span class="font-bold text-[#4285f4] text-2xl">{{ quiz.hasScore ? quiz.correctAnswers : 0 }}/{{ quiz.basePoints }}</span>
                   </div>
                   <div class="flex items-center gap-3 mt-1">
                     <div class="w-full bg-gray-200 rounded-full h-3">
-                      <div class="bg-[#4285f4] h-3 rounded-full transition-all" :style="{ width: (quiz.correctAnswers / quiz.questions * 100) + '%' }"></div>
+                      <div class="bg-[#4285f4] h-3 rounded-full transition-all" :style="{ width: (quiz.hasScore ? quiz.currentScore : 0) + '%' }"></div>
                     </div>
-                    <span class="min-w-[3rem] text-sm font-semibold text-[#4285f4] text-right">{{ Math.round((quiz.correctAnswers / quiz.questions) * 100) }}%</span>
+                    <span class="min-w-[3rem] text-sm font-semibold text-[#4285f4] text-right">{{ quiz.hasScore ? Math.round(quiz.currentScore) : 0 }}%</span>
                   </div>
                 </div>
               </div>
@@ -136,7 +292,7 @@ const markAsDone = () => {
                 </div>
                 <div class="flex items-start">
                   <HelpCircle class="mr-2 mt-1 text-blue-600 w-4 h-4" />
-                  <span>You will only have {{ quiz.attemptsAvailable }} attempt(s) to answer this quiz.</span>
+                  <span>You have {{ quiz.attemptsAvailable }} of {{ quiz.maxAttempts }} attempt(s) remaining for this quiz.</span>
                 </div>
               </div>
             </div>
@@ -147,9 +303,23 @@ const markAsDone = () => {
                 <HelpCircle class="w-4 h-4 mr-2" />
                 <span>Need help? Contact your instructor</span>
               </div>
-              <button @click="startQuiz" class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
-                <Play class="w-4 h-4 mr-2" /> Start Quiz
-              </button>
+              <div class="flex flex-col items-end gap-2">
+                <div v-if="!canStartQuiz && !hasOngoingAttempt" class="text-red-600 text-sm flex items-center">
+                  <XCircle class="w-4 h-4 mr-2" />
+                  Maximum attempts reached
+                </div>
+                <button 
+                  v-if="!hasOngoingAttempt" 
+                  @click="startQuiz" 
+                  :disabled="!canStartQuiz"
+                  class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                >
+                  <Play class="w-4 h-4 mr-2" /> Start Quiz
+                </button>
+                <button v-else @click="continueQuiz" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm">
+                  <Play class="w-4 h-4 mr-2" /> Continue Ongoing Quiz
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -160,18 +330,33 @@ const markAsDone = () => {
             <BarChart2 class="w-5 h-5 mr-2" /> Attempts History
           </h3>
           <div class="mt-4">
-            <div class="grid grid-cols-4 gap-4 text-center mb-4 text-gray-700 font-semibold">
+            <div class="grid grid-cols-5 gap-4 text-center mb-4 text-gray-700 font-semibold">
               <div>Attempts</div>
               <div>Date</div>
               <div>Score</div>
               <div>Mark</div>
+              <div>Review</div>
             </div>
             <div class="space-y-3">
-              <div v-for="item in quiz.history" :key="item.name + item.date" class="grid grid-cols-4 gap-4 text-center items-center bg-[#F4F7F9] p-3 rounded-xl border border-[#7B90DF]">
-                <div class="text-gray-800">{{ item.name }}</div>
-                <div class="text-gray-600">{{ item.date }}</div>
-                <div class="font-bold text-[#4285f4]">{{ item.score }}</div>
-                <div class="font-bold text-[#1976d2]">{{ item.mark }}%</div>
+              <div v-if="quiz.history.length === 0" class="text-center py-8 text-gray-500">
+                <p>No attempts yet. Start the quiz to see your history.</p>
+              </div>
+              <div v-for="item in quiz.history" :key="item.attempt + item.date" :class="[
+                  'grid grid-cols-5 gap-4 text-center items-center p-3 rounded-xl border',
+                  item.isBest ? 'bg-blue-50 border-blue-400' : 'bg-[#F4F7F9] border-[#7B90DF]'
+                ]">
+                <div :class="item.isBest ? 'text-blue-800 font-semibold' : 'text-gray-800'">{{ item.attempt }}</div>
+                <div :class="item.isBest ? 'text-blue-700' : 'text-gray-600'">{{ item.date }}</div>
+                <div :class="item.isBest ? 'font-extrabold text-blue-600' : 'font-bold text-[#4285f4]'">{{ item.score }}</div>
+                <div :class="item.isBest ? 'font-extrabold text-blue-700' : 'font-bold text-[#1976d2]'">{{ item.mark }}%</div>
+                <div>
+                  <button 
+                    @click="reviewAttempt(item.attemptNumber)" 
+                    class="text-[#4285f4] hover:text-[#1976d2] font-medium hover:underline transition-colors"
+                  >
+                    Review
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -1,57 +1,34 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Users, BookOpen, Clipboard, Activity as ActivityIcon, User, Book, Calendar, Clock } from 'lucide-vue-next'
 import type { Stats, Activity } from '@/interfaces/interfaces'
+import { useAdminStore } from '@/stores/adminStore'
+import { storeToRefs } from 'pinia'
+import SkeletonStats from '@/components/skeletons/SkeletonStats.vue'
+import SkeletonList from '@/components/skeletons/SkeletonList.vue'
 
 // EMITS
 defineEmits<{
   navigate: [section: string]
 }>()
 
-// REFS
-const stats = ref<Stats>({
-  activeUsers: 1248,
-  activeCourses: 87,
-  quizzesTaken: 5342,
-  systemHealth: 'Optimal'
-})
+// STORE
+const adminStore = useAdminStore()
+const { stats, recentActivity, isLoading } = storeToRefs(adminStore)
 
-const recentActivity = ref<Activity[]>([
-  {
-    id: 1,
-    title: 'New user registration',
-    status: 'Completed',
-    icon: User,
-    user: 'Sofia Dafirst',
-    date: 'September 29, 2025',
-    timeAgo: '2 minutes ago'
-  },
-  {
-    id: 2,
-    title: 'Course update',
-    status: 'In progress',
-    icon: Book,
-    user: 'Calculus Physics',
-    date: 'September 29, 2025',
-    timeAgo: '15 minutes ago'
-  },
-  {
-    id: 3,
-    title: 'Quiz completion',
-    status: 'Completed',
-    icon: Clipboard,
-    user: 'Automata Midterm',
-    date: 'September 29, 2025',
-    timeAgo: '1 day ago'
-  }
-])
+// LIFECYCLE
+onMounted(() => {
+  adminStore.fetchDashboardStats()
+  adminStore.fetchActivityLogs()
+})
 </script>
 
 
 <template>
   <div class="p-6 space-y-6">
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <SkeletonStats v-if="isLoading" />
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Active Users -->
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="$emit('navigate', 'users')">
         <div class="flex items-center justify-between">
@@ -112,7 +89,9 @@ const recentActivity = ref<Activity[]>([
     <!-- Recent Activity -->
     <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
       <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-      <div class="space-y-3">
+      <SkeletonList v-if="isLoading" />
+      <div v-else class="space-y-3">
+        <div v-if="recentActivity.length === 0" class="text-center text-gray-500 py-4">No recent activity</div>
         <div v-for="activity in recentActivity" :key="activity.id" class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-3">

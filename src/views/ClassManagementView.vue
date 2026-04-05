@@ -8,6 +8,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+import ImportResultsModal from '@/components/modals/ImportResultsModal.vue'
 
 // CONSTANTS
 const router = useRouter()
@@ -17,6 +18,11 @@ const selectedStudents = ref<StudentViewModel[]>([])
 const search = ref('')
 const filters = ref<'All' | YearLevel>('All')
 const dragOver = ref(false)
+const showImportResult = ref(false)
+const importAdded = ref<StudentViewModel[]>([])
+const importSkipped = ref<{ studentNumber: string; name: string; reason: string }[]>([])
+const additionalSubjects = ref<string[]>([])
+const isSubjectDropdownOpen = ref(false)
 
 // COMPUTED
 const classId = computed(() => String(route.params.id || '1'))
@@ -24,6 +30,16 @@ const teacherCourses = computed(() => classesStore.myClasses)
 const currentCourse = computed(() => {
   const cid = Number(classId.value)
   return teacherCourses.value.find(c => c.id === cid) || teacherCourses.value[0]
+})
+
+const selectedSubjects = computed<string[]>(() => {
+  const names = [form.subject, ...additionalSubjects.value].filter(Boolean) as string[]
+  return Array.from(new Set(names))
+})
+
+const allSubjectsSelected = computed(() => {
+  if (!teacherCourses.value.length) return false
+  return selectedSubjects.value.length === teacherCourses.value.length
 })
 
 const students = computed<StudentViewModel[]>(() => {
@@ -55,6 +71,15 @@ const route = useRoute()
 const studentsStore = useStudentsStore()
 const sectionsStore = useSectionsStore()
 const classesStore = useCoursesStore()
+
+const editingSectionId = computed(() => {
+  const raw = route.query.sectionId
+  if (typeof raw === 'string') {
+    const n = Number(raw)
+    return Number.isNaN(n) ? null : n
+  }
+  return null
+})
 const form = reactive({
   className: '',
   subject: currentCourse.value?.name || 'Information Assurance',
@@ -69,6 +94,36 @@ watch(currentCourse, (newCourse) => {
     form.subject = newCourse.name
   }
 }, { immediate: true })
+
+if (editingSectionId.value) {
+  const section = sectionsStore.allSections.find(s => s.id === editingSectionId.value)
+  if (section) {
+    form.className = section.name
+    const cid = Number(classId.value)
+    const schedule = sectionsStore.getSchedule(cid, section.id)
+    form.scheduleDay = schedule?.scheduleDay || form.scheduleDay
+    form.scheduleTime = schedule?.scheduleTime || form.scheduleTime
+    form.classroom = schedule?.classroom || form.classroom
+
+    const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+      students.value.map(s => [s.username, s])
+    )
+    selectedStudents.value = (section.studentUsernames || [])
+      .map(u => byUsername[u])
+      .filter((s): s is StudentViewModel => !!s)
+
+    const mappedCourseIds = sectionsStore.courseSectionMappings
+      .filter(m => m.sectionId === section.id)
+      .map(m => m.courseId)
+
+    const primaryCourseId = Number(classId.value)
+    const extraCourseIds = mappedCourseIds.filter(id => id !== primaryCourseId)
+
+    additionalSubjects.value = teacherCourses.value
+      .filter(c => extraCourseIds.includes(c.id))
+      .map(c => c.name)
+  }
+}
 
 // METHODS
 function toggleStudent(s: StudentViewModel) {
@@ -93,6 +148,44 @@ const { success, error } = useToast()
 
 function showAlert(message: string) {
   success(message)
+}
+
+function isSubjectSelected(name: string) {
+  return selectedSubjects.value.includes(name)
+}
+
+function applySelectedSubjects(names: string[]) {
+  const unique = Array.from(new Set(names.filter(Boolean))) as string[]
+  if (!unique.length) {
+    form.subject = ''
+    additionalSubjects.value = []
+    return
+  }
+  form.subject = unique[0]
+  additionalSubjects.value = unique.slice(1)
+}
+
+function toggleSubject(name: string) {
+  let next = [...selectedSubjects.value]
+  if (next.includes(name)) {
+    next = next.filter(n => n !== name)
+  } else {
+    next.push(name)
+  }
+  applySelectedSubjects(next)
+}
+
+function toggleSelectAllSubjects() {
+  if (allSubjectsSelected.value) {
+    applySelectedSubjects([])
+  } else {
+    const all = teacherCourses.value.map(c => c.name)
+    applySelectedSubjects(all)
+  }
+}
+
+function toggleSubjectDropdown() {
+  isSubjectDropdownOpen.value = !isSubjectDropdownOpen.value
 }
 
 function onDragStart(evt: DragEvent, s: StudentViewModel) {
@@ -120,8 +213,143 @@ function onDrop(evt: DragEvent) {
 function onImportMasterList(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
-  selectedStudents.value = [...students.value]
-  success('Master list imported successfully! All students have been added to the class.')
+  const file = input.files[0]
+  const isCsv = file.name.toLowerCase().endsWith('.csv') || file.type.includes('csv')
+  if (!isCsv) {
+    error('Please upload the CSV template. Excel (.xlsx/.xls) is not supported yet.')
+    input.value = ''
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const text = String(reader.result || '')
+      const rows = parseCsv(text)
+      if (rows.length <= 1) {
+        error('CSV is empty or missing rows')
+        return
+      }
+      const [header, ...data] = rows
+      importAdded.value = []
+      importSkipped.value = []
+
+      const map: Record<string, number> = {}
+      header.forEach((h, i) => {
+        const key = String(h).replace(/^\uFEFF/, '').trim().toLowerCase()
+        if (key) map[key] = i
+      })
+      const required = ['studentnumber', 'firstname', 'lastname', 'yearlevel', 'program']
+      const missing = required.filter(k => !(k in map))
+      if (missing.length) {
+        error(`Missing column(s): ${missing.join(', ')}`)
+        return
+      }
+
+      let added = 0
+      let skipped = 0
+      let duplicates = 0
+      let notFound = 0
+      let missingId = 0
+      const toAdd: StudentViewModel[] = []
+      const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+        students.value.map(s => [s.username, s])
+      )
+      data.forEach(row => {
+        if (!row || row.length === 0) return
+        const rawId = String(row[map['studentnumber']] ?? '').trim()
+        let digits = rawId.replace(/[^0-9]/g, '')
+        if (digits.length > 0 && digits.length < 10) digits = digits.padStart(10, '0')
+        const studentNumber = digits
+        if (!studentNumber) { skipped++; missingId++; return }
+        const firstNameIdx = map['firstname']
+        const lastNameIdx = map['lastname']
+        const fullName = `${String(row[firstNameIdx] || '').trim()} ${String(row[lastNameIdx] || '').trim()}`.trim()
+        const existing = byUsername[studentNumber]
+        if (existing) {
+          if (!isSelected(existing.username)) {
+            toAdd.push(existing)
+            added++
+          } else {
+            skipped++; duplicates++
+            importSkipped.value.push({ studentNumber, name: fullName || existing.name, reason: 'duplicate' })
+          }
+        } else {
+          skipped++; notFound++
+          importSkipped.value.push({ studentNumber, name: fullName || 'Unknown', reason: 'not found in directory' })
+        }
+      })
+      if (toAdd.length) {
+        selectedStudents.value = [...selectedStudents.value, ...toAdd]
+      }
+      importAdded.value = toAdd
+      if (missingId > 0) {
+        importSkipped.value.push({ studentNumber: '', name: '—', reason: `${missingId} row(s) missing studentNumber` })
+      }
+      showImportResult.value = true
+    } catch (e) {
+      error('Failed to import CSV. Please verify the format.')
+    } finally {
+      input.value = ''
+    }
+  }
+  reader.onerror = () => {
+    error('Failed to read the file')
+    input.value = ''
+  }
+  reader.readAsText(file)
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cur = ''
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    const next = text[i + 1]
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { cur += '"'; i++ }
+      else if (ch === '"') { inQuotes = false }
+      else { cur += ch }
+    } else {
+      if (ch === '"') { inQuotes = true }
+      else if (ch === ',') { row.push(cur); cur = '' }
+      else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = '' }
+      else if (ch === '\r') { }
+      else { cur += ch }
+    }
+  }
+
+  row.push(cur)
+  if (row.length > 1 || (row.length === 1 && row[0].trim() !== '')) rows.push(row)
+  return rows
+}
+
+function closeImportResult() {
+  showImportResult.value = false
+}
+
+function downloadTemplate() {
+  const headers = ['studentNumber', 'firstName', 'lastName', 'yearLevel', 'program']
+  const sample = [
+    ['0212345678', 'Juan', 'Dela Cruz', '1', 'BSCS'],
+    ['0212345679', 'Maria', 'Santos', '2', 'BSIT']
+  ]
+  const rows = [headers, ...sample]
+  const csv = rows
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\r\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'class_import_template.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  success('Template downloaded')
 }
 
 function saveClass() {
@@ -129,25 +357,70 @@ function saveClass() {
     error('Please enter a class name')
     return
   }
+  if (!selectedSubjects.value.length) {
+    error('Please select at least one subject')
+    return
+  }
+  if (selectedStudents.value.length === 0) {
+    error('Please add at least one student before saving the class')
+    return
+  }
   
   const studentUsernames = selectedStudents.value.map(s => s.username)
   
   const selectedCourse = teacherCourses.value.find(c => c.name === form.subject)
   const courseId = selectedCourse ? selectedCourse.id : Number(classId.value)
-  
-  const newSectionId = sectionsStore.addSection({
-    name: form.className,
-    students: studentUsernames.length,
-    studentUsernames: studentUsernames
-  }, courseId)
-  
-  sectionsStore.setSchedule(courseId, newSectionId, {
-    scheduleDay: form.scheduleDay,
-    scheduleTime: form.scheduleTime,
-    classroom: form.classroom
-  })
-  
-  success('Class saved successfully!')
+
+  const extraCourseIds = teacherCourses.value
+    .filter(c => additionalSubjects.value.includes(c.name) && c.id !== courseId)
+    .map(c => c.id)
+  const targetCourseIds = [courseId, ...extraCourseIds].filter((id, idx, arr) => arr.indexOf(id) === idx)
+
+  if (editingSectionId.value) {
+    sectionsStore.updateSection(editingSectionId.value, {
+      name: form.className,
+      students: studentUsernames.length,
+      studentUsernames,
+    })
+
+    const existingMappings = sectionsStore.courseSectionMappings.filter(m => m.sectionId === editingSectionId.value)
+    existingMappings.forEach(m => {
+      if (!targetCourseIds.includes(m.courseId)) {
+        sectionsStore.removeSectionFromCourse(editingSectionId.value!, m.courseId)
+      }
+    })
+
+    targetCourseIds.forEach(cid => {
+      sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
+      sectionsStore.setSchedule(cid, editingSectionId.value!, {
+        scheduleDay: form.scheduleDay,
+        scheduleTime: form.scheduleTime || '00:00',
+        classroom: form.classroom,
+      })
+    })
+
+    success('Class updated successfully!')
+  } else {
+    const newSectionId = sectionsStore.addSection({
+      name: form.className,
+      students: studentUsernames.length,
+      studentUsernames: studentUsernames
+    }, courseId)
+
+    targetCourseIds.forEach(cid => {
+      if (cid !== courseId) {
+        sectionsStore.addSectionToCourse(newSectionId, cid)
+      }
+      sectionsStore.setSchedule(cid, newSectionId, {
+        scheduleDay: form.scheduleDay,
+        scheduleTime: form.scheduleTime || '00:00',
+        classroom: form.classroom,
+      })
+    })
+
+    success('Class saved successfully!')
+  }
+
   router.back()
 }
 
@@ -187,12 +460,78 @@ function yearPillClass(year: YearLevel) {
                 <input v-model="form.className" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. CS31A" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                <select v-model="form.subject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option v-for="course in teacherCourses" :key="course.id" :value="course.name">
-                    {{ course.name }}
-                  </option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Subjects</label>
+                <div class="relative">
+                  <!-- Trigger -->
+                  <button
+                    type="button"
+                    class="w-full h-[38px] flex items-center justify-between px-3 border border-gray-300 rounded-md bg-white text-left text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                    @click="toggleSubjectDropdown"
+                  >
+                    <span class="flex-1 min-w-0 text-gray-500 truncate" v-if="!selectedSubjects.length">Select subjects</span>
+                    <span class="flex-1 min-w-0 truncate" v-else>
+                      <template v-if="selectedSubjects.length === 1">
+                        {{ selectedSubjects[0] }}
+                      </template>
+                      <template v-else>
+                        {{ selectedSubjects[0] }} and {{ selectedSubjects.length - 1 }} more
+                      </template>
+                    </span>
+                    <div class="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <span
+                        v-if="selectedSubjects.length"
+                        class="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-full text-xs font-semibold bg-blue-600 text-white"
+                      >
+                        {{ selectedSubjects.length }}
+                      </span>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  <!-- Dropdown -->
+                  <div
+                    v-if="isSubjectDropdownOpen"
+                    class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden text-sm"
+                  >
+                    <div
+                      class="px-3 py-2 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                      @click="toggleSelectAllSubjects"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-400 bg-white">
+                          <span v-if="allSubjectsSelected" class="w-2 h-2 rounded-full bg-blue-600"></span>
+                        </span>
+                        <span class="font-medium">Select all</span>
+                      </div>
+                      <span class="text-xs text-gray-500">{{ selectedSubjects.length }}/{{ teacherCourses.length }}</span>
+                    </div>
+                    <div class="border-t border-gray-100"></div>
+                    <div class="max-h-56 overflow-y-auto">
+                      <button
+                        v-for="course in teacherCourses"
+                        :key="course.id + '-option'"
+                        type="button"
+                        class="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                        @click="toggleSubject(course.name)"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="inline-flex items-center justify-center w-4 h-4 rounded-full border"
+                            :class="isSubjectSelected(course.name) ? 'border-blue-600 bg-blue-50' : 'border-gray-400 bg-white'"
+                          >
+                            <span
+                              v-if="isSubjectSelected(course.name)"
+                              class="w-2 h-2 rounded-full bg-blue-600"
+                            ></span>
+                          </span>
+                          <span class="truncate">{{ course.name }}</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Schedule</label>
@@ -280,12 +619,18 @@ function yearPillClass(year: YearLevel) {
             </div>
 
             <div class="mb-6">
-              <label class="relative cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-md transition inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Import Master List</span>
-                <input type="file" class="hidden" accept=".csv,.xlsx,.xls" @change="onImportMasterList" />
-              </label>
-              <span class="text-xs text-gray-500 ml-2">CSV or Excel format</span>
+              <div class="flex items-center gap-3 flex-wrap">
+                <label class="relative cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium py-2 px-4 rounded-md transition inline-flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Import Master List</span>
+                  <input type="file" class="hidden" accept=".csv,.xlsx,.xls" @change="onImportMasterList" />
+                </label>
+                <button @click="downloadTemplate" class="bg-green-50 hover:bg-green-100 text-green-800 font-medium py-2 px-4 rounded-md transition inline-flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Download Template (CSV)</span>
+                </button>
+                <span class="text-xs text-gray-500">CSV or Excel format</span>
+              </div>
             </div>
 
             <!-- Student Grid -->
@@ -333,6 +678,13 @@ function yearPillClass(year: YearLevel) {
         </div>
       </div>
     </main>
+
+    <ImportResultsModal
+      :show="showImportResult"
+      :added="importAdded"
+      :skipped="importSkipped"
+      @close="closeImportResult"
+    />
   </div>
 </template>
 
@@ -340,7 +692,6 @@ function yearPillClass(year: YearLevel) {
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #2563eb; }
 .student-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
 .drag-enter { border: 2px dashed #3b82f6; background-color: #eff6ff; }
 </style>

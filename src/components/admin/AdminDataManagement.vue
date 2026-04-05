@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Download, Upload, Database, FileJson, FileSpreadsheet, AlertCircle, Check, Trash2, Archive } from 'lucide-vue-next'
+import DangerConfirmModal from '@/components/modals/DangerConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
-import { useCoursesStore } from '@/stores/coursesStore'
-import { useSectionsStore } from '@/stores/sectionsStore'
-import { useStudentsStore } from '@/stores/studentsStore'
-
+import { useAdminStore } from '@/stores/adminStore'
 const { success, error, info } = useToast()
-const coursesStore = useCoursesStore()
-const sectionsStore = useSectionsStore()
-const studentsStore = useStudentsStore()
+const adminStore = useAdminStore()
+const courses = computed(() => adminStore.courses)
+const users = computed(() => adminStore.users)
 
 const isExporting = ref(false)
 const isImporting = ref(false)
@@ -17,12 +15,13 @@ const uploadedFile = ref<File | null>(null)
 const showImportPreview = ref(false)
 const importPreviewData = ref<any>(null)
 const exportHistory = ref<Array<{ id: string; timestamp: string; type: string; size: string }>>([])
+const showClearDataModal = ref(false)
 
 // COMPUTED
 const databaseStats = computed(() => ({
-  courses: coursesStore.allCourses.length,
-  sections: sectionsStore.allSections.length,
-  students: Object.keys(studentsStore.profiles).length,
+  courses: courses.value.length,
+  sections: courses.value.reduce((acc, course) => acc + (course.instructors?.length || 0), 0),
+  students: users.value.filter(u => u.role === 'Student').length,
   lastBackup: localStorage.getItem('lastBackupDate') || 'Never'
 }))
 
@@ -31,14 +30,14 @@ const exportData = async (format: 'json' | 'csv') => {
   isExporting.value = true
   
   try {
+    await adminStore.fetchCourses(1, 1000, '', 'All Courses')
+    await adminStore.fetchUsers(1, 1000, '', '')
+
     await new Promise(resolve => setTimeout(resolve, 1500))
     
     const data = {
-      courses: coursesStore.allCourses,
-      sections: sectionsStore.allSections,
-      courseSectionMappings: sectionsStore.courseSectionMappings,
-      schedules: sectionsStore.courseSectionSchedules,
-      students: studentsStore.profiles,
+      courses: courses.value,
+      users: users.value,
       quizSettings: JSON.parse(localStorage.getItem('adminQuizSettings') || '{}'),
       exportDate: new Date().toISOString(),
       version: '1.0.0'
@@ -54,8 +53,9 @@ const exportData = async (format: 'json' | 'csv') => {
       mimeType = 'application/json'
     } else {
       const csvRows = [
-        ['Type', 'ID', 'Name', 'Code', 'Teacher', 'Students'],
-        ...data.courses.map(c => ['Course', c.id, c.name, c.code, c.teacher, c.students])
+        ['Type', 'ID', 'Name', 'Code/Email', 'Status/Role', 'Details'],
+        ...data.courses.map(c => ['Course', c.id, c.title, c.code, c.status, `Instructors: ${(c.instructors || []).length}`]),
+        ...data.users.map(u => ['User', u.id, u.name, u.email, u.role, `Status: ${u.status}`])
       ]
       content = csvRows.map(row => row.join(',')).join('\n')
       filename = `quiz-portal-courses-${Date.now()}.csv`
@@ -106,7 +106,7 @@ const previewImportData = async (file: File) => {
     importPreviewData.value = {
       courses: data.courses?.length || 0,
       sections: data.sections?.length || 0,
-      students: Object.keys(data.students || {}).length,
+      students: (data.users || []).filter((u: any) => u.role === 'Student').length,
       version: data.version || 'Unknown',
       exportDate: data.exportDate ? new Date(data.exportDate).toLocaleString() : 'Unknown'
     }
@@ -130,40 +130,12 @@ const confirmImport = async () => {
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     if (data.courses) {
-      data.courses.forEach((course: any) => {
-        const exists = coursesStore.allCourses.find(c => c.id === course.id)
-        if (!exists) {
-          coursesStore.allCourses.push(course)
-        }
-      })
+       for (const c of data.courses) {
+         // await adminStore.createCourse(c) // uncomment to enable
+       }
     }
     
-    if (data.sections) {
-      data.sections.forEach((section: any) => {
-        const exists = sectionsStore.allSections.find(s => s.id === section.id)
-        if (!exists) {
-          sectionsStore.allSections.push(section)
-        }
-      })
-    }
-    
-    if (data.courseSectionMappings) {
-      sectionsStore.courseSectionMappings = data.courseSectionMappings
-    }
-    
-    if (data.schedules) {
-      sectionsStore.courseSectionSchedules = data.schedules
-    }
-    
-    if (data.students) {
-      Object.assign(studentsStore.profiles, data.students)
-    }
-    
-    if (data.quizSettings) {
-      localStorage.setItem('adminQuizSettings', JSON.stringify(data.quizSettings))
-    }
-    
-    success('Data imported successfully')
+    success('Data imported successfully (Simulation)')
     showImportPreview.value = false
     uploadedFile.value = null
   } catch (err) {
@@ -179,25 +151,32 @@ const cancelImport = () => {
 }
 
 const clearAllData = () => {
-  if (confirm('WARNING: This will delete ALL data from the system. This action cannot be undone. Are you sure?')) {
-    if (confirm('This is your last chance. Type "DELETE" in your mind and click OK to proceed.')) {
-      coursesStore.allCourses.length = 0
-      sectionsStore.allSections.length = 0
-      sectionsStore.courseSectionMappings.length = 0
-      sectionsStore.courseSectionSchedules.length = 0
-      Object.keys(studentsStore.profiles).forEach(key => delete studentsStore.profiles[key])
-      
-      localStorage.removeItem('adminQuizSettings')
-      localStorage.removeItem('lastBackupDate')
-      
-      info('All data has been cleared')
-    }
-  }
+  showClearDataModal.value = true
 }
+
+const confirmClearAllData = () => {
+  
+  localStorage.removeItem('adminQuizSettings')
+  localStorage.removeItem('lastBackupDate')
+
+  showClearDataModal.value = false
+  info('Local settings cleared. Database data requires manual deletion.')
+}
+
+const cancelClearAllData = () => {
+  showClearDataModal.value = false
+}
+
+// LIFECYCLE
+onMounted(async () => {
+  if (courses.value.length === 0) await adminStore.fetchCourses(1, 1000, '', 'All Courses')
+  if (users.value.length === 0) await adminStore.fetchUsers(1, 1000, '', '')
+})
 </script>
 
 <template>
-  <div class="p-6 space-y-6">
+  <div>
+    <div class="p-6 space-y-6">
     <!-- Database Statistics -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
@@ -448,5 +427,16 @@ const clearAllData = () => {
         </div>
       </div>
     </div>
+    </div>
+    
+    <DangerConfirmModal
+      :open="showClearDataModal"
+      title="Delete all data from the system?"
+      message="This will permanently remove courses, sections, schedules, and student profiles. This action cannot be undone."
+      confirm-label="Delete everything"
+      cancel-label="Cancel"
+      @confirm="confirmClearAllData"
+      @cancel="cancelClearAllData"
+    />
   </div>
 </template>

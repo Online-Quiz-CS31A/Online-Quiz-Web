@@ -22,14 +22,45 @@ const displayEnd = computed(() => Math.min(props.currentPage * props.pageSize, p
 const pageNumbers = computed(() => {
   const pages: (number | string)[] = []
   const tp = totalPages.value
-  if (tp <= 6) {
+  const current = props.currentPage
+
+  if (tp <= 10) {
     for (let i = 1; i <= tp; i++) pages.push(i)
     return pages
   }
+
   pages.push(1, 2, 3)
-  pages.push('...')
+
+  let start = Math.max(4, current - 1)
+  let end = Math.min(tp - 3, current + 1)
+
+  if (current <= 4) {
+    start = 4
+    end = Math.max(6, current + 1) 
+  }
+
+  if (current >= tp - 3) {
+    start = Math.min(tp - 5, current - 1)
+    end = tp - 3
+  }
+
+  if (start > 4) {
+    pages.push('...')
+  }
+
+  for (let i = start; i <= end; i++) {
+    if (i > 3 && i < tp - 2) { 
+       pages.push(i)
+    }
+  }
+
+  if (end < tp - 3) {
+    pages.push('...')
+  }
+
   pages.push(tp - 2, tp - 1, tp)
-  return pages
+
+  return [...new Set(pages)]
 })
 
 const goToPage = (n: number) => {

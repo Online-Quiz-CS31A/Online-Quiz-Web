@@ -15,7 +15,7 @@ const errorMessage = ref('')
 const store = useAuthStore()
 
 const form = reactive({
-  username: '',
+  email: '',
   password: '',
   rememberMe: false
 })
@@ -26,34 +26,27 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   try {
-    // Basic username validation: starts with 01 or 02 and exactly 10 digits total
-    const usernamePattern = /^0[12]\d{8}$/
-    if (!usernamePattern.test(form.username)) {
-      errorMessage.value = 'Username must start with 01 (teacher) or 02 (student) and be exactly 10 digits.'
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const isEmail = emailPattern.test(form.email)
+    if (!isEmail) {
+      errorMessage.value = 'Please enter a valid email address.'
+      isLoading.value = false
       return
     }
 
-    // Simulate a short delay (optional)
-    await new Promise(resolve => setTimeout(resolve, 600))
-
-    const result = store.login(form.username, form.password)
+    const result = await store.login(form.email, form.password)
     if (!result.success) {
-      errorMessage.value = result.message || 'Login failed'
+      errorMessage.value = result.message || 'Invalid email or password'
       return
     }
 
-    // Persist session regardless of Remember Me for now
-    if (store.currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(store.currentUser))
-    }
-
-    // Navigate based on role
     if (result.role === 'teacher') {
       router.push({ name: 'teacher' })
     } else if (result.role === 'student') {
       router.push({ name: 'student' })
+    } else if (result.role === 'admin') {
+      router.push({ name: 'admin-dashboard' })
     } else {
-      // Fallback to login
       router.push({ name: 'login' })
     }
   } catch (error) {
@@ -148,12 +141,12 @@ const handleLogin = async () => {
               <font-awesome-icon icon="envelope" class="h-5 w-5 text-gray-400" />
             </div>
             <input
-              id="username"
-              v-model="form.username"
+              id="email"
+              v-model="form.email"
               type="text"
               required
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-              placeholder="Enter your username (01******** or 02********)"
+              placeholder="Enter your email address"
             />
           </div>
 
@@ -181,7 +174,7 @@ const handleLogin = async () => {
           </div>
 
           <!-- Remember Me & Forgot Password -->
-          <div class="flex items-center justify-between">
+          <!-- <div class="flex items-center justify-between">
             <div class="flex items-center">
               <input
                 id="remember-me"
@@ -196,7 +189,7 @@ const handleLogin = async () => {
             <a href="#" class="text-sm text-blue-600 hover:text-blue-500 font-medium transition duration-200">
               Forgot password?
             </a>
-          </div>
+          </div> -->
 
           <!-- Submit Button -->
           <button

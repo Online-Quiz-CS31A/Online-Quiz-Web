@@ -46,6 +46,7 @@ export interface ClassItem {
   students: number
   color: string
   studentUsernames?: string[]
+  status?: 'Active' | 'Archived'
 }
 
 export interface ClassSection {
@@ -81,12 +82,16 @@ export interface CalendarEventItem {
 }
 
 // AUTHENTICATION AND USER ACCOUNT
-export type Role = 'teacher' | 'student'
+export type Role = 'teacher' | 'student' | 'admin'
 export interface User {
   username: string
   password: string
   role: Role
   name?: string
+  id?: number
+  email?: string
+  roles?: string[]
+  avatar?: string
 }
 
 // QUIZ LIST ITEMS FOR TEACHERS
@@ -100,6 +105,13 @@ export interface TeacherQuizItem {
   submitted: number
   total: number
   color: string
+  status?: 'draft' | 'published'
+  questions?: any[]
+  createdAt?: string
+  updatedAt?: string
+  ownerUsername?: string
+  archived?: boolean
+  timeLimit?: string
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS
@@ -113,6 +125,7 @@ export interface StudentQuizItem {
   timeLimit: string
   status: string
   color: string
+  maxAttempts?: number
 }
 
 // ADMIN COURSE CATALOG & DETAILS INTERFACES
@@ -131,6 +144,8 @@ export interface Course {
   instructors: CourseInstructor[]
   description?: string
   units?: number
+  section?: string
+  instructorId?: number
 }
 
 export interface Person {
@@ -180,6 +195,8 @@ export interface AdminUser {
   year?: string
   section?: string
   department?: string
+  contactNumber?: string
+  emergencyContactNumber?: string
 }
 
 // QUIZ CONTENT INTERFACES
@@ -240,6 +257,25 @@ export interface StudentQuiz {
   color: string
 }
 
+export interface QuizAttempt {
+  attempt: string
+  date: string
+  score: string
+  mark: string
+}
+
+export interface QuizAttemptHistory {
+  attemptNumber: number
+  quizId: number
+  studentUsername: string
+  score: number
+  totalPoints: number
+  percentage: number
+  completedAt: string
+  answers: Record<number, any>
+  durationSeconds?: number
+}
+
 // HEADER INTERFACES
 export interface HeaderProps {
   breadcrumb?: string
@@ -247,6 +283,7 @@ export interface HeaderProps {
   actionButtons?: boolean
   showQuizCreatorControls?: boolean
   published?: boolean
+  archivedQuiz?: boolean
 }
 
 // CLASSROOM DASHBOARD INTERFACES
@@ -254,8 +291,6 @@ export interface Student {
   id: number
   name: string
   email: string
-  grade: string
-  progress: number
   initials: string
   avatar: string
 }
@@ -265,6 +300,16 @@ export interface QuizViewQuestion {
   question: string
   options: string[]
   correctAnswer: number
+}
+
+// STUDENT COURSE SCORE ITEMS
+export interface MyScoreItem {
+  title: string
+  score: number
+  total: number
+  percent: number
+  due: string
+  status: 'Answered' | 'Unanswered'
 }
 
 // ANALYTICS INTERFACES
@@ -307,6 +352,7 @@ export interface Participant {
   avatar: string
   section: string
   score: number
+  totalPoints: number
   percentage: number
   time: string
 }
@@ -314,4 +360,75 @@ export interface Participant {
 export interface ReviewQuestion {
   id: number
   answered: boolean
+}
+
+export interface ScoreReviewQuestion {
+  question: string
+  options: string[]
+  correctAnswer: number
+  userAnswer: any
+  isCorrect: boolean
+  points: number
+  questionType?: string
+  correctAnswerText?: string
+  userAnswerText?: string
+  matchingPairs?: {
+    left: string
+    right: string
+    userIndex?: number
+    userRight?: string
+    isCorrect: boolean
+  }[]
+}
+
+export interface Notification {
+  id: number
+  title: string
+  message: string
+  time: string
+  read: boolean
+}
+
+// CLASSROOM DASHBOARD/TABS SHARED TYPES
+export type TabKey = 'dashboard' | 'people' | 'grades'
+
+export interface QuizBreakdown {
+  title: string
+  score: number
+  total: number
+  percent: number
+  due: string
+  status: 'Submitted' | 'Missing'
+}
+
+export interface GradeRow {
+  id: number
+  name: string
+  email: string
+  assignments: number
+  quizzes: number
+  exams: number
+  final: number
+}
+
+export type GradeCol = 'name' | 'quizzes' | 'final'
+
+export interface StudentItem {
+  id: number
+  name: string
+  email: string
+  avatar: string
+}
+
+export interface TeacherCourseDto {
+  courseId: number
+  code: string
+  name: string
+  instructorId: number
+  instructorName: string
+  status: string
+  category: string
+  section: string
+  createdAt: string
+  students?: number
 }

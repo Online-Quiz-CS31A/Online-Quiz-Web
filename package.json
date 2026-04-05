@@ -24,6 +24,7 @@
     "@tailwindcss/postcss": "^4.1.7",
     "@tailwindcss/vite": "^4.1.7",
     "@vueuse/core": "^13.3.0",
+    "axios": "^1.12.2",
     "lucide-vue": "^0.517.0",
     "lucide-vue-next": "^0.511.0",
     "pinia": "^3.0.3",
