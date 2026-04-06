@@ -14,10 +14,10 @@ export function useQuestionSettings(currentQuestion: ComputedRef<QuizQuestion | 
   const questionTypes = [
     { value: 'multiple-choice', label: 'Multiple Choice' },
     { value: 'true-false', label: 'True/False' },
-    { value: 'fill-blank', label: 'Fill in the Blank' },
-    { value: 'text', label: 'Text' },
-    { value: 'matching', label: 'Matching' },
-    { value: 'enumeration', label: 'Enumeration' }
+    // { value: 'fill-blank', label: 'Fill in the Blank' },
+    // { value: 'text', label: 'Text' },
+    // { value: 'matching', label: 'Matching' },
+    // { value: 'enumeration', label: 'Enumeration' }
   ]
 
   function updateQuestionType() {

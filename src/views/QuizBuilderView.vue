@@ -67,13 +67,13 @@ function onContent() {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function onSave() {
-  creatorRef.value?.saveQuiz?.()
+async function onSave() {
+  await creatorRef.value?.saveQuiz?.()
   syncPublished()
 }
 
-function onPublish() {
-  creatorRef.value?.publishQuiz?.()
+async function onPublish() {
+  await creatorRef.value?.publishQuiz?.()
   published.value = true
   router.push({ name: 'quiz-builder', params: route.params, query: route.query })
 }

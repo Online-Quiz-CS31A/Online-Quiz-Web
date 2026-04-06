@@ -514,7 +514,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
-  function saveQuiz(status: 'draft' | 'published' = 'draft') {
+  async function saveQuiz(status: 'draft' | 'published' = 'draft') {
     if (!currentQuiz.title.trim()) {
       throw new Error('Quiz title is required')
     }
@@ -565,54 +565,106 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     const auth = useAuthStore()
     const username = auth.currentUser?.username
-    if (!username) {
+    const userId = auth.currentUser?.id
+    if (!username || !userId) {
       throw new Error('User not authenticated')
     }
 
-    const quizzes = getAllQuizzes()
-    const existingIndex = currentQuiz.id ? quizzes.findIndex(q => q.id === currentQuiz.id) : -1
+    const coursesStoreLocal = useCoursesStore()
+    const rawSubject = (currentQuiz.subject || '').trim().toLowerCase()
+    
+    let course = coursesStoreLocal.allCourses.find(c => 
+      (c.name || '').trim().toLowerCase() === rawSubject ||
+      (c.code || '').trim().toLowerCase() === rawSubject
+    )
+    
+    const courseId = course ? course.id : (currentQuiz as any).courseId || 0
 
-    if (existingIndex !== -1) {
-      const existingQuiz = quizzes[existingIndex]
-      quizzes[existingIndex] = {
-        ...existingQuiz,
-        title: currentQuiz.title,
-        subject: currentQuiz.subject,
-        description: currentQuiz.description,
-        status,
-        questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-        updatedAt: new Date().toISOString(),
-        ownerUsername: existingQuiz.ownerUsername || username
+    const timeLimitMatch = currentQuiz.timeLimit.match(/\d+/)
+    const timeLimitMinutes = timeLimitMatch ? parseInt(timeLimitMatch[0], 10) : 30
+
+    const mappedQuestions = currentQuiz.questions.map((q, idx) => {
+      let mappedType = q.type
+      if (q.type === 'multiple-choice') {
+        mappedType = 'Multiple'
+      } else if (q.type === 'true-false') {
+        mappedType = 'Single'
       }
-      saveQuizzesToStorage(quizzes)
-      return quizzes[existingIndex]
-    } else {
-      const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
 
-      const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
-      const seedQuiz = allSeedQuizzes.find(q => q.id === id)
-
-      const quizItem: TeacherQuizItem = {
-        id,
-        title: currentQuiz.title,
-        subject: currentQuiz.subject,
-        description: currentQuiz.description,
-        dueDate: seedQuiz ? seedQuiz.dueDate : '',
-        class: seedQuiz ? seedQuiz.class : '',
-        submitted: seedQuiz ? seedQuiz.submitted : 0,
-        total: seedQuiz ? seedQuiz.total : 0,
-        color: seedQuiz ? seedQuiz.color : 'blue',
-        status,
-        questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-        createdAt: seedQuiz ? seedQuiz.createdAt : new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ownerUsername: username
+      return {
+        questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+        quizId: currentQuiz.id ?? 0,
+        type: mappedType,
+        body: q.text,
+        points: q.points || 1,
+        sortOrder: idx + 1,
+        choices: q.options ? q.options.map((opt) => ({
+          choiceId: 0,
+          questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+          body: opt.text,
+          isCorrect: opt.isCorrect
+        })) : []
       }
-      currentQuiz.id = quizItem.id
-      quizzes.push(quizItem)
-      saveQuizzesToStorage(quizzes)
-      return quizItem
+    })
+
+    const payload: any = {
+      quizId: currentQuiz.id ?? 0,
+      courseId: courseId,
+      title: currentQuiz.title,
+      dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      timeLimitMinutes: timeLimitMinutes,
+      isPublished: status === 'published',
+      createdAt: new Date().toISOString(),
+      questions: mappedQuestions
     }
+
+    if (currentQuiz.id) {
+      await api.put(`/Quiz/${currentQuiz.id}?userId=${userId}`, payload)
+    } else {
+      payload.createdBy = userId
+      const response = await api.post('/Quiz', payload)
+      if (response.data && (response.data.quizId || response.data.id)) {
+        const newId = response.data.quizId || response.data.id
+        currentQuiz.id = newId
+        payload.quizId = newId
+      }
+    }
+
+    const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
+    const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
+    const seedQuiz = allSeedQuizzes.find(q => q.id === id)
+
+    const quizItem: TeacherQuizItem = {
+      id,
+      title: currentQuiz.title,
+      subject: currentQuiz.subject,
+      description: currentQuiz.description,
+      dueDate: seedQuiz ? seedQuiz.dueDate : payload.dueAt,
+      class: seedQuiz ? seedQuiz.class : '',
+      submitted: seedQuiz ? seedQuiz.submitted : 0,
+      total: seedQuiz ? seedQuiz.total : 0,
+      color: seedQuiz ? seedQuiz.color : 'blue',
+      status,
+      questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
+      createdAt: seedQuiz ? seedQuiz.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ownerUsername: username
+    }
+    
+    currentQuiz.id = quizItem.id
+
+    if (!teacherQuizzesByUser.value[username]) {
+      teacherQuizzesByUser.value[username] = []
+    }
+    const userQuizzes = teacherQuizzesByUser.value[username]
+    const mIdx = userQuizzes.findIndex(q => q.id === quizItem.id)
+    if (mIdx !== -1) {
+      userQuizzes[mIdx] = quizItem
+    } else {
+      userQuizzes.push(quizItem)
+    }
+
+    return quizItem
   }
 
   function deleteQuiz(quizId: number) {
