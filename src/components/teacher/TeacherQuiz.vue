@@ -205,6 +205,36 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
     percent
   }
 }
+
+const formatDueDate = (dateStr: string) => {
+  if (!dateStr) return 'No due date'
+  
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return `Due: ${dateStr}`
+  
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  
+  if (targetDate.getTime() === today.getTime()) {
+    return 'Due: Today'
+  }
+  
+  if (targetDate.getTime() === tomorrow.getTime()) {
+    return 'Due: Tomorrow'
+  }
+  
+  const formattedDate = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(date)
+
+  return `Due: ${formattedDate}`
+}
 </script>
 
 <template>
@@ -281,7 +311,7 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
         <div class="p-5 min-h-[180px] flex flex-col justify-between" :class="quiz.status === 'draft' ? 'bg-gradient-to-br from-slate-600 to-slate-700' : ''">
           <div class="flex justify-between items-start mb-3">
             <div class="flex items-center gap-2">
-              <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">Due: {{ quiz.dueDate }}</span>
+              <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">{{ formatDueDate(quiz.dueDate) }}</span>
               <span 
                 v-if="quiz.status === 'draft'"
                 class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-sm"
@@ -375,7 +405,7 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
             <div class="flex items-start justify-between">
               <div>
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-500'">Due: {{ quiz.dueDate }}</span>
+                  <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-500'">{{ formatDueDate(quiz.dueDate) }}</span>
                   <span 
                     v-if="quiz.status === 'draft'"
                     class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full"
