@@ -43,15 +43,14 @@ const roleChanged = computed(() =>
           <!-- Role change warning banner -->
           <div
             v-if="roleChanged"
-            class="flex items-start gap-2 p-3 mb-4 rounded-md bg-orange-50 border border-orange-300"
+            class="flex items-start gap-2 p-3 mb-4 rounded-md bg-blue-50 border border-blue-300"
           >
-            <AlertTriangle class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-            <div class="text-xs text-orange-800">
+            <AlertTriangle class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div class="text-xs text-blue-800">
               <strong>Role change detected:</strong> Changing from
               <span class="font-semibold">{{ originalRole }}</span> to
-              <span class="font-semibold">{{ modelValue.role }}</span> will
-              <span class="font-semibold">recreate this user's account</span> under the new role.
-              A new password will be generated and emailed to them.
+              <span class="font-semibold">{{ modelValue.role }}</span>.
+              The user will need to log in again to apply the new role permissions.
             </div>
           </div>
 
@@ -168,12 +167,9 @@ const roleChanged = computed(() =>
           <button @click="emit('close')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
           <button
             @click="emit('save')"
-            :class="[
-              'px-4 py-2 text-sm font-medium text-white rounded-md',
-              roleChanged ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'
-            ]"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            {{ roleChanged ? 'Change Role & Save' : 'Save' }}
+            Save
           </button>
         </div>
       </div>
