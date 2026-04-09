@@ -167,26 +167,52 @@ export const useAdminStore = defineStore('admin', () => {
         error.value = null
         try {
             const params = new URLSearchParams()
-            params.append('pageNumber', page.toString())
-            params.append('pageSize', pageSize.toString())
+            params.append('pageNumber', '1')
+            params.append('pageSize', '10000')
 
             const response = await api.get(`/course/paged?${params.toString()}`)
-            const data = response.data
+            const data = response.data.items || []
 
-            courses.value = data.items.map((c: any) => ({
-                id: c.courseId,
-                title: c.name,
-                code: c.code,
-                status: c.status || 'Active',
-                subjectCode: c.category || '', 
-                description: c.description || '',
-                instructors: c.instructorName ? [{
-                    teacherId: c.instructorId,
-                    section: c.section || 'A',
-                    students: c.enrollmentCount || 0
-                }] : []
-            }))
-            totalCourses.value = data.totalCount
+            const storedArchived = localStorage.getItem('archivedCourses')
+            const archivedCoursesLocal: any[] = storedArchived ? JSON.parse(storedArchived) : []
+
+            let mapped: Course[] = data.map((c: any) => {
+                const isArchived = archivedCoursesLocal.some((ac: any) => ac.id === c.courseId)
+                return {
+                    id: c.courseId,
+                    title: c.name,
+                    code: c.code,
+                    status: isArchived ? 'Archived' : (c.status || 'Active'),
+                    subjectCode: c.category || '',
+                    description: c.description || '',
+                    instructors: c.instructorName ? [{
+                        teacherId: c.instructorId,
+                        section: c.section || 'A',
+                        students: c.enrollmentCount || 0
+                    }] : []
+                }
+            })
+
+            // --- Status filter ---
+            if (status && status !== 'All Courses' && status !== 'All') {
+                mapped = mapped.filter(c => c.status === status)
+            } else if (status !== 'Archived') {
+                mapped = mapped.filter(c => c.status !== 'Archived')
+            }
+
+            // --- Search filter ---
+            if (search && search.trim()) {
+                const q = search.trim().toLowerCase()
+                mapped = mapped.filter(c =>
+                    c.title.toLowerCase().includes(q) ||
+                    c.code.toLowerCase().includes(q) ||
+                    c.subjectCode.toLowerCase().includes(q)
+                )
+            }
+
+            totalCourses.value = mapped.length
+            const start = (page - 1) * pageSize
+            courses.value = mapped.slice(start, start + pageSize)
         } catch (err: any) {
             console.error('Failed to fetch courses:', err)
             error.value = err.message || 'Failed to fetch courses'

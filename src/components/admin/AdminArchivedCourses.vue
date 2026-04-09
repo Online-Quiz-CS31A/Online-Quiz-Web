@@ -4,6 +4,8 @@ import { Archive, RotateCcw, Trash2, AlertCircle, Search } from 'lucide-vue-next
 import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
+import { useAdminStore } from '@/stores/adminStore'
 
 interface ArchivedCourse {
   id: number
@@ -30,6 +32,10 @@ const currentPage = ref(1)
 const pageSize = ref(1000)
 const showDeleteModal = ref(false)
 const courseToDelete = ref<ArchivedCourse | null>(null)
+const showRestoreModal = ref(false)
+const courseToRestore = ref<ArchivedCourse | null>(null)
+
+const adminStore = useAdminStore()
 
 
 
@@ -112,11 +118,39 @@ const permanentlyDelete = () => {
   courseToDelete.value = null
 }
 
-const restoreCourse = (course: ArchivedCourse) => {
-  const remaining = archivedCourses.value.filter(c => c.code !== course.code)
-  archivedCourses.value = remaining
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
-  alert(`Course "${course.title}" has been removed from archived. To fully restore, please recreate the course in the Course Catalog.`)
+const confirmRestore = (course: ArchivedCourse) => {
+  courseToRestore.value = course
+  showRestoreModal.value = true
+}
+
+const restoreCourse = async () => {
+  if (!courseToRestore.value) return
+  const course = courseToRestore.value
+  try {
+    const coursesToRestore = archivedCourses.value.filter(c => c.code === course.code)
+    const promises = coursesToRestore.map(c => {
+      const updatePayload = {
+        name: c.title,
+        status: 'Active',
+        category: c.category,
+        section: c.instructors?.[0]?.section || 'A',
+        instructorId: c.instructors?.[0]?.teacherId || 1
+      }
+      return adminStore.updateCourse(c.id, updatePayload)
+    })
+    
+    await Promise.all(promises)
+    
+    const remaining = archivedCourses.value.filter(c => c.code !== course.code)
+    archivedCourses.value = remaining
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
+    
+    showRestoreModal.value = false
+    courseToRestore.value = null
+    await loadArchivedCourses()
+  } catch (e) {
+    console.error('Failed to restore course:', e)
+  }
 }
 
 const formatDate = (dateString: string) => {
@@ -238,7 +272,7 @@ onMounted(() => {
         </div>
         <div class="px-5 py-3 bg-gray-50">
           <div class="flex">
-            <span class="text-sm font-medium text-blue-600 hover:text-blue-500 cursor-pointer" @click="restoreCourse(course)">
+            <span class="text-sm font-medium text-blue-600 hover:text-blue-500 cursor-pointer" @click="confirmRestore(course)">
               <RotateCcw class="w-4 h-4 inline mr-1" />
               Restore
             </span>
@@ -262,6 +296,14 @@ onMounted(() => {
       :course-code="courseToDelete?.code || ''"
       @confirm="permanentlyDelete"
       @cancel="showDeleteModal = false"
+    />
+
+    <ConfirmUnarchiveModal
+      :open="showRestoreModal"
+      title="Restore Course"
+      :item-name="courseToRestore?.title"
+      @confirm="restoreCourse"
+      @cancel="showRestoreModal = false"
     />
   </div>
 </template>

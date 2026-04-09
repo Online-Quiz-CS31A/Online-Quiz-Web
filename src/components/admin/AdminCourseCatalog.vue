@@ -4,9 +4,10 @@ import { X, Book, Plus, Trash2, Search } from 'lucide-vue-next'
 import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import AdminCourseAddModal from '@/components/modals/AdminCourseAddModal.vue'
 import AdminCourseEditModal from '@/components/modals/AdminCourseEditModal.vue'
-import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
+import { Archive } from 'lucide-vue-next'
 import { useAdminStore } from '@/stores/adminStore'
 import type { Course, CourseInstructor, AdminUser } from '@/interfaces/interfaces'
 
@@ -42,8 +43,8 @@ const currentPage = ref(1)
 const showModal = ref(false)
 const isEditing = ref(false)
 const selectedCourseInline = ref<Course | null>(null)
-const showDeleteModal = ref(false)
-const courseToDelete = ref<Course | null>(null)
+const showArchiveModal = ref(false)
+const courseToArchive = ref<Course | null>(null)
 const originalCode = ref('')
 const isSaving = ref(false)
 
@@ -314,39 +315,49 @@ const saveCourse = async () => {
   }
 }
 
-const confirmDelete = (c: Course) => {
-  courseToDelete.value = c
-  showDeleteModal.value = true
+const confirmArchive = (c: Course) => {
+  courseToArchive.value = c
+  showArchiveModal.value = true
 }
 
-const deleteCourse = async () => {
-  if (!courseToDelete.value) return
+const archiveCourse = async () => {
+  if (!courseToArchive.value) return
   
-  const coursesToDelete = adminStore.courses.filter(c => c.code === courseToDelete.value?.code)
+  const coursesToArchive = adminStore.courses.filter(c => c.code === courseToArchive.value?.code)
   
   const STORAGE_KEY = 'archivedCourses'
   try {
     const existingArchived = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    const archivedCourses = coursesToDelete.map(c => ({
+    const newArchived = coursesToArchive.map(c => ({
       id: c.id,
       code: c.code,
       title: c.title,
       category: c.subjectCode,
-      status: c.status,
+      status: 'Archived',
       deletedAt: new Date().toISOString(),
       instructors: c.instructors || []
     }))
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...existingArchived, ...archivedCourses]))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...existingArchived, ...newArchived]))
   } catch (e) {
-    console.error('Failed to archive course:', e)
+    console.error('Failed to localStorage archive course:', e)
   }
   
-  const promises = coursesToDelete.map(c => adminStore.deleteCourse(c.id))
+  const promises = coursesToArchive.map(c => {
+    const updatePayload = {
+      name: c.title,
+      status: 'Archived',
+      category: c.subjectCode,
+      section: c.instructors?.[0]?.section,
+      instructorId: c.instructors?.[0]?.teacherId
+    }
+    return adminStore.updateCourse(c.id, updatePayload)
+  })
+  
   await Promise.all(promises)
   
-  showDeleteModal.value = false
-  courseToDelete.value = null
-  loadCourses()
+  showArchiveModal.value = false
+  courseToArchive.value = null
+  await loadCourses()
 }
 
 const openCourseDetailsInline = (c: Course) => { selectedCourseInline.value = c }
@@ -429,13 +440,18 @@ onMounted(() => {
           <div class="px-5 py-3 bg-gray-50">
             <div class="flex justify-between">
               <span class="text-sm font-medium text-blue-600 hover:text-blue-500 cursor-pointer" @click.stop="openCourseDetailsInline(c)">View details</span>
-              <div class="flex space-x-3">
+              <div v-if="c.status !== 'Archived'" class="flex space-x-3">
                 <button type="button" class="text-gray-400 hover:text-gray-500" @click.stop="openEdit(c)">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-8.486 8.486a1 1 0 01-.293.195l-4 1a1 1 0 01-1.237-1.237l1-4a1 1 0 01.195-.293l8.486-8.486z"/><path d="M5 13l4 4"/></svg>
                 </button>
-                <button type="button" class="text-red-400 hover:text-red-500 ml-2" @click.stop="confirmDelete(c)">
-                  <Trash2 class="w-5 h-5" />
+                <button type="button" class="text-amber-400 hover:text-amber-500 ml-2" @click.stop="confirmArchive(c)">
+                  <Archive class="w-5 h-5" />
                 </button>
+              </div>
+              <div v-else>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
+                  <Archive class="w-3 h-3" /> Archived
+                </span>
               </div>
             </div>
           </div>
@@ -485,12 +501,12 @@ onMounted(() => {
       @save="saveCourse"
       @update:modelValue="val => Object.assign(form, val)"
     />
-    <CourseDeleteModal
-      :open="showDeleteModal"
-      :course-name="courseToDelete?.title || ''"
-      :course-code="courseToDelete?.code || ''"
-      @confirm="deleteCourse"
-      @cancel="showDeleteModal = false"
+    <CourseArchiveModal
+      :open="showArchiveModal"
+      :course-name="courseToArchive?.title || ''"
+      :course-code="courseToArchive?.code || ''"
+      @confirm="archiveCourse"
+      @cancel="showArchiveModal = false"
     />
   </div>
 </template>
