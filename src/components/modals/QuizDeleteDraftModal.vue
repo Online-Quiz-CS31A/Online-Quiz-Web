@@ -15,7 +15,7 @@ const emit = defineEmits<{
 const stage = ref<'warn' | 'verify'>('warn')
 const inputText = ref('')
 const isVerify = computed(() => stage.value === 'verify')
-const isValid = computed(() => inputText.value.trim().toLowerCase() === 'delete')
+const isValid = computed(() => inputText.value.trim().toLowerCase() === 'archive')
 
 watch(() => props.open, (v) => {
   if (v) {
@@ -40,7 +40,7 @@ const handleCancel = () => {
           <AlertTriangle class="h-7 w-7 text-blue-600" />
         </div>
         <h3 class="text-xl font-semibold text-gray-900" v-if="!isVerify">
-          Delete draft quiz?
+          Archive draft quiz?
         </h3>
         <p class="mt-2 text-gray-600" v-if="!isVerify">
           You are about to archive the draft quiz
@@ -48,18 +48,19 @@ const handleCancel = () => {
           It will be moved to your archived quizzes. You can restore it later if needed.
         </p>
         <h3 class="text-xl font-semibold text-gray-900" v-else>
-          Confirm draft deletion
+          Confirm draft archive
         </h3>
         <p class="mt-2 text-gray-600" v-else>
-          Please type <span class="font-semibold">DELETE</span> to confirm. This will archive the draft quiz.
+          Please type <span class="font-semibold text-blue-600">ARCHIVE</span> to confirm. This will move the quiz to your archived quizzes.
         </p>
       </div>
       <div v-if="isVerify" class="mt-5 text-left">
         <input
           v-model="inputText"
           type="text"
-          placeholder="Type DELETE"
+          placeholder="Type ARCHIVE"
           class="w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-200"
+          @keyup.enter="isValid && emit('confirm')"
         />
       </div>
       <div class="mt-6 flex flex-col sm:flex-row gap-3">
@@ -76,7 +77,7 @@ const handleCancel = () => {
           class="w-full px-4 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow"
           @click="() => { stage = 'verify' }"
         >
-          Delete draft
+          Archive draft
         </button>
         <button
           v-else
@@ -85,7 +86,7 @@ const handleCancel = () => {
           :disabled="!isValid"
           @click="emit('confirm')"
         >
-          Confirm delete
+          Confirm archive
         </button>
       </div>
     </div>
