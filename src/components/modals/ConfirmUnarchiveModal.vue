@@ -69,6 +69,7 @@ const handleCancel = () => {
           type="text"
           placeholder="Type RESTORE"
           class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+          @keyup.enter="isValid && emit('confirm')"
         />
       </div>
 
