@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
                   @click.stop="handleLeaveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
                 >
-                  Leave
+                  Archive
                 </button>
               </template>
             </div>
