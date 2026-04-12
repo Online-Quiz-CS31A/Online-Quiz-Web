@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Archive, RotateCcw, Trash2, AlertCircle, Search } from 'lucide-vue-next'
 import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
-import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import { useAdminStore } from '@/stores/adminStore'
 
@@ -290,7 +290,7 @@ onMounted(() => {
     />
 
     <!-- Delete Confirmation Modal -->
-    <CourseDeleteModal
+    <CourseArchiveModal
       :open="showDeleteModal"
       :course-name="courseToDelete?.title || ''"
       :course-code="courseToDelete?.code || ''"

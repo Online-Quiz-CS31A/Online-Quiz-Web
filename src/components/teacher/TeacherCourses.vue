@@ -5,7 +5,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { ClassItem } from '@/interfaces/interfaces'
-import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
@@ -324,7 +324,7 @@ onBeforeUnmount(() => {
     </div>
   </div>
 
-  <CourseDeleteModal
+  <CourseArchiveModal
     :open="showCourseDeleteModal"
     :courseName="coursePendingDeletion?.name"
     @cancel="handleCancelDelete"
