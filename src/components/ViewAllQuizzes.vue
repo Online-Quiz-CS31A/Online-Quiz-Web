@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
@@ -18,6 +18,13 @@ const router = useRouter()
 // REFS
 const query = ref('')
 const statusFilter = ref<'all' | 'draft' | 'published'>('all')
+
+// LIFECYCLE
+onMounted(async () => {
+  if (isTeacher.value) {
+    await quizzesStore.fetchTeacherQuizzes()
+  }
+})
 
 function addQuiz() {
   if (!isTeacher.value) return

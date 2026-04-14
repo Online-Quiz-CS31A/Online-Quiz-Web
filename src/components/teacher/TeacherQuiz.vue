@@ -117,8 +117,8 @@ const closeMenu = () => {
   openMenuId.value = null
 }
 
-const openQuizInBuilder = (quiz: TeacherQuizItem) => {
-  quizzesStore.loadQuizForEditing(quiz.id)
+const openQuizInBuilder = async (quiz: TeacherQuizItem) => {
+  await quizzesStore.loadQuizForEditingAsync(quiz.id)
   router.push({
     name: 'quiz-builder',
     params: { id: quiz.class || 'default' },

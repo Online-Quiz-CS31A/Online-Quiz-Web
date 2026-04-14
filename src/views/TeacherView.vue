@@ -175,6 +175,7 @@ onMounted(() => {
     currentSection.value = section as typeof currentSection.value
   }
   coursesStore.fetchTeacherCourses()
+  quizzesStore.fetchTeacherQuizzes()
 })
 
 onUnmounted(() => {

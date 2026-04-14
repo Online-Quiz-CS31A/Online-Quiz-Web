@@ -251,13 +251,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       }
     })
 
-    const storedQuizzes = loadQuizzesFromStorage()
-    storedQuizzes.forEach(q => {
-      if ((q as any).ownerUsername === uname && q.subject) {
-        subjects.add(q.subject)
-      }
-    })
-
     return Array.from(subjects)
   })
 
@@ -270,12 +263,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const enrollments = studentCourseEnrollments.value[uname] || []
     if (enrollments.length === 0) return []
 
-    const storedQuizzes = getAllQuizzes()
-    const storedById = new Map<number, TeacherQuizItem>()
-    storedQuizzes.forEach(q => {
-      storedById.set(q.id, q)
-    })
-
     const activeSubjects = new Set(
       coursesStore.allCourses
         .filter(c => c.status !== 'Archived')
@@ -287,10 +274,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     enrollments.forEach(enrollment => {
       const teacherQuizzes = teacherQuizzesByUser.value[enrollment.teacherUsername] || []
 
-      teacherQuizzes.forEach(seedQuiz => {
-        const override = storedById.get(seedQuiz.id)
-        const quiz = override ? { ...seedQuiz, ...override } : seedQuiz
-
+      teacherQuizzes.forEach(quiz => {
         if (!(quiz as any).archived && enrollment.subjects.includes(quiz.subject) && activeSubjects.has(quiz.subject)) {
           const course = coursesStore.allCourses.find(c => c.name === quiz.subject)
           if (!course) return
@@ -380,23 +364,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function loadQuizDoneFromStorage() {
     if (quizDoneLoaded) return
     quizDoneLoaded = true
-    try {
-      const stored = localStorage.getItem('quizDoneMap')
-      if (stored) {
-        quizDoneMap.value = JSON.parse(stored)
-      }
-    } catch (e) {
-      console.error('Failed to load quiz done map from localStorage:', e)
-      quizDoneMap.value = {}
-    }
   }
 
   function saveQuizDoneToStorage() {
-    try {
-      localStorage.setItem('quizDoneMap', JSON.stringify(quizDoneMap.value))
-    } catch (e) {
-      console.error('Failed to save quiz done map to localStorage:', e)
-    }
+
   }
 
   function getQuizDoneKey(quizId: number): string | null {
@@ -572,12 +543,12 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     const coursesStoreLocal = useCoursesStore()
     const rawSubject = (currentQuiz.subject || '').trim().toLowerCase()
-    
-    let course = coursesStoreLocal.allCourses.find(c => 
+
+    let course = coursesStoreLocal.allCourses.find(c =>
       (c.name || '').trim().toLowerCase() === rawSubject ||
       (c.code || '').trim().toLowerCase() === rawSubject
     )
-    
+
     const courseId = course ? course.id : (currentQuiz as any).courseId || 0
 
     const timeLimitMatch = currentQuiz.timeLimit.match(/\d+/)
@@ -650,7 +621,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       updatedAt: new Date().toISOString(),
       ownerUsername: username
     }
-    
+
     currentQuiz.id = quizItem.id
 
     if (!teacherQuizzesByUser.value[username]) {
@@ -667,25 +638,20 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return quizItem
   }
 
-  function deleteQuiz(quizId: number) {
-    const quizzes = getAllQuizzes()
-    const filtered = quizzes.filter(q => q.id !== quizId)
-    saveQuizzesToStorage(filtered)
+  async function deleteQuiz(quizId: number) {
+    try {
+      await api.delete(`/Quiz/${quizId}`)
+    } catch (e) {
+      console.error('Failed to delete quiz:', e)
+    }
+    
+    // Also remove from teacherQuizzesByUser
+    Object.keys(teacherQuizzesByUser.value).forEach(list => {
+      teacherQuizzesByUser.value[list] = teacherQuizzesByUser.value[list].filter(q => q.id !== quizId)
+    })
   }
 
   function archiveQuiz(quizId: number) {
-    const stored = getAllQuizzes()
-    let mutated = false
-    stored.forEach(q => {
-      if (q.id === quizId) {
-        ; (q as any).archived = true
-        mutated = true
-      }
-    })
-    if (mutated) {
-      saveQuizzesToStorage(stored)
-    }
-
     let seedMutated = false
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -716,128 +682,38 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   ) {
     if (!quizId) return
 
-    const all = getAllQuizzes()
-    let mutated = false
-
-    all.forEach(q => {
-      if (q.id === quizId) {
-        if (payload.dueDate != null) {
-          ; (q as any).dueDate = payload.dueDate
-        }
-
-        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
-            ; (q as any).assignedSections = unique
-          if (unique.length > 0) {
-            ; (q as any).class = unique[0]
-          }
-        } else if (payload.sectionName != null) {
-          ; (q as any).class = payload.sectionName
-            ; (q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
-        }
-
-        if (payload.timeLimitMinutes != null) {
-          ; (q as any).timeLimit = `${payload.timeLimitMinutes} min`
-        }
-        if (payload.maxAttempts != null) {
-          ; (q as any).maxAttempts = payload.maxAttempts
-        }
-        mutated = true
-      }
-    })
-
-    if (!mutated) {
-      const allSeed = Object.values(teacherQuizzesByUser.value).flat()
-      const seedQuiz = allSeed.find(q => q.id === quizId)
-
-      if (seedQuiz) {
-        const authLocal = useAuthStore()
-        const username = authLocal.currentUser?.username || (seedQuiz as any).ownerUsername
-
-        const storedCopy: TeacherQuizItem = {
-          id: seedQuiz.id,
-          title: seedQuiz.title,
-          subject: seedQuiz.subject,
-          description: seedQuiz.description,
-          dueDate: payload.dueDate != null ? payload.dueDate : seedQuiz.dueDate,
-          class:
-            payload.sectionNames && payload.sectionNames.length > 0
-              ? payload.sectionNames[0]
-              : payload.sectionName != null
-                ? payload.sectionName
-                : (seedQuiz as any).class,
-          submitted: seedQuiz.submitted,
-          total: seedQuiz.total,
-          color: seedQuiz.color,
-          status: seedQuiz.status || 'published',
-          timeLimit:
-            payload.timeLimitMinutes != null
-              ? `${payload.timeLimitMinutes} min`
-              : (seedQuiz as any).timeLimit || '30 min',
-          questions: JSON.parse(JSON.stringify(seedQuiz.questions || [])),
-          createdAt: seedQuiz.createdAt,
-          updatedAt: new Date().toISOString(),
-          ownerUsername: (seedQuiz as any).ownerUsername || username || ''
-        }
-
-        if (payload.maxAttempts != null) {
-          ; (storedCopy as any).maxAttempts = payload.maxAttempts
-        }
-
-        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          ; (storedCopy as any).assignedSections = Array.from(
-            new Set(payload.sectionNames.filter(Boolean))
-          )
-        } else if (payload.sectionName != null) {
-          ; (storedCopy as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
-        }
-
-        all.push(storedCopy)
-        mutated = true
-      }
-    }
-
-    if (mutated) {
-      saveQuizzesToStorage(all)
-    }
-
     const allSeed = Object.values(teacherQuizzesByUser.value).flat()
-    allSeed.forEach(q => {
-      if (q.id === quizId) {
-        if (payload.dueDate != null) {
-          ; (q as any).dueDate = payload.dueDate
-        }
+    const seedQuiz = allSeed.find(q => q.id === quizId)
 
-        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
-            ; (q as any).assignedSections = unique
-          if (unique.length > 0) {
-            ; (q as any).class = unique[0]
-          }
-        } else if (payload.sectionName != null) {
-          ; (q as any).class = payload.sectionName
-            ; (q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
-        }
-
-        if (payload.timeLimitMinutes != null) {
-          ; (q as any).timeLimit = `${payload.timeLimitMinutes} min`
-        }
-        if (payload.maxAttempts != null) {
-          ; (q as any).maxAttempts = payload.maxAttempts
-        }
+    if (seedQuiz) {
+      if (payload.dueDate != null) {
+        ; (seedQuiz as any).dueDate = payload.dueDate
       }
-    })
+
+      if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
+        const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
+        ; (seedQuiz as any).assignedSections = unique
+        if (unique.length > 0) {
+          ; (seedQuiz as any).class = unique[0]
+        }
+      } else if (payload.sectionName != null) {
+        ; (seedQuiz as any).class = payload.sectionName
+        ; (seedQuiz as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+      }
+
+      if (payload.timeLimitMinutes != null) {
+        ; (seedQuiz as any).timeLimit = `${payload.timeLimitMinutes} min`
+      }
+      if (payload.maxAttempts != null) {
+        ; (seedQuiz as any).maxAttempts = payload.maxAttempts
+      }
+    }
   }
 
   function unarchiveQuizzesForCourse(courseName: string) {
     if (!courseName) return
 
-    const allStored = getAllQuizzes()
     const ids = new Set<number>()
-
-    allStored.forEach(q => {
-      if (q.subject === courseName && (q as any).archived) ids.add(q.id)
-    })
 
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -851,12 +727,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function archiveQuizzesForCourse(courseName: string) {
     if (!courseName) return
 
-    const allStored = getAllQuizzes()
     const ids = new Set<number>()
-
-    allStored.forEach(q => {
-      if (q.subject === courseName) ids.add(q.id)
-    })
 
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -868,18 +739,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function unarchiveQuiz(quizId: number) {
-    const stored = getAllQuizzes()
-    let mutated = false
-    stored.forEach(q => {
-      if (q.id === quizId && (q as any).archived) {
-        ; (q as any).archived = false
-        mutated = true
-      }
-    })
-    if (mutated) {
-      saveQuizzesToStorage(stored)
-    }
-
     let seedMutated = false
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -902,12 +761,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function loadQuizForEditing(quizId: number) {
-    const quizzes = getAllQuizzes()
-    let quiz = quizzes.find(q => q.id === quizId)
-
-    if (!quiz) {
-      quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
-    }
+    let quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
 
     if (!quiz) return false
 
@@ -916,10 +770,43 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.subject = quiz.subject
     currentQuiz.description = quiz.description || ''
     currentQuiz.timeLimit = (quiz as any).timeLimit || ''
-    currentQuiz.questions = quiz.questions ? JSON.parse(JSON.stringify(quiz.questions)) : []
+
+    const rawQuestions = quiz.questions ? JSON.parse(JSON.stringify(quiz.questions)) : []
+    currentQuiz.questions = rawQuestions.map((q: any) => {
+      if (q.text !== undefined) return q
+      return mapApiQuestionToFrontend(q)
+    })
     currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
 
     return true
+  }
+
+  async function loadQuizForEditingAsync(quizId: number): Promise<boolean> {
+    const authLocal = useAuthStore()
+    const userId = authLocal.currentUser?.id
+    if (userId) {
+      try {
+        const detail = await fetchQuizDetail(quizId, userId)
+        if (detail) {
+          const coursesStoreLocal = useCoursesStore()
+          const course = coursesStoreLocal.allCourses.find(c => c.id === detail.courseId)
+
+          currentQuiz.id = detail.quizId || detail.id || quizId
+          currentQuiz.title = detail.title || ''
+          currentQuiz.subject = course?.name || detail.courseName || (detail.course && detail.course.name) || ''
+          currentQuiz.description = detail.description || ''
+          currentQuiz.timeLimit = detail.timeLimitMinutes ? `${detail.timeLimitMinutes} min` : ''
+          const rawQs = Array.isArray(detail.questions) ? detail.questions : []
+          currentQuiz.questions = rawQs.map(mapApiQuestionToFrontend)
+          currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
+          return true
+        }
+      } catch (e) {
+        console.error(`Failed to load full quiz from API for ID ${quizId}`, e)
+      }
+    }
+
+    return false
   }
 
   function resetCurrentQuiz() {
@@ -933,49 +820,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function getAllQuizzes(): TeacherQuizItem[] {
-    try {
-      const stored = localStorage.getItem('quizzes')
-      return stored ? JSON.parse(stored) : []
-    } catch (error) {
-      console.error('Error loading quizzes from localStorage:', error)
-      return []
-    }
+    return []
   }
 
   function loadQuizzesFromStorage(): TeacherQuizItem[] {
-    const auth = useAuthStore()
-    const username = auth.currentUser?.username
-    const all = getAllQuizzes()
-    if (!username) return []
-    let mutated = false
-    all.forEach(q => {
-      if ((q.status === 'draft') && !q.ownerUsername) {
-        q.ownerUsername = username
-        mutated = true
-      }
-    })
-    if (mutated) {
-      saveQuizzesToStorage(all)
-    }
-    return all.filter(q => (q.status !== 'draft') || q.ownerUsername === username)
+    return []
   }
 
   function saveQuizzesToStorage(quizzes: TeacherQuizItem[]) {
-    try {
-      localStorage.setItem('quizzes', JSON.stringify(quizzes))
-      quizzesVersion.value++
-    } catch (error) {
-      console.error('Error saving quizzes to localStorage:', error)
-      throw new Error('Failed to save quizzes')
-    }
+ 
   }
 
   function getStudentQuizQuestions(quizId: number): QuizQuestion[] {
-    const stored = getAllQuizzes().find(q => q.id === quizId)
-    if (stored && stored.questions) {
-      return JSON.parse(JSON.stringify(stored.questions))
-    }
-
     const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
     const seedQuiz = allSeedQuizzes.find(q => q.id === quizId)
 
@@ -1252,53 +1108,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function saveAttemptToStorage() {
-    try {
-      const attemptData = {
-        quizId: currentAttempt.quizId,
-        quizTitle: currentAttempt.quizTitle,
-        questionsLength: currentAttempt.questionsLength,
-        answeredSet: Array.from(currentAttempt.answeredSet),
-        answers: currentAttempt.answers,
-        startAtISO: currentAttempt.startAtISO,
-        endAtISO: currentAttempt.endAtISO,
-        durationSeconds: currentAttempt.durationSeconds,
-        isOngoing: currentAttempt.isOngoing
-      }
-      localStorage.setItem('currentQuizAttempt', JSON.stringify(attemptData))
-    } catch (e) {
-      console.error('Failed to save attempt to localStorage:', e)
-    }
+ 
   }
 
   function loadAttemptFromStorage(): boolean {
-    try {
-      const stored = localStorage.getItem('currentQuizAttempt')
-      if (!stored) return false
-      const data = JSON.parse(stored)
-      if (!data.isOngoing) return false
-
-      currentAttempt.quizId = data.quizId
-      currentAttempt.quizTitle = data.quizTitle
-      currentAttempt.questionsLength = data.questionsLength
-      currentAttempt.answeredSet = new Set(data.answeredSet || [])
-      currentAttempt.answers = data.answers || {}
-      currentAttempt.startAtISO = data.startAtISO
-      currentAttempt.endAtISO = data.endAtISO
-      currentAttempt.durationSeconds = data.durationSeconds || 0
-      currentAttempt.isOngoing = data.isOngoing
-      return true
-    } catch (e) {
-      console.error('Failed to load attempt from localStorage:', e)
-      return false
-    }
+    return false
   }
 
   function clearAttemptStorage() {
-    try {
-      localStorage.removeItem('currentQuizAttempt')
-    } catch (e) {
-      console.error('Failed to clear attempt storage:', e)
-    }
+ 
   }
 
   function getRemainingSeconds(): number {
@@ -1496,26 +1314,12 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function saveAttemptHistoryToStorage() {
-    try {
-      localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
-    } catch (e) {
-      console.error('Failed to save attempt history to localStorage:', e)
-    }
+   
   }
 
   function loadAttemptHistoryFromStorage() {
     if (attemptHistoryLoaded) return
-    try {
-      const stored = localStorage.getItem('quizAttemptHistory')
-      if (stored) {
-        quizAttemptHistory.value = JSON.parse(stored)
-      }
-      attemptHistoryLoaded = true
-    } catch (e) {
-      console.error('Failed to load attempt history from localStorage:', e)
-      quizAttemptHistory.value = []
-      attemptHistoryLoaded = true
-    }
+    attemptHistoryLoaded = true
   }
 
   function loadAttemptForReview(quizId: number, attemptNumber: number) {
@@ -1548,38 +1352,125 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return true
   }
 
-  async function fetchQuizzesForCourse(courseId: number, userId: number, isStudent: boolean = false): Promise<TeacherQuizItem[]> {
+  function mapApiQuestionToFrontend(q: any): any {
+    let type = (q.type || '').toLowerCase()
+    if (type === 'multiple') type = 'multiple-choice'
+    else if (type === 'single') type = 'true-false'
+    else if (type === 'text' || type === 'essay') type = 'text'
+    else if (type === 'matching') type = 'matching'
+    else if (type === 'enumeration') type = 'enumeration'
+    else if (type === 'fillblank' || type === 'fill-blank' || type === 'fill_blank') type = 'fill-blank'
+
+    const options = Array.isArray(q.choices)
+      ? q.choices.map((c: any) => ({
+        text: c.body || c.text || '',
+        isCorrect: !!c.isCorrect,
+        imageUrl: c.imageUrl || ''
+      }))
+      : Array.isArray(q.options)
+        ? q.options
+        : []
+
+    return {
+      id: q.questionId || q.id || Date.now(),
+      type,
+      text: q.body || q.text || '',
+      points: q.points || 1,
+      mediaType: q.mediaType || 'none',
+      mediaUrl: q.mediaUrl || '',
+      required: q.required !== false,
+      options,
+      correctAnswer: q.correctAnswer || '',
+      pairs: Array.isArray(q.pairs) ? q.pairs : [],
+      items: Array.isArray(q.items) ? q.items : []
+    }
+  }
+
+  async function fetchQuizDetail(quizId: number, userId: number): Promise<any | null> {
+    try {
+      const response = await api.get(`/Quiz/${quizId}`, { params: { userId } })
+      return response.data || null
+    } catch {
+      return null
+    }
+  }
+
+  async function fetchQuizzesForCourse(courseId: number, userId: number, isStudent: boolean = false, courseName: string = ''): Promise<TeacherQuizItem[]> {
     try {
       const response = await api.get(`/Quiz/course/${courseId}`, {
-        params: {
-          userId,
-          isStudent
-        }
+        params: { userId, isStudent }
       })
 
       if (response.data && Array.isArray(response.data)) {
-        return response.data.map((quiz: any) => ({
-          id: quiz.quizId || quiz.id,
-          subject: quiz.courseName || '',
-          title: quiz.title || 'Untitled Quiz',
-          description: quiz.description || '',
-          dueDate: quiz.dueAt || '',
-          class: '',
-          submitted: 0,
-          total: 0,
-          color: 'blue',
-          status: quiz.isPublished ? 'published' : 'draft',
-          timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
-          questions: quiz.questions || [],
-          createdAt: quiz.createdAt || new Date().toISOString(),
-          updatedAt: quiz.updatedAt || new Date().toISOString(),
-        }))
+        return response.data.map((quiz: any) => {
+          const rawQuestions = Array.isArray(quiz.questions) ? quiz.questions : []
+          const mappedQuestions = rawQuestions.map(mapApiQuestionToFrontend)
+
+          return {
+            id: quiz.quizId || quiz.id,
+            subject: courseName || quiz.courseName || (quiz.course && quiz.course.name) || quiz.subject || '',
+            title: quiz.title || 'Untitled Quiz',
+            description: quiz.description || '',
+            dueDate: quiz.dueAt || quiz.dueDate || '',
+            class: quiz.sectionName || quiz.class || (quiz.section && quiz.section.name) || '',
+            submitted: quiz.submittedCount || quiz.submitted || 0,
+            total: quiz.totalStudents || quiz.total || 0,
+            color: quiz.color || 'blue',
+            status: quiz.isPublished ? 'published' : 'draft',
+            timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : (quiz.timeLimit || '30 min'),
+            questions: mappedQuestions,
+            createdAt: quiz.createdAt || new Date().toISOString(),
+            updatedAt: quiz.updatedAt || new Date().toISOString(),
+          } as TeacherQuizItem
+        })
       }
 
       return []
     } catch (error) {
       console.error('Failed to fetch quizzes for course:', error)
       return []
+    }
+  }
+
+  async function fetchTeacherQuizzes() {
+    const authLocal = useAuthStore()
+    const user = authLocal.currentUser
+    if (!user || user.role !== 'teacher' || !user.id) return
+
+    const coursesStoreLocal = useCoursesStore()
+    if (coursesStoreLocal.allCourses.length === 0) {
+      await coursesStoreLocal.fetchTeacherCourses()
+    }
+    const courses = coursesStoreLocal.allCourses
+
+    const allApiQuizzes: TeacherQuizItem[] = []
+    for (const course of courses) {
+      const qs = await fetchQuizzesForCourse(course.id, user.id, false, course.name)
+      for (const q of qs) {
+        try {
+          const detail = await fetchQuizDetail(q.id, user.id)
+          if (detail) {
+            const rawQs = Array.isArray(detail.questions) ? detail.questions : []
+            q.questions = rawQs.map(mapApiQuestionToFrontend)
+            q.description = detail.description || q.description || ''
+            if (!q.subject) q.subject = detail.courseName || (detail.course && detail.course.name) || course.name
+            if (!q.class) q.class = detail.sectionName || (detail.section && detail.section.name) || q.class
+            if (!q.dueDate && detail.dueAt) q.dueDate = detail.dueAt
+          }
+        } catch (e) {
+          console.error(`Failed to fetch quiz details for quiz ${q.id}`, e)
+        }
+
+        if (!q.subject) q.subject = course.name || ''
+        q.ownerUsername = user.username
+        allApiQuizzes.push(q)
+      }
+    }
+    if (allApiQuizzes.length > 0) {
+      teacherQuizzesByUser.value[user.username] = allApiQuizzes
+    } else {
+      if (user.username && teacherQuizzesByUser.value[user.username]) {
+      }
     }
   }
 
@@ -1639,6 +1530,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     isQuizMarkedDone,
     toggleQuizDone,
     loadQuizDoneFromStorage,
-    fetchQuizzesForCourse
+    fetchQuizzesForCourse,
+    fetchTeacherQuizzes,
+    loadQuizForEditingAsync,
+    fetchQuizDetail,
+    mapApiQuestionToFrontend
   }
 })
