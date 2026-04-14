@@ -101,6 +101,43 @@ export const useCoursesStore = defineStore('classes', () => {
     }
   }
 
+  async function fetchStudentCourses() {
+    const auth = useAuthStore()
+    const user = auth.currentUser
+
+    if (!user || user.role !== 'student' || !user.id) {
+      return
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await api.get<any[]>(`/Course/student/${user.id}`)
+      const courses = response.data || []
+
+      const mapped: ClassItem[] = courses.map(c => ({
+        id: c.courseId,
+        code: c.code,
+        name: c.name,
+        teacher: c.instructorName || c.instructorUsername || 'Teacher',
+        description: c.category || '',
+        students: 0,
+        color: 'blue',
+        status: (c.status === 'Active' || c.status === 'Archived') ? c.status : 'Active',
+        studentUsernames: []
+      }))
+
+      allCourses.value = mapped
+      saveCoursesToStorage()
+    } catch (e: any) {
+      console.error('Failed to fetch student courses from API:', e)
+      error.value = e?.message || 'Failed to load courses'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const allCoursesWithCounts = computed<ClassItem[]>(() => {
     const sectionsStore = useSectionsStore()
     return allCourses.value.map(course => {
@@ -134,15 +171,7 @@ export const useCoursesStore = defineStore('classes', () => {
           }
         })
     } else {
-      const uname = user.username
-      const sectionsStore = useSectionsStore()
-
-      return allCoursesWithCounts.value.filter(c => {
-        if (c.status === 'Archived') return false
-
-        const sections = sectionsStore.getSectionsByCourse(c.id)
-        return sections.some(section => (section.studentUsernames || []).includes(uname))
-      })
+      return allCoursesWithCounts.value.filter(c => c.status !== 'Archived')
     }
   })
 
@@ -195,5 +224,6 @@ export const useCoursesStore = defineStore('classes', () => {
     archiveCourse,
     unarchiveCourse,
     fetchTeacherCourses,
+    fetchStudentCourses,
   }
 })

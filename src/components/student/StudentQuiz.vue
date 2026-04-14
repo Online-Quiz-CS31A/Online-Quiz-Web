@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { StudentQuiz } from '@/interfaces/interfaces'
@@ -37,6 +37,11 @@ const quizzesStore = useQuizzesStore()
 // COMPUTED
 const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
 
+onMounted(() => {
+  if (!props.quizzes) {
+    quizzesStore.fetchStudentQuizzesAsync()
+  }
+})
 
 // METHODS
 const getDeterministicIndex = (key: string) => {

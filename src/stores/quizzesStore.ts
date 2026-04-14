@@ -254,75 +254,50 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return Array.from(subjects)
   })
 
+  const studentQuizzesFromApi = ref<StudentQuizItem[]>([])
+
   const myStudentQuizzes = computed<StudentQuizItem[]>(() => {
-    const uname = auth.currentUser?.username
-    if (!uname) return []
+    return studentQuizzesFromApi.value
+  })
 
-    void quizzesVersion.value
+  async function fetchStudentQuizzesAsync() {
+    const authLocal = useAuthStore()
+    const user = authLocal.currentUser
+    if (!user || user.role !== 'student' || !user.id) return
 
-    const enrollments = studentCourseEnrollments.value[uname] || []
-    if (enrollments.length === 0) return []
-
-    const activeSubjects = new Set(
-      coursesStore.allCourses
-        .filter(c => c.status !== 'Archived')
-        .map(c => c.name)
-    )
+    const coursesStoreLocal = useCoursesStore()
+    const courses = coursesStoreLocal.allCourses.filter(c => c.status !== 'Archived')
 
     const studentQuizzes: StudentQuizItem[] = []
-
-    enrollments.forEach(enrollment => {
-      const teacherQuizzes = teacherQuizzesByUser.value[enrollment.teacherUsername] || []
-
-      teacherQuizzes.forEach(quiz => {
-        if (!(quiz as any).archived && enrollment.subjects.includes(quiz.subject) && activeSubjects.has(quiz.subject)) {
-          const course = coursesStore.allCourses.find(c => c.name === quiz.subject)
-          if (!course) return
-
-          const assignedSections: string[] = (quiz as any).assignedSections && Array.isArray((quiz as any).assignedSections)
-            ? (quiz as any).assignedSections
-            : ((quiz as any).class ? [(quiz as any).class] : [])
-
-          if (assignedSections.length === 0) return
-
-          sectionsStore.allSections.forEach(section => {
-            const inSection = (section.studentUsernames || []).includes(uname)
-            if (!inSection) return
-
-            if (!assignedSections.includes(section.name)) return
-
-            const isArchivedSection = sectionsStore.archivedSectionMappings.some(
-              m => m.sectionId === section.id
-            )
-            if (isArchivedSection) return
-
-            const hasActiveMapping = sectionsStore.courseSectionMappings.some(
-              m => m.courseId === course.id && m.sectionId === section.id
-            )
-            if (!hasActiveMapping) return
-
-            const maxAttempts = (quiz as any).maxAttempts != null ? Number((quiz as any).maxAttempts) || 1 : 3
-            const timeLimitStr = (quiz as any).timeLimit || '30 min'
-
-            studentQuizzes.push({
-              id: quiz.id,
-              subject: quiz.subject,
-              title: quiz.title,
-              description: quiz.description,
-              dueDate: (quiz as any).dueDate,
-              class: section.name,
-              timeLimit: timeLimitStr,
-              status: 'Not Started',
-              color: quiz.color,
-              maxAttempts
-            })
+    
+    for (const course of courses) {
+      try {
+        const response = await api.get(`/Quiz/course/${course.id}?userId=${user.id}&isStudent=true`)
+        const quizzesData = response.data?.data || response.data || []
+        
+        const arr = Array.isArray(quizzesData) ? quizzesData : []
+        arr.forEach((quiz: any) => {
+          if (!quiz) return
+          studentQuizzes.push({
+            id: quiz.quizId || quiz.id,
+            subject: course.name,
+            title: quiz.title,
+            description: quiz.description || '',
+            dueDate: quiz.dueAt || quiz.dueDate || '',
+            class: '',
+            timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
+            status: 'Not Started',
+            color: 'blue',
+            maxAttempts: quiz.maxAttempts || 3
           })
-        }
-      })
-    })
+        })
+      } catch (e) {
+        console.error(`Failed to load quizzes for course ${course.id}`, e)
+      }
+    }
 
-    return studentQuizzes
-  })
+    studentQuizzesFromApi.value = studentQuizzes
+  }
 
   function loadArchivedSeedQuizzesFromStorage() {
     try {
@@ -1534,6 +1509,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     fetchTeacherQuizzes,
     loadQuizForEditingAsync,
     fetchQuizDetail,
+    fetchStudentQuizzesAsync,
     mapApiQuestionToFrontend
   }
 })
