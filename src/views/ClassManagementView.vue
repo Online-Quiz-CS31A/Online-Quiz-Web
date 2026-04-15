@@ -5,6 +5,7 @@ import { defineAsyncComponent } from 'vue'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
+import { useAuthStore } from '@/stores/authStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
@@ -12,7 +13,11 @@ const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 import ImportResultsModal from '@/components/modals/ImportResultsModal.vue'
 
 // CONSTANTS
+const route = useRoute()
 const router = useRouter()
+const studentsStore = useStudentsStore()
+const sectionsStore = useSectionsStore()
+const classesStore = useCoursesStore()
 
 // REFS
 const selectedStudents = ref<StudentViewModel[]>([])
@@ -75,11 +80,6 @@ const filteredSections = computed(() => {
 })
 
 // REACTIVE
-const route = useRoute()
-const studentsStore = useStudentsStore()
-const sectionsStore = useSectionsStore()
-const classesStore = useCoursesStore()
-
 const editingSectionId = computed(() => {
   const raw = route.query.sectionId
   if (typeof raw === 'string') {
@@ -91,9 +91,6 @@ const editingSectionId = computed(() => {
 const form = reactive({
   className: '',
   subject: currentCourse.value?.name || 'Information Assurance',
-  scheduleDay: 'Monday',
-  scheduleTime: '',
-  classroom: '',
 })
 
 // WATCHERS
@@ -108,10 +105,6 @@ if (editingSectionId.value) {
   if (section) {
     form.className = section.name
     const cid = Number(classId.value)
-    const schedule = sectionsStore.getSchedule(cid, section.id)
-    form.scheduleDay = schedule?.scheduleDay || form.scheduleDay
-    form.scheduleTime = schedule?.scheduleTime || form.scheduleTime
-    form.classroom = schedule?.classroom || form.classroom
 
     const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
       students.value.map(s => [s.username, s])
@@ -418,11 +411,6 @@ async function saveClass() {
 
     targetCourseIds.forEach(cid => {
       sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
-      sectionsStore.setSchedule(cid, editingSectionId.value!, {
-        scheduleDay: form.scheduleDay,
-        scheduleTime: form.scheduleTime || '00:00',
-        classroom: form.classroom,
-      })
     })
 
     success('Class updated successfully!')
@@ -437,11 +425,6 @@ async function saveClass() {
       if (cid !== courseId) {
         sectionsStore.addSectionToCourse(newSectionId, cid)
       }
-      sectionsStore.setSchedule(cid, newSectionId, {
-        scheduleDay: form.scheduleDay,
-        scheduleTime: form.scheduleTime || '00:00',
-        classroom: form.classroom,
-      })
     })
   }
 
@@ -611,23 +594,6 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Schedule</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <select v-model="form.scheduleDay" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option>Monday</option>
-                    <option>Tuesday</option>
-                    <option>Wednesday</option>
-                    <option>Thursday</option>
-                    <option>Friday</option>
-                  </select>
-                  <input v-model="form.scheduleTime" type="time" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Classroom</label>
-                <input v-model="form.classroom" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Room 205" />
               </div>
               <button @click="saveClass" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>

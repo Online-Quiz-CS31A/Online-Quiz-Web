@@ -81,34 +81,6 @@ const sections = computed(() => {
   return allSections
 })
 
-const sectionsWithSchedule = computed(() => {
-  const code = current.value?.code
-  const targetCourseIds = classesStore.rawTeacherCourses
-    .filter(c => c.code === code)
-    .map(c => c.courseId)
-  if (targetCourseIds.length === 0) {
-    targetCourseIds.push(Number(props.id))
-  }
-
-  return sections.value.map(section => {
-    let schedule = undefined
-    for (const cid of targetCourseIds) {
-      const found = sectionsStore.getSchedule(cid, section.id)
-      if (found) {
-        schedule = found
-        break
-      }
-    }
-
-    return {
-      ...section,
-      scheduleDay: schedule?.scheduleDay || 'TBA',
-      scheduleTime: schedule?.scheduleTime ? formatTime(schedule.scheduleTime) : '—',
-      classroom: schedule?.classroom || 'TBA'
-    }
-  })
-})
-
 const current = computed<ClassItem>(() => {
   const cid = Number(props.id)
   const found = classesStore.allCourses.find((c: ClassItem) => c.id === cid)
@@ -162,14 +134,6 @@ onMounted(async () => {
 })
 
 // METHODS
-function formatTime(time24: string): string {
-  if (!time24 || time24 === '—') return '—'
-  const [hours, minutes] = time24.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hours12 = hours % 12 || 12
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
-}
-
 function getDeterministicIndex(key: string) {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -287,7 +251,7 @@ function openDashboard(id: number) {
         </div>
 
         <!-- Empty State -->
-        <div v-if="sectionsWithSchedule.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
+        <div v-if="sections.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
           <div class="relative mb-6">
             <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
               <i class="fas fa-chalkboard-teacher text-4xl text-blue-400"></i>
@@ -321,14 +285,11 @@ function openDashboard(id: number) {
         <!-- Classes Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ClassSectionCard
-            v-for="section in sectionsWithSchedule"
+            v-for="section in sections"
             :key="section.id"
             :section="{
               id: section.id,
               name: section.name,
-              scheduleDay: section.scheduleDay,
-              scheduleTime: section.scheduleTime,
-              classroom: section.classroom,
               students: section.students,
             }"
             :show-menu="true"

@@ -2,9 +2,6 @@
 interface SectionCardData {
   id: number
   name: string
-  scheduleDay: string
-  scheduleTime: string
-  classroom: string
   students: number
 }
 
