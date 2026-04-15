@@ -7,6 +7,7 @@ import { useSectionsStore } from './sectionsStore'
 import api from '../services/api'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
+  const isLoading = ref(false)
   const teacherQuizzesByUser = ref<Record<string, TeacherQuizItem[]>>({
     '0111111111': [
       {
@@ -1408,14 +1409,16 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   async function fetchTeacherQuizzes() {
-    const authLocal = useAuthStore()
-    const user = authLocal.currentUser
-    if (!user || user.role !== 'teacher' || !user.id) return
-
-    const coursesStoreLocal = useCoursesStore()
-    if (coursesStoreLocal.allCourses.length === 0) {
-      await coursesStoreLocal.fetchTeacherCourses()
-    }
+    isLoading.value = true
+    try {
+      const authLocal = useAuthStore()
+      const user = authLocal.currentUser
+      if (!user || user.role !== 'teacher' || !user.id) return
+  
+      const coursesStoreLocal = useCoursesStore()
+      if (coursesStoreLocal.allCourses.length === 0) {
+        await coursesStoreLocal.fetchTeacherCourses()
+      }
     const courses = coursesStoreLocal.allCourses
 
     const allApiQuizzes: TeacherQuizItem[] = []
@@ -1447,9 +1450,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (user.username && teacherQuizzesByUser.value[user.username]) {
       }
     }
+    } finally {
+      isLoading.value = false
+    }
   }
 
   return {
+    isLoading,
     myTeacherQuizzes,
     myTeacherSubjects,
     myStudentQuizzes,

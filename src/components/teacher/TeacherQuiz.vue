@@ -7,6 +7,7 @@ import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
 import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
+import TeacherQuizSkeleton from '@/components/skeletons/TeacherQuizSkeleton.vue'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
@@ -280,9 +281,14 @@ const formatDueDate = (dateStr: string) => {
         <i class="fas fa-check-circle mr-2"></i>Published
       </button>
     </div>
+
+    <!-- Loading State -->
+    <div v-if="quizzesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <TeacherQuizSkeleton v-for="i in 3" :key="i" />
+    </div>
     
     <!-- Empty State -->
-    <div v-if="filteredQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+    <div v-else-if="filteredQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
         <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
           <i class="fas fa-clipboard-list text-4xl text-blue-400"></i>

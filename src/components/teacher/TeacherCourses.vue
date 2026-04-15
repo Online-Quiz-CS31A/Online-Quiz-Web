@@ -7,6 +7,7 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { ClassItem } from '@/interfaces/interfaces'
 import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
+import TeacherCourseSkeleton from '@/components/skeletons/TeacherCourseSkeleton.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -262,9 +263,14 @@ onBeforeUnmount(() => {
       <h2 class="text-xl font-bold text-gray-800">My Courses</h2>
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
+
+    <!-- Loading State -->
+    <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <TeacherCourseSkeleton v-for="i in (props.maxItems || 3)" :key="i" />
+    </div>
     
     <!-- Empty State -->
-    <div v-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+    <div v-else-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
         <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
           <i class="fas fa-book-open text-4xl text-blue-400"></i>
