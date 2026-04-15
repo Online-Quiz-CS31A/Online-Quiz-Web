@@ -426,6 +426,7 @@ onMounted(() => {
   console.log('currentCourseId:', currentCourseId.value)
   console.log('authStore.currentUser:', authStore.currentUser)
   sectionsStore.loadArchivedSectionsFromStorage()
+  studentsStore.fetchAllStudentsFromApi()
   fetchStudentsFromAPI()
   fetchQuizzesFromAPI()
 })

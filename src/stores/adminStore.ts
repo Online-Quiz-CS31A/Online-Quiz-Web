@@ -394,13 +394,13 @@ export const useAdminStore = defineStore('admin', () => {
             return data
                 .map((u: any) => ({
                     id: u.userId,
-                    name: u.fullName,
+                    name: (u.fullName || u.name || `${u.firstName || ''} ${u.lastName || ''}`).trim() || u.username || 'Unknown',
                     email: u.email,
-                    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
-                    section: u.student?.section,
+                    avatar: u.avatar || u.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                    section: u.student?.section?.trim(),
                     role: u.roleName
                 }))
-                .filter((u: any) => u.section === section)
+                .filter((u: any) => u.section === section?.trim())
         } catch (error) {
             console.error('Failed to fetch students by section:', error)
             return []
