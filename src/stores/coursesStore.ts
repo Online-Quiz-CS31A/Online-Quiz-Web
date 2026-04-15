@@ -63,7 +63,7 @@ export const useCoursesStore = defineStore('classes', () => {
       }
 
       const sectionsStore = useSectionsStore()
-      sectionsStore.setSectionsFromApi(dtoCourses)
+      await sectionsStore.fetchSectionsFromApi()
 
       const grouped = new Map<string, TeacherCourseDto[]>()
       dtoCourses.forEach(c => {
