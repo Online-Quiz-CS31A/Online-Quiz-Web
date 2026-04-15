@@ -142,8 +142,50 @@ const getInitials = (name: string) => {
   return (first + last).toUpperCase()
 }
 
-const getStudentCount = (courseId: number) => {
-  const sections = sectionsStore.getSectionsByCourse(courseId)
+const getSectionsForCourse = (classItem: ClassItem) => {
+  const code = classItem.code
+  if (!code) {
+    return sectionsStore.getSectionsByCourse(classItem.id)
+  }
+
+  const targetCourseIds = classesStore.rawTeacherCourses
+    .filter(c => c.code === code)
+    .map(c => c.courseId)
+    
+  if (targetCourseIds.length === 0) {
+    targetCourseIds.push(classItem.id)
+  }
+
+  const allSections = []
+  const seenIds = new Set<number>()
+  
+  for (const cid of targetCourseIds) {
+    const cidSections = sectionsStore.getSectionsByCourse(cid)
+    for (const s of cidSections) {
+      if (!seenIds.has(s.id)) {
+        allSections.push(s)
+        seenIds.add(s.id)
+      }
+    }
+  }
+
+  const assignedSectionNames = classesStore.rawTeacherCourses
+    .filter(c => c.code === code && c.section)
+    .map(c => c.section.trim())
+
+  const apiSections = sectionsStore.allSections.filter(s => assignedSectionNames.includes(s.name))
+  for (const s of apiSections) {
+    if (!seenIds.has(s.id)) {
+      allSections.push(s)
+      seenIds.add(s.id)
+    }
+  }
+
+  return allSections
+}
+
+const getStudentCount = (classItem: ClassItem) => {
+  const sections = getSectionsForCourse(classItem)
   return sections.reduce((total, section) => total + (section.students || 0), 0)
 }
 
@@ -163,7 +205,7 @@ const fetchStudentCounts = async () => {
   console.log('Fetching student counts for', coursesToProcess.length, 'courses')
   
   for (const classItem of coursesToProcess) {
-    const sections = sectionsStore.getSectionsByCourse(classItem.id)
+    const sections = getSectionsForCourse(classItem)
     
     if (!sections.length) {
       console.log(`No sections found for course ${classItem.id} (${classItem.name})`)
@@ -309,7 +351,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="min-w-0 leading-tight">
                 <div class="text-xs truncate max-w-[180px]">{{ classItem.teacher }}</div>
-                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem.id) }} students</div>
+                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem) }} students</div>
               </div>
             </div>
           </div>
