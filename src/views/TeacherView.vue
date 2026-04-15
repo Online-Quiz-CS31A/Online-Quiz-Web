@@ -168,14 +168,18 @@ const handleClickOutside = (e: Event) => {
 
 
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
+  document.removeEventListener('click', handleClickOutside)
   document.addEventListener('click', handleClickOutside)
   const section = (route.query.section as string) || ''
   if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
     currentSection.value = section as typeof currentSection.value
   }
-  coursesStore.fetchTeacherCourses()
-  quizzesStore.fetchTeacherQuizzes()
+  
+  await Promise.all([
+    coursesStore.fetchTeacherCourses(),
+    quizzesStore.fetchTeacherQuizzes()
+  ])
 })
 
 onUnmounted(() => {

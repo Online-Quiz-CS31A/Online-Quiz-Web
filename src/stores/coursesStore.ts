@@ -46,26 +46,33 @@ export const useCoursesStore = defineStore('classes', () => {
       return
     }
 
-    isLoading.value = true
+    const hasExisting = rawTeacherCourses.value.length > 0
+    if (!hasExisting) {
+      isLoading.value = true
+    }
+    
     error.value = null
 
     try {
       const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
       const dtoCourses = response.data || []
-      rawTeacherCourses.value = dtoCourses
-
-      for (const course of dtoCourses) {
-        try {
-          const enrollResponse = await api.get<any[]>(`/Course/${course.courseId}/enrollments?teacherId=${user.id}`)
-          course.students = (enrollResponse.data && Array.isArray(enrollResponse.data)) ? enrollResponse.data.length : 0
-        } catch (e) {
-          console.error(`Failed to fetch enrollments for course ${course.courseId}`, e)
-          course.students = 0
-        }
-      }
-
+      
       const sectionsStore = useSectionsStore()
-      await sectionsStore.fetchSectionsFromApi()
+      
+      await Promise.all([
+        sectionsStore.fetchSectionsFromApi(),
+        ...dtoCourses.map(async (course) => {
+          try {
+            const enrollResponse = await api.get<any[]>(`/Course/${course.courseId}/enrollments?teacherId=${user.id}`)
+            course.students = (enrollResponse.data && Array.isArray(enrollResponse.data)) ? enrollResponse.data.length : 0
+          } catch (e) {
+            console.error(`Failed to fetch enrollments for course ${course.courseId}`, e)
+            course.students = 0
+          }
+        })
+      ])
+
+      rawTeacherCourses.value = dtoCourses
 
       const grouped = new Map<string, TeacherCourseDto[]>()
       dtoCourses.forEach(c => {
@@ -77,7 +84,6 @@ export const useCoursesStore = defineStore('classes', () => {
       const mapped: ClassItem[] = []
       for (const [code, items] of grouped) {
         const first = items[0]
-
         const totalStudents = items.reduce((sum, item) => sum + (item.students || 0), 0)
 
         mapped.push({

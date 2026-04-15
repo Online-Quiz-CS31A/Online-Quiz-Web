@@ -245,7 +245,9 @@ watch(classes, (newClasses) => {
 onMounted(async () => {
   document.addEventListener('click', onDocClick)
   
-  await classesStore.fetchTeacherCourses()
+  if (classesStore.rawTeacherCourses.length === 0) {
+    await classesStore.fetchTeacherCourses()
+  }
   
   if (classes.value.length > 0 && !hasFetchedCounts.value) {
     fetchStudentCounts()
