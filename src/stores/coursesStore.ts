@@ -11,6 +11,7 @@ export const useCoursesStore = defineStore('classes', () => {
     '0111111111': 'Alice Mao',
   }
 
+  const rawTeacherCourses = ref<TeacherCourseDto[]>([])
   const allCourses = ref<ClassItem[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -51,6 +52,7 @@ export const useCoursesStore = defineStore('classes', () => {
     try {
       const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
       const dtoCourses = response.data || []
+      rawTeacherCourses.value = dtoCourses
 
       for (const course of dtoCourses) {
         try {
@@ -220,6 +222,7 @@ export const useCoursesStore = defineStore('classes', () => {
     error,
     myClasses,
     mySubjects,
+    rawTeacherCourses,
     addClass,
     archiveCourse,
     unarchiveCourse,

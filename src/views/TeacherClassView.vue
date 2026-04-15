@@ -40,14 +40,66 @@ const sectionToDeleteName = ref('')
 
 // COMPUTED
 const sections = computed(() => {
-  const cid = Number(props.id)
-  return sectionsStore.getSectionsByCourse(cid)
+  const code = current.value?.code
+  if (!code) {
+    return sectionsStore.getSectionsByCourse(Number(props.id))
+  }
+
+  const targetCourseIds = classesStore.rawTeacherCourses
+    .filter(c => c.code === code)
+    .map(c => c.courseId)
+    
+  if (targetCourseIds.length === 0) {
+    targetCourseIds.push(Number(props.id))
+  }
+
+  const allSections = []
+  const seenIds = new Set<number>()
+  
+  for (const cid of targetCourseIds) {
+    const cidSections = sectionsStore.getSectionsByCourse(cid)
+    for (const s of cidSections) {
+      if (!seenIds.has(s.id)) {
+        allSections.push(s)
+        seenIds.add(s.id)
+      }
+    }
+  }
+
+  const assignedSectionNames = classesStore.rawTeacherCourses
+    .filter(c => c.code === code && c.section)
+    .map(c => c.section.trim())
+
+  const apiSections = sectionsStore.allSections.filter(s => assignedSectionNames.includes(s.name))
+  for (const s of apiSections) {
+    if (!seenIds.has(s.id)) {
+      allSections.push(s)
+      seenIds.add(s.id)
+    }
+  }
+
+  return allSections
 })
 
 const sectionsWithSchedule = computed(() => {
-  const cid = Number(props.id)
+  const code = current.value?.code
+  const targetCourseIds = classesStore.rawTeacherCourses
+    .filter(c => c.code === code)
+    .map(c => c.courseId)
+  if (targetCourseIds.length === 0) {
+    targetCourseIds.push(Number(props.id))
+  }
+
   return sections.value.map(section => {
-    const schedule = sectionsStore.getSchedule(cid, section.id)
+    let schedule = undefined
+    for (const cid of targetCourseIds) {
+      const found = sectionsStore.getSchedule(cid, section.id)
+      if (found) {
+        schedule = found
+        break
+      }
+    }
+
     return {
       ...section,
       scheduleDay: schedule?.scheduleDay || 'TBA',
