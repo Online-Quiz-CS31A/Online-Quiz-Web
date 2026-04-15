@@ -151,10 +151,9 @@ const loadSections = async () => {
     const items = res.data.items || []
     const sections = new Set<string>()
     for (const u of items) {
-      if (u.roleName === 'Student' && u.student && u.student.section) {
-        sections.add(u.student.section)
-      } else if (u.section) {
-        sections.add(u.section)
+      const sec = (u.student?.section || u.section || '').trim()
+      if (u.roleName === 'Student' && sec) {
+        sections.add(sec)
       }
     }
     allSections.value = Array.from(sections).sort()

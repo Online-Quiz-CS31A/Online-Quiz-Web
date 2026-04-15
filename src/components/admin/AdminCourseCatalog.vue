@@ -10,6 +10,7 @@ import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import { Archive } from 'lucide-vue-next'
 import { useAdminStore } from '@/stores/adminStore'
 import type { Course, CourseInstructor, AdminUser } from '@/interfaces/interfaces'
+import api from '@/services/api'
 
 import AdminCourseDetails from '@/components/admin/AdminCourseDetails.vue'
 
@@ -142,18 +143,16 @@ const loadTeachersAndSections = async () => {
   }
 
   try {
-    await adminStore.fetchUsers(1, 1000, '', 'Student')
-    if (adminStore.users) {
-      const sections = new Set<string>()
-      adminStore.users.forEach(u => {
-        if (u.role === 'Student' && u.section) {
-          sections.add(u.section)
-        }
-      })
-      allSections.value = Array.from(sections).sort()
+    const res = await api.get('/user/paged?pageNumber=1&pageSize=1000')
+    const items = res.data?.items || []
+    const sections = new Set<string>()
+    for (const u of items) {
+      const sec = (u.student?.section || u.section || '').trim()
+      if (u.roleName === 'Student' && sec) {
+        sections.add(sec)
+      }
     }
-    
-    await adminStore.fetchUsers(1, 100, '', 'Teacher')
+    allSections.value = Array.from(sections).sort()
   } catch (e) {
     console.error('Failed to load sections', e)
   }

@@ -219,7 +219,7 @@ function openDashboard(id: number) {
       <div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800">Your Classes</h2>
-          <!-- <button
+          <button
             @click="openCreateClass"
             :disabled="isCourseArchived"
             :title="isCourseArchived ? `Can't edit archived course` : 'Create a new class'"
@@ -231,7 +231,7 @@ function openDashboard(id: number) {
             ]"
           >
             <i class="fas fa-plus mr-2"></i> New Class
-          </button> -->
+          </button>
         </div>
 
         <!-- Empty State -->

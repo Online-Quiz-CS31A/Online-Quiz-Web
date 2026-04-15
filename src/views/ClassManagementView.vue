@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineAsyncComponent } from 'vue'
 import { useStudentsStore } from '@/stores/studentsStore'
@@ -7,6 +7,7 @@ import { useSectionsStore } from '@/stores/sectionsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 import ImportResultsModal from '@/components/modals/ImportResultsModal.vue'
 
@@ -23,6 +24,7 @@ const importAdded = ref<StudentViewModel[]>([])
 const importSkipped = ref<{ studentNumber: string; name: string; reason: string }[]>([])
 const additionalSubjects = ref<string[]>([])
 const isSubjectDropdownOpen = ref(false)
+const showSectionDropdown = ref(false)
 
 // COMPUTED
 const classId = computed(() => String(route.params.id || '1'))
@@ -64,6 +66,12 @@ const filteredStudents = computed(() => {
     const matchFilter = filters.value === 'All' || s.year === filters.value
     return matchQuery && matchFilter
   })
+})
+
+const filteredSections = computed(() => {
+  if (!form.className) return sectionsStore.allSections
+  const lower = form.className.toLowerCase()
+  return sectionsStore.allSections.filter(s => s.name.toLowerCase().includes(lower))
 })
 
 // REACTIVE
@@ -352,7 +360,25 @@ function downloadTemplate() {
   success('Template downloaded')
 }
 
-function saveClass() {
+function hideSectionDropdown() {
+  setTimeout(() => { showSectionDropdown.value = false }, 200)
+}
+
+function selectSection(sec: any) {
+  form.className = sec.name
+  showSectionDropdown.value = false
+  
+  const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+    students.value.map(s => [s.username, s])
+  )
+  const newStudents = (sec.studentUsernames || [])
+    .map((u: string) => byUsername[u])
+    .filter((s: StudentViewModel) => s && !isSelected(s.username))
+  
+  selectedStudents.value.push(...newStudents)
+}
+
+async function saveClass() {
   if (!form.className) {
     error('Please enter a class name')
     return
@@ -417,8 +443,47 @@ function saveClass() {
         classroom: form.classroom,
       })
     })
+  }
 
-    success('Class saved successfully!')
+  try {
+    const userRes = await api.get('/User')
+    const allUsers = userRes.data || []
+    
+    const usernameToUserId = new Map<string, number>()
+    allUsers.forEach((u: any) => {
+      const studentNumber = u.student?.studentId || u.username || u.email?.split('@')[0]
+      if (studentNumber && u.userId) {
+        usernameToUserId.set(studentNumber, u.userId)
+      }
+    })
+
+    const authStore = useAuthStore()
+    const currentUserId = authStore.currentUser?.id || 1
+
+    const enrollPromises = []
+
+    for (const cid of targetCourseIds) {
+      for (const s of selectedStudents.value) {
+        const studentUserId = usernameToUserId.get(s.username) || usernameToUserId.get(s.email)
+        if (studentUserId) {
+          const payload = {
+            studentId: studentUserId,
+            courseId: cid,
+            section: form.className,
+            enrolledBy: currentUserId
+          }
+          enrollPromises.push(api.post('/Enrollment', payload).catch(e => console.error('Enroll failed for', s.username, e)))
+        } else {
+          console.warn('Could not find numeric User ID for student:', s.username)
+        }
+      }
+    }
+    
+    await Promise.all(enrollPromises)
+    success(editingSectionId.value ? 'Class updated and students enrolled successfully!' : 'Class saved and students enrolled successfully!')
+  } catch (err) {
+    console.error('Failed to enroll students via API:', err)
+    error('Class saved locally, but some students could not be enrolled on the server.')
   }
 
   router.back()
@@ -438,6 +503,13 @@ function yearPillClass(year: YearLevel) {
   }
   return map[year]
 }
+
+onMounted(async () => {
+  await Promise.all([
+    studentsStore.fetchAllStudentsFromApi(),
+    sectionsStore.fetchSectionsFromApi()
+  ])
+})
 </script>
 
 <template>
@@ -455,9 +527,16 @@ function yearPillClass(year: YearLevel) {
               <button class="text-sm text-gray-500 hover:text-gray-700" @click="goBack">Back</button>
             </div>
             <div class="space-y-4">
-              <div>
+              <div class="relative">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
-                <input v-model="form.className" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. CS31A" />
+                <div class="relative">
+                  <input v-model="form.className" @focus="showSectionDropdown = true" @blur="hideSectionDropdown" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. CS31A" />
+                  <div v-if="showSectionDropdown && filteredSections.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-auto">
+                    <div v-for="sec in filteredSections" :key="sec.name" @mousedown.prevent="selectSection(sec)" class="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm">
+                      {{ sec.name }} ({{ sec.studentUsernames?.length || 0 }} students)
+                    </div>
+                  </div>
+                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Subjects</label>
