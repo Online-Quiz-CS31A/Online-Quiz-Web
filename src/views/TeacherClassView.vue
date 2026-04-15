@@ -11,6 +11,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 import ClassSectionCard from '@/components/teacher/ClassSectionCard.vue'
+import TeacherClassSkeleton from '@/components/skeletons/TeacherClassSkeleton.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const SectionDeleteModal = defineAsyncComponent(() => import('@/components/modals/SectionDeleteModal.vue'))
 
@@ -250,8 +251,13 @@ function openDashboard(id: number) {
           </button>
         </div>
 
+        <!-- Loading Skeleton -->
+        <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <TeacherClassSkeleton v-for="i in 3" :key="i" />
+        </div>
+
         <!-- Empty State -->
-        <div v-if="sections.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
+        <div v-else-if="sections.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
           <div class="relative mb-6">
             <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
               <i class="fas fa-chalkboard-teacher text-4xl text-blue-400"></i>
