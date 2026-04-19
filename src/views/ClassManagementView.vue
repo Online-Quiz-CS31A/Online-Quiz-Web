@@ -407,20 +407,43 @@ async function saveClass() {
     const studentUsernames = selectedStudents.value.map(s => s.username)
 
     const rawCourses = classesStore.rawTeacherCourses
+    const authStore = useAuthStore()
+    const currentUserId = authStore.currentUser?.id || 1
 
-    const resolveRawCourseId = (subjectName: string, sectionName: string): number | null => {
+    const resolveRawCourseId = async (subjectName: string, sectionName: string): Promise<number | null> => {
       const exact = rawCourses.find(
         rc => rc.name === subjectName && rc.section?.trim() === sectionName.trim()
       )
       if (exact) return exact.courseId
 
       const fallback = rawCourses.find(rc => rc.name === subjectName)
-      return fallback ? fallback.courseId : null
+      if (!fallback) return null
+      
+      try {
+        const createPayload = {
+          name: fallback.name,
+          code: fallback.code,
+          category: fallback.category || fallback.description || 'Unknown',
+          section: sectionName,
+          instructorId: currentUserId,
+          status: fallback.status || 'Active',
+          createdBy: currentUserId
+        }
+        const res = await api.post('/Course', createPayload)
+        if (res.data && res.data.courseId) {
+          rawCourses.push({ ...fallback, ...createPayload, courseId: res.data.courseId } as any)
+          return res.data.courseId
+        }
+      } catch (e) {
+        console.error('Failed to create sub-course section record', e)
+      }
+
+      return fallback.courseId
     }
 
     const targetCourseIds: number[] = []
     for (const subjectName of selectedSubjects.value) {
-      const cid = resolveRawCourseId(subjectName, form.className)
+      const cid = await resolveRawCourseId(subjectName, form.className)
       if (cid !== null && !targetCourseIds.includes(cid)) {
         targetCourseIds.push(cid)
       }
@@ -428,7 +451,10 @@ async function saveClass() {
 
     if (targetCourseIds.length === 0) {
       const fallbackEntry = rawCourses.find(rc => rc.code === courseCode.value)
-      if (fallbackEntry) targetCourseIds.push(fallbackEntry.courseId)
+      if (fallbackEntry) {
+        const cid = await resolveRawCourseId(fallbackEntry.name, form.className)
+        if (cid !== null) targetCourseIds.push(cid)
+      }
     }
 
     const primaryCourseId = targetCourseIds[0] || 0
@@ -452,15 +478,29 @@ async function saveClass() {
         sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
       })
     } else {
-      const newSectionId = sectionsStore.addSection({
-        name: form.className,
-        students: studentUsernames.length,
-        studentUsernames,
-      }, primaryCourseId)
+      let targetSectionId: number
+      const existingSection = sectionsStore.allSections.find(
+        (s) => s.name.trim().toLowerCase() === form.className.trim().toLowerCase()
+      )
+
+      if (existingSection) {
+        targetSectionId = existingSection.id
+        sectionsStore.updateSection(targetSectionId, {
+          students: studentUsernames.length,
+          studentUsernames,
+        })
+        sectionsStore.addSectionToCourse(targetSectionId, primaryCourseId)
+      } else {
+        targetSectionId = sectionsStore.addSection({
+          name: form.className,
+          students: studentUsernames.length,
+          studentUsernames,
+        }, primaryCourseId)
+      }
 
       targetCourseIds.forEach(cid => {
         if (cid !== primaryCourseId) {
-          sectionsStore.addSectionToCourse(newSectionId, cid)
+          sectionsStore.addSectionToCourse(targetSectionId, cid)
         }
       })
     }
@@ -483,8 +523,7 @@ async function saveClass() {
       if (u.email) emailToUserId.set(u.email.trim().toLowerCase(), u.userId)
     })
 
-    const authStore = useAuthStore()
-    const currentUserId = authStore.currentUser?.id || 1
+    // authStore and currentUserId already declared at the top of the block
 
     let enrolledCount = 0
     let alreadyEnrolledCount = 0
