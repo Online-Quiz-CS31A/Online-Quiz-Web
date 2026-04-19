@@ -30,13 +30,14 @@ const importSkipped = ref<{ studentNumber: string; name: string; reason: string 
 const additionalSubjects = ref<string[]>([])
 const isSubjectDropdownOpen = ref(false)
 const showSectionDropdown = ref(false)
+const isSaving = ref(false)
 
 // COMPUTED
-const classId = computed(() => String(route.params.id || '1'))
+const courseCode = computed(() => String(route.params.code || ''))
 const teacherCourses = computed(() => classesStore.myClasses)
 const currentCourse = computed(() => {
-  const cid = Number(classId.value)
-  return teacherCourses.value.find(c => c.id === cid) || teacherCourses.value[0]
+  const code = courseCode.value
+  return teacherCourses.value.find(c => c.code === code) || teacherCourses.value[0]
 })
 
 const selectedSubjects = computed<string[]>(() => {
@@ -129,8 +130,10 @@ watch([editingSectionId, students], ([sectionId, studentList]) => {
         .filter(m => m.sectionId === section.id)
         .map(m => m.courseId)
 
-      const primaryCourseId = Number(classId.value)
-      const extraCourseIds = mappedCourseIds.filter(id => id !== primaryCourseId)
+      const currentCodeIds = classesStore.rawTeacherCourses
+        .filter(rc => rc.code === courseCode.value)
+        .map(rc => rc.courseId)
+      const extraCourseIds = mappedCourseIds.filter(id => !currentCodeIds.includes(id))
 
       additionalSubjects.value = teacherCourses.value
         .filter(c => extraCourseIds.includes(c.id))
@@ -384,6 +387,7 @@ function selectSection(sec: any) {
 }
 
 async function saveClass() {
+  if (isSaving.value) return
   if (!form.className) {
     error('Please enter a class name')
     return
@@ -396,92 +400,151 @@ async function saveClass() {
     error('Please add at least one student before saving the class')
     return
   }
-  
-  const studentUsernames = selectedStudents.value.map(s => s.username)
-  
-  const selectedCourse = teacherCourses.value.find(c => c.name === form.subject)
-  const courseId = selectedCourse ? selectedCourse.id : Number(classId.value)
 
-  const extraCourseIds = teacherCourses.value
-    .filter(c => additionalSubjects.value.includes(c.name) && c.id !== courseId)
-    .map(c => c.id)
-  const targetCourseIds = [courseId, ...extraCourseIds].filter((id, idx, arr) => arr.indexOf(id) === idx)
-
-  if (editingSectionId.value) {
-    sectionsStore.updateSection(editingSectionId.value, {
-      name: form.className,
-      students: studentUsernames.length,
-      studentUsernames,
-    })
-
-    const existingMappings = sectionsStore.courseSectionMappings.filter(m => m.sectionId === editingSectionId.value)
-    existingMappings.forEach(m => {
-      if (!targetCourseIds.includes(m.courseId)) {
-        sectionsStore.removeSectionFromCourse(editingSectionId.value!, m.courseId)
-      }
-    })
-
-    targetCourseIds.forEach(cid => {
-      sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
-    })
-
-    success('Class updated successfully!')
-  } else {
-    const newSectionId = sectionsStore.addSection({
-      name: form.className,
-      students: studentUsernames.length,
-      studentUsernames: studentUsernames
-    }, courseId)
-
-    targetCourseIds.forEach(cid => {
-      if (cid !== courseId) {
-        sectionsStore.addSectionToCourse(newSectionId, cid)
-      }
-    })
-  }
+  isSaving.value = true
 
   try {
-    const userRes = await api.get('/User')
-    const allUsers = userRes.data || []
-    
-    const usernameToUserId = new Map<string, number>()
-    allUsers.forEach((u: any) => {
-      const studentNumber = u.student?.studentId || u.username || u.email?.split('@')[0]
-      if (studentNumber && u.userId) {
-        usernameToUserId.set(studentNumber, u.userId)
+    const studentUsernames = selectedStudents.value.map(s => s.username)
+
+    const rawCourses = classesStore.rawTeacherCourses
+
+    const resolveRawCourseId = (subjectName: string, sectionName: string): number | null => {
+      const exact = rawCourses.find(
+        rc => rc.name === subjectName && rc.section?.trim() === sectionName.trim()
+      )
+      if (exact) return exact.courseId
+
+      const fallback = rawCourses.find(rc => rc.name === subjectName)
+      return fallback ? fallback.courseId : null
+    }
+
+    const targetCourseIds: number[] = []
+    for (const subjectName of selectedSubjects.value) {
+      const cid = resolveRawCourseId(subjectName, form.className)
+      if (cid !== null && !targetCourseIds.includes(cid)) {
+        targetCourseIds.push(cid)
       }
+    }
+
+    if (targetCourseIds.length === 0) {
+      const fallbackEntry = rawCourses.find(rc => rc.code === courseCode.value)
+      if (fallbackEntry) targetCourseIds.push(fallbackEntry.courseId)
+    }
+
+    const primaryCourseId = targetCourseIds[0] || 0
+
+    if (editingSectionId.value) {
+      sectionsStore.updateSection(editingSectionId.value, {
+        name: form.className,
+        students: studentUsernames.length,
+        studentUsernames,
+      })
+
+      const existingMappings = sectionsStore.courseSectionMappings.filter(
+        m => m.sectionId === editingSectionId.value
+      )
+      existingMappings.forEach(m => {
+        if (!targetCourseIds.includes(m.courseId)) {
+          sectionsStore.removeSectionFromCourse(editingSectionId.value!, m.courseId)
+        }
+      })
+      targetCourseIds.forEach(cid => {
+        sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
+      })
+    } else {
+      const newSectionId = sectionsStore.addSection({
+        name: form.className,
+        students: studentUsernames.length,
+        studentUsernames,
+      }, primaryCourseId)
+
+      targetCourseIds.forEach(cid => {
+        if (cid !== primaryCourseId) {
+          sectionsStore.addSectionToCourse(newSectionId, cid)
+        }
+      })
+    }
+
+    let allUsers: any[] = []
+    try {
+      const userRes = await api.get('/User')
+      allUsers = userRes.data || []
+    } catch (fetchErr) {
+      console.error('Failed to fetch users for enrollment mapping:', fetchErr)
+    }
+
+    const studentIdToUserId = new Map<string, number>()
+    const emailToUserId = new Map<string, number>()
+
+    allUsers.forEach((u: any) => {
+      if (!u.userId) return
+      const studentNum: string = (u.student?.studentId || '').trim()
+      if (studentNum) studentIdToUserId.set(studentNum, u.userId)
+      if (u.email) emailToUserId.set(u.email.trim().toLowerCase(), u.userId)
     })
 
     const authStore = useAuthStore()
     const currentUserId = authStore.currentUser?.id || 1
 
+    let enrolledCount = 0
+    let alreadyEnrolledCount = 0
+    let failedCount = 0
+
     const enrollPromises = []
 
     for (const cid of targetCourseIds) {
       for (const s of selectedStudents.value) {
-        const studentUserId = usernameToUserId.get(s.username) || usernameToUserId.get(s.email)
-        if (studentUserId) {
-          const payload = {
-            studentId: studentUserId,
-            courseId: cid,
-            section: form.className,
-            enrolledBy: currentUserId
-          }
-          enrollPromises.push(api.post('/Enrollment', payload).catch(e => console.error('Enroll failed for', s.username, e)))
-        } else {
-          console.warn('Could not find numeric User ID for student:', s.username)
+        const userId = studentIdToUserId.get(s.username)
+          ?? emailToUserId.get(s.email.trim().toLowerCase())
+
+        if (!userId) {
+          console.warn('No userId found for student:', s.username, s.email)
+          failedCount++
+          continue
         }
+
+        const payload = {
+          studentId: userId,
+          courseId: cid,
+          section: form.className,
+          studentSection: form.className,
+          enrolledBy: currentUserId,
+        }
+
+        enrollPromises.push(
+          api.post('/Enrollment', payload)
+            .then(() => { enrolledCount++ })
+            .catch((e: any) => {
+              const status = e?.response?.status
+              if (status === 400 || status === 409) {
+                alreadyEnrolledCount++
+              } else {
+                console.error('Enrollment failed for', s.username, 'in course', cid, e)
+                failedCount++
+              }
+            })
+        )
       }
     }
-    
-    await Promise.all(enrollPromises)
-    success(editingSectionId.value ? 'Class updated and students enrolled successfully!' : 'Class saved and students enrolled successfully!')
-  } catch (err) {
-    console.error('Failed to enroll students via API:', err)
-    error('Class saved locally, but some students could not be enrolled on the server.')
-  }
 
-  router.back()
+    await Promise.all(enrollPromises)
+
+    if (failedCount === 0) {
+      const msg = editingSectionId.value
+        ? `Class updated! ${enrolledCount} student(s) enrolled${ alreadyEnrolledCount ? `, ${alreadyEnrolledCount} already enrolled` : '' }.`
+        : `Class saved! ${enrolledCount} student(s) enrolled${ alreadyEnrolledCount ? `, ${alreadyEnrolledCount} already enrolled` : '' }.`
+      success(msg)
+    } else {
+      error(`Class saved, but ${failedCount} enrollment(s) failed. Check console for details.`)
+    }
+
+    router.back()
+  } catch (err) {
+    console.error('Unexpected error in saveClass:', err)
+    error('An unexpected error occurred while saving the class.')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function goBack() {
@@ -607,9 +670,13 @@ onMounted(async () => {
                   </div>
                 </div>
               </div>
-              <button @click="saveClass" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
-                <span>Save Class</span>
+              <button @click="saveClass" :disabled="isSaving" class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                <svg v-if="isSaving" class="animate-spin w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                <span>{{ isSaving ? 'Saving...' : 'Save Class' }}</span>
               </button>
             </div>
           </div>

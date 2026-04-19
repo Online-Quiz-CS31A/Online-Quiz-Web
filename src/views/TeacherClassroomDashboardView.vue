@@ -102,12 +102,7 @@ const breadcrumbText = computed(() => {
 
 
 const students = computed<Student[]>(() => {
-  console.log('Computing students...')
-  console.log('apiStudents.value:', apiStudents.value)
-  console.log('apiStudents.value.length:', apiStudents.value.length)
-  
   if (apiStudents.value.length > 0) {
-    console.log('Using API students')
     const currentSectionName = currentSection.value?.name
     
     const filteredApiStudents = apiStudents.value.filter(student => {
@@ -124,7 +119,7 @@ const students = computed<Student[]>(() => {
       return true
     })
 
-    const result = filteredApiStudents.map((student, i) => {
+    return filteredApiStudents.map((student, i) => {
       const fullName = (student.studentName || '').trim()
         || `${student.firstName || ''} ${student.lastName || ''}`.trim()
         || student.username
@@ -137,11 +132,8 @@ const students = computed<Student[]>(() => {
         avatar: student.photoUrl || AVATAR_URL,
       }
     })
-    console.log('Returning API students:', result)
-    return result
   }
 
-  console.log('Falling back to local data')
   if (!currentSection.value) return []
   
   const studentUsernames = currentSection.value.studentUsernames || []
@@ -336,18 +328,9 @@ const classMeta = reactive({
 async function fetchStudentsFromAPI() {
   const currentSectionName = currentSection.value?.name
   
-  if (!currentCourseId.value || !currentSectionName) {
-    console.log('No currentCourseId or section name, skipping student fetch')
-    return
-  }
+  if (!currentCourseId.value || !currentSectionName) return
+  if (!authStore.currentUser?.id) return
 
-  const teacherId = authStore.currentUser?.id
-  if (!teacherId) {
-    console.log('No teacherId, skipping student fetch')
-    return
-  }
-
-  console.log('Fetching students for section:', currentSectionName)
   isLoadingStudents.value = true
 
   try {
@@ -355,7 +338,6 @@ async function fetchStudentsFromAPI() {
     const adminStore = useAdminStore()
     
     const students = await adminStore.fetchStudentsBySection(currentSectionName)
-    console.log('Fetched students:', students)
 
     if (students && Array.isArray(students)) {
       apiStudents.value = students.map((student: any) => ({
@@ -370,9 +352,7 @@ async function fetchStudentsFromAPI() {
         section: currentSectionName,
         sections: [currentSectionName]
       }))
-      console.log('Set apiStudents to:', apiStudents.value)
     } else {
-      console.warn('No students data or not an array')
       apiStudents.value = []
     }
   } catch (error) {
@@ -422,9 +402,6 @@ async function fetchQuizzesFromAPI() {
 }
 
 onMounted(() => {
-  console.log('Component mounted')
-  console.log('currentCourseId:', currentCourseId.value)
-  console.log('authStore.currentUser:', authStore.currentUser)
   sectionsStore.loadArchivedSectionsFromStorage()
   studentsStore.fetchAllStudentsFromApi()
   fetchStudentsFromAPI()
@@ -439,13 +416,9 @@ watch([currentSection, currentCourse], () => {
 }, { immediate: true })
 
 watch([sectionId], () => {
-  console.log('Watcher triggered - sectionId:', sectionId.value, 'section name:', currentSection.value?.name)
   if (sectionId.value && currentSection.value?.name && authStore.currentUser?.id) {
-    console.log('Calling fetch functions from watcher')
     fetchStudentsFromAPI()
     fetchQuizzesFromAPI()
-  } else {
-    console.log('Skipping fetch - missing sectionId or section name or userId')
   }
 }, { immediate: false })
 
@@ -458,8 +431,9 @@ function navigateToQuizCreator() {
 
 function handleBreadcrumbSegment(segment: string) {
   const courseName = currentCourse.value?.name
-  if (segment === courseName && currentCourseId.value) {
-    router.push({ name: 'teacher-class', params: { id: String(currentCourseId.value) } })
+  const courseCodeVal = currentCourse.value?.code
+  if (segment === courseName && courseCodeVal) {
+    router.push({ name: 'teacher-class', params: { code: courseCodeVal } })
   }
 }
 

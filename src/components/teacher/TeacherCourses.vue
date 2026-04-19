@@ -62,7 +62,7 @@ const onDocClick = (e: MouseEvent) => {
 }
 
 const handleEnterClass = (classItem: ClassItem) => {
-  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  router.push({ name: 'teacher-class', params: { code: classItem.code } })
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
@@ -72,7 +72,7 @@ const handleLeaveClass = (classItem: ClassItem) => {
 }
 
 const handleEditClass = (classItem: ClassItem) => {
-  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  router.push({ name: 'teacher-class', params: { code: classItem.code } })
   menuOpenForId.value = null
 }
 
@@ -193,7 +193,10 @@ const getStudentCount = (classItem: ClassItem) => {
 const hasFetchedCounts = ref(false)
 
 const fetchStudentCounts = async () => {
+  // Guard must be set synchronously at the top — setting it at the end
+  // is too late because concurrent async calls can bypass the check
   if (hasFetchedCounts.value) return
+  hasFetchedCounts.value = true
   
   await new Promise(resolve => setTimeout(resolve, 100))
   
@@ -203,23 +206,14 @@ const fetchStudentCounts = async () => {
   const coursesToProcess = classes.value.filter(c => c.id)
   if (!coursesToProcess.length) return
   
-  console.log('Fetching student counts for', coursesToProcess.length, 'courses')
-  
   for (const classItem of coursesToProcess) {
     const sections = getSectionsForCourse(classItem)
-    
-    if (!sections.length) {
-      console.log(`No sections found for course ${classItem.id} (${classItem.name})`)
-      continue
-    }
-    
-    console.log(`Found ${sections.length} sections for course ${classItem.id}`)
+    if (!sections.length) continue
     
     for (const section of sections) {
       if (section.name) {
         try {
           const students = await adminStore.fetchStudentsBySection(section.name)
-          console.log(`Section ${section.name}: ${students.length} students`)
           sectionsStore.updateSection(section.id, {
             students: students.length
           })
@@ -229,14 +223,10 @@ const fetchStudentCounts = async () => {
       }
     }
   }
-  
-  hasFetchedCounts.value = true
-  console.log('Finished fetching all student counts')
 }
 
 watch(classes, (newClasses) => {
   if (newClasses.length > 0 && !hasFetchedCounts.value) {
-    console.log('Classes loaded, triggering student count fetch')
     fetchStudentCounts()
   }
 }, { immediate: true })

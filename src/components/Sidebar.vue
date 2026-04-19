@@ -200,7 +200,7 @@ async function handleImport(file: File) {
               <li v-for="cls in myClasses" :key="cls.id" class="mb-1">
                 <RouterLink
                   v-if="isTeacher"
-                  :to="{ name: 'teacher-class', params: { id: cls.id } }"
+                  :to="{ name: 'teacher-class', params: { code: cls.code } }"
                   class="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700"
                 >
                   <span class="w-4 h-4 rounded-full mr-3" :class="colorDotClass(cls.color)"></span>

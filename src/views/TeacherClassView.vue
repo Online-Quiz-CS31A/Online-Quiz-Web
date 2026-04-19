@@ -20,7 +20,7 @@ const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const router = useRouter()
 
 // PROPS
-interface Props { id: string }
+interface Props { code: string }
 const props = defineProps<Props>()
 
 // REACTIVE
@@ -41,18 +41,12 @@ const sectionToDeleteName = ref('')
 
 // COMPUTED
 const sections = computed(() => {
-  const code = current.value?.code
-  if (!code) {
-    return sectionsStore.getSectionsByCourse(Number(props.id))
-  }
+  const code = props.code
+  if (!code) return []
 
   const targetCourseIds = classesStore.rawTeacherCourses
     .filter(c => c.code === code)
     .map(c => c.courseId)
-    
-  if (targetCourseIds.length === 0) {
-    targetCourseIds.push(Number(props.id))
-  }
 
   const allSections = []
   const seenIds = new Set<number>()
@@ -83,10 +77,9 @@ const sections = computed(() => {
 })
 
 const current = computed<ClassItem>(() => {
-  const cid = Number(props.id)
-  const found = classesStore.allCourses.find((c: ClassItem) => c.id === cid)
+  const found = classesStore.allCourses.find((c: ClassItem) => c.code === props.code)
   return (
-    found || { id: cid, code: '', name: `Class ${props.id}`, teacher: '', description: '—', students: 0, color: 'gray' }
+    found || { id: 0, code: props.code, name: props.code, teacher: '', description: '—', students: 0, color: 'gray' }
   )
 })
 
@@ -104,8 +97,11 @@ const coverUrl = computed(() => {
 
 const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
 
+const hasFetchedCounts = ref(false)
+
 const fetchStudentCounts = async () => {
-  if (!sections.value.length) return
+  if (hasFetchedCounts.value || !sections.value.length) return
+  hasFetchedCounts.value = true
   
   const { useAdminStore } = await import('@/stores/adminStore')
   const adminStore = useAdminStore()
@@ -125,7 +121,7 @@ const fetchStudentCounts = async () => {
 }
 
 watch(sections, (newSections) => {
-  if (newSections.length > 0) {
+  if (newSections.length > 0 && !hasFetchedCounts.value) {
     fetchStudentCounts()
   }
 }, { immediate: true })
@@ -147,15 +143,16 @@ function getDeterministicIndex(key: string) {
 function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
 
 function openCreateClass() {
-  router.push({ name: 'class-management', params: { id: props.id } })
+  router.push({ name: 'class-management', params: { code: props.code } })
 }
 
 function openEditClass(id: number) {
-  router.push({ name: 'class-management', params: { id: props.id }, query: { sectionId: String(id) } })
+  router.push({ name: 'class-management', params: { code: props.code }, query: { sectionId: String(id) } })
 }
 
 function deleteClass(id: number) {
-  sectionsStore.archiveSection(id, Number(props.id))
+  const anchorCourseId = classesStore.rawTeacherCourses.find(rc => rc.code === props.code)?.courseId ?? 0
+  sectionsStore.archiveSection(id, anchorCourseId)
   if (selectedClassId.value === String(id)) {
     closeDetails()
   }
@@ -188,11 +185,18 @@ function closeDetails() {
 }
 
 
-function openDashboard(id: number) {
+function openDashboard(sectionId: number) {
+  const section = sectionsStore.allSections.find(s => s.id === sectionId)
+  const sectionName = section?.name ?? ''
+  const rawEntry = classesStore.rawTeacherCourses.find(
+    rc => rc.code === props.code && rc.section?.trim() === sectionName.trim()
+  ) ?? classesStore.rawTeacherCourses.find(rc => rc.code === props.code)
+  const courseId = rawEntry?.courseId ?? 0
+
   router.push({
     name: 'teacher-class-dashboard',
-    params: { id: String(id) },
-    query: { courseId: props.id },
+    params: { id: String(sectionId) },
+    query: { courseId: String(courseId) },
   })
 }
 </script>

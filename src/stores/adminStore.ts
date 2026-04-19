@@ -116,7 +116,7 @@ export const useAdminStore = defineStore('admin', () => {
         isLoading.value = true
         try {
             await api.post('/user', userData)
-            allRawUsers.value = [] 
+            allRawUsers.value = []
             await fetchUsers()
             return true
         } catch (err: any) {
@@ -133,7 +133,7 @@ export const useAdminStore = defineStore('admin', () => {
         isLoading.value = true
         try {
             await api.put(`/user/${id}`, userData)
-            allRawUsers.value = [] 
+            allRawUsers.value = []
             await fetchUsers()
             return true
         } catch (err: any) {
@@ -149,7 +149,7 @@ export const useAdminStore = defineStore('admin', () => {
         isLoading.value = true
         try {
             await api.delete(`/user/${id}`)
-            allRawUsers.value = [] 
+            allRawUsers.value = []
             await fetchUsers()
             return true
         } catch (err: any) {
@@ -351,8 +351,8 @@ export const useAdminStore = defineStore('admin', () => {
             recentActivity.value = logs.value.slice(0, 5).map(l => ({
                 id: l.id,
                 title: l.action,
-                status: 'Completed', 
-                icon: 'Activity', 
+                status: 'Completed',
+                icon: 'Activity',
                 user: l.user,
                 date: new Date(l.timestamp).toLocaleDateString(),
                 timeAgo: getTimeAgo(new Date(l.timestamp))

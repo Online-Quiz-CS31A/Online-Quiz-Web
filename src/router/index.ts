@@ -118,7 +118,7 @@ const router = createRouter({
       ],
     },
     {
-      path: '/teacher/classes/:id',
+      path: '/teacher/classes/:code',
       name: 'teacher-class',
       component: () => import('../views/TeacherClassView.vue'),
       props: true,
@@ -155,14 +155,15 @@ const router = createRouter({
       ]
     },
     {
-      path: '/teacher/classes/:id/manage',
+      path: '/teacher/classes/:code/manage',
       name: 'class-management',
       component: () => import('../views/ClassManagementView.vue'),
       props: true,
     },
     {
       path: '/teacher/create-quiz',
-      redirect: '/teacher/classes/1/quiz/create',
+      redirect: '/teacher/create-quiz-redirect',
+      name: 'create-quiz-root',
     },
     {
       path: '/teacher/classes/:id/quiz/results',
