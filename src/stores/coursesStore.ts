@@ -6,37 +6,15 @@ import { useSectionsStore } from './sectionsStore'
 import api from '../services/api'
 
 export const useCoursesStore = defineStore('classes', () => {
-  const teacherNames: Record<string, string> = {
-    '0112345678': 'Donald Francisco',
-    '0111111111': 'Alice Mao',
-  }
+
 
   const rawTeacherCourses = ref<TeacherCourseDto[]>([])
   const allCourses = ref<ClassItem[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  function loadCoursesFromStorage() {
-    try {
-      const stored = localStorage.getItem('courses')
-      if (stored) {
-        const parsed = JSON.parse(stored) as ClassItem[]
-        if (Array.isArray(parsed) && parsed.length) {
-          allCourses.value = parsed
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load courses from localStorage:', e)
-    }
-  }
 
-  function saveCoursesToStorage() {
-    try {
-      localStorage.setItem('courses', JSON.stringify(allCourses.value))
-    } catch (e) {
-      console.error('Failed to save courses to localStorage:', e)
-    }
-  }
+  function saveCoursesToStorage() {}
 
   async function fetchTeacherCourses() {
     const auth = useAuthStore()
@@ -153,7 +131,7 @@ export const useCoursesStore = defineStore('classes', () => {
       const studentCount = sections.reduce((total, section) => total + section.studentUsernames.length, 0)
       return {
         ...course,
-        teacher: teacherNames[course.teacher] || course.teacher,
+        teacher: course.teacher,
         students: studentCount,
       }
     })
@@ -161,7 +139,7 @@ export const useCoursesStore = defineStore('classes', () => {
 
   const auth = useAuthStore()
 
-  loadCoursesFromStorage()
+
   const myClasses = computed<ClassItem[]>(() => {
     const user = auth.currentUser
     if (!user) return []
@@ -174,7 +152,7 @@ export const useCoursesStore = defineStore('classes', () => {
           const studentCount = sections.reduce((total, section) => total + section.studentUsernames.length, 0)
           return {
             ...course,
-            teacher: teacherNames[course.teacher] || course.teacher,
+            teacher: course.teacher,
             students: studentCount,
           }
         })

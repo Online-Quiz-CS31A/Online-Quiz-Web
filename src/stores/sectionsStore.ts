@@ -51,53 +51,13 @@ export const useSectionsStore = defineStore('sections', () => {
       allSections.value = Array.from(sectionMap.values())
       courseSectionMappings.value = newMappings
 
-      saveCourseSectionMappingsToStorage()
+
     } catch (e: any) {
       console.error('Failed to set sections from API data:', e)
     }
   }
 
-  function loadCourseSectionDataFromStorage() {
-    try {
-      const mappingsRaw = localStorage.getItem('courseSectionMappings')
-      if (mappingsRaw) {
-        const parsed = JSON.parse(mappingsRaw) as CourseSectionMapping[]
-        if (Array.isArray(parsed) && parsed.length) {
-          courseSectionMappings.value = parsed
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load course-section mappings from localStorage:', e)
-    }
 
-    try {
-      const schedulesRaw = localStorage.getItem('courseSectionSchedules')
-      if (schedulesRaw) {
-        const parsed = JSON.parse(schedulesRaw) as CourseSectionSchedule[]
-        if (Array.isArray(parsed) && parsed.length) {
-          courseSectionSchedules.value = parsed
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load course-section schedules from localStorage:', e)
-    }
-  }
-
-  function saveCourseSectionMappingsToStorage() {
-    try {
-      localStorage.setItem('courseSectionMappings', JSON.stringify(courseSectionMappings.value))
-    } catch (e) {
-      console.error('Failed to save course-section mappings to localStorage:', e)
-    }
-  }
-
-  function saveCourseSectionSchedulesToStorage() {
-    try {
-      localStorage.setItem('courseSectionSchedules', JSON.stringify(courseSectionSchedules.value))
-    } catch (e) {
-      console.error('Failed to save course-section schedules to localStorage:', e)
-    }
-  }
 
   function loadArchivedSectionsFromStorage() {
     try {
@@ -121,6 +81,9 @@ export const useSectionsStore = defineStore('sections', () => {
       console.error('Failed to save archived sections to localStorage:', e)
     }
   }
+
+  function saveCourseSectionMappingsToStorage() {}
+  function saveCourseSectionSchedulesToStorage() {}
 
   async function fetchSectionsFromApi() {
     isLoading.value = true
@@ -291,14 +254,14 @@ export const useSectionsStore = defineStore('sections', () => {
     } else {
       courseSectionSchedules.value.push({ courseId, sectionId, ...schedule })
     }
-    saveCourseSectionSchedulesToStorage()
+
   }
 
   function removeSchedule(courseId: number, sectionId: number) {
     courseSectionSchedules.value = courseSectionSchedules.value.filter(
       s => !(s.courseId === courseId && s.sectionId === sectionId)
     )
-    saveCourseSectionSchedulesToStorage()
+
   }
 
   return {

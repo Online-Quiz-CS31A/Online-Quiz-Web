@@ -63,13 +63,24 @@ const students = computed<StudentViewModel[]>(() => {
 
 const filteredStudents = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return students.value.filter(s => {
+  
+  const baseList = students.value.filter(s => {
     const matchQuery = !q || 
       s.name.toLowerCase().includes(q) || 
       s.email.toLowerCase().includes(q) || 
       s.major.toLowerCase().includes(q)
     const matchFilter = filters.value === 'All' || s.year === filters.value
     return matchQuery && matchFilter
+  })
+
+  return baseList.sort((a, b) => {
+    const aSelected = isSelected(a.username)
+    const bSelected = isSelected(b.username)
+    
+    if (aSelected && !bSelected) return -1
+    if (!aSelected && bSelected) return 1
+    
+    return a.name.localeCompare(b.name)
   })
 })
 
@@ -100,31 +111,33 @@ watch(currentCourse, (newCourse) => {
   }
 }, { immediate: true })
 
-if (editingSectionId.value) {
-  const section = sectionsStore.allSections.find(s => s.id === editingSectionId.value)
-  if (section) {
-    form.className = section.name
-    const cid = Number(classId.value)
+watch([editingSectionId, students], ([sectionId, studentList]) => {
+  if (sectionId && studentList.length > 0) {
+    const section = sectionsStore.allSections.find(s => s.id === sectionId)
+    if (section) {
+      form.className = section.name
+      
+      const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+        studentList.map(s => [s.username, s])
+      )
+      
+      selectedStudents.value = (section.studentUsernames || [])
+        .map(u => byUsername[u])
+        .filter((s): s is StudentViewModel => !!s)
 
-    const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
-      students.value.map(s => [s.username, s])
-    )
-    selectedStudents.value = (section.studentUsernames || [])
-      .map(u => byUsername[u])
-      .filter((s): s is StudentViewModel => !!s)
+      const mappedCourseIds = sectionsStore.courseSectionMappings
+        .filter(m => m.sectionId === section.id)
+        .map(m => m.courseId)
 
-    const mappedCourseIds = sectionsStore.courseSectionMappings
-      .filter(m => m.sectionId === section.id)
-      .map(m => m.courseId)
+      const primaryCourseId = Number(classId.value)
+      const extraCourseIds = mappedCourseIds.filter(id => id !== primaryCourseId)
 
-    const primaryCourseId = Number(classId.value)
-    const extraCourseIds = mappedCourseIds.filter(id => id !== primaryCourseId)
-
-    additionalSubjects.value = teacherCourses.value
-      .filter(c => extraCourseIds.includes(c.id))
-      .map(c => c.name)
+      additionalSubjects.value = teacherCourses.value
+        .filter(c => extraCourseIds.includes(c.id))
+        .map(c => c.name)
+    }
   }
-}
+}, { immediate: true })
 
 // METHODS
 function toggleStudent(s: StudentViewModel) {
@@ -364,11 +377,10 @@ function selectSection(sec: any) {
   const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
     students.value.map(s => [s.username, s])
   )
-  const newStudents = (sec.studentUsernames || [])
+
+  selectedStudents.value = (sec.studentUsernames || [])
     .map((u: string) => byUsername[u])
-    .filter((s: StudentViewModel) => s && !isSelected(s.username))
-  
-  selectedStudents.value.push(...newStudents)
+    .filter((s: StudentViewModel | undefined): s is StudentViewModel => !!s)
 }
 
 async function saveClass() {
