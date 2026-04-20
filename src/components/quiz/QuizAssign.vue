@@ -55,8 +55,9 @@ const options = reactive({
 })
 
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   sectionsStore.loadArchivedSectionsFromStorage()
+  await studentsStore.fetchAllStudentsFromApi()
 
   const current = quizzesStore.currentQuiz
 

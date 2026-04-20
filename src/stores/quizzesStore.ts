@@ -1435,8 +1435,28 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         qs.forEach(q => {
           if (!q.subject) q.subject = course.name || ''
           q.ownerUsername = user.username
-          if (!allBriefQuizzes.some(existing => existing.id === q.id)) {
+
+          const sectionNames = [q.class, course.section].filter(Boolean) as string[]
+
+          const existing = allBriefQuizzes.find(e => e.id === q.id)
+          if (!existing) {
+            (q as any).assignedSections = [...new Set(sectionNames)]
+            if (!q.class && sectionNames.length > 0) q.class = sectionNames[0]
             allBriefQuizzes.push(q)
+          } else {
+            const existingSections = ((existing as any).assignedSections || []) as string[]
+            sectionNames.forEach(sec => {
+              if (!existingSections.includes(sec)) {
+                existingSections.push(sec)
+              }
+            })
+              ; (existing as any).assignedSections = existingSections
+
+            if (existing.class && sectionNames.length > 0 && !existing.class.includes(sectionNames[0])) {
+              existing.class = `${existing.class}, ${sectionNames[0]}`
+            } else if (!existing.class && sectionNames.length > 0) {
+              existing.class = sectionNames[0]
+            }
           }
         })
       })
@@ -1452,8 +1472,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
                 questions: rawQs.map(mapApiQuestionToFrontend),
                 description: detail.description || q.description || '',
                 subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
-                class: detail.sectionName || (detail.section && detail.section.name) || q.class,
-                dueDate: q.dueDate || detail.dueAt
+                class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
+                dueDate: q.dueDate || detail.dueAt,
+                assignedSections: (q as any).assignedSections
               }
             }
           } catch (e) {
