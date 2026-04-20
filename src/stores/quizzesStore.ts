@@ -1420,13 +1420,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     try {
       const coursesStoreLocal = useCoursesStore()
-      if (coursesStoreLocal.allCourses.length === 0) {
+      if (coursesStoreLocal.rawTeacherCourses.length === 0) {
         await coursesStoreLocal.fetchTeacherCourses()
       }
-      const courses = coursesStoreLocal.allCourses
+      const courses = coursesStoreLocal.rawTeacherCourses
 
       const quizzesByCourseResults = await Promise.all(
-        courses.map(course => fetchQuizzesForCourse(course.id, user.id as number, false, course.name))
+        courses.map(course => fetchQuizzesForCourse(course.courseId, user.id as number, false, course.name))
       )
 
       const allBriefQuizzes: TeacherQuizItem[] = []
@@ -1435,7 +1435,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         qs.forEach(q => {
           if (!q.subject) q.subject = course.name || ''
           q.ownerUsername = user.username
-          allBriefQuizzes.push(q)
+          if (!allBriefQuizzes.some(existing => existing.id === q.id)) {
+            allBriefQuizzes.push(q)
+          }
         })
       })
 
@@ -1461,9 +1463,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         })
       )
 
-      if (detailedQuizzes.length > 0) {
-        teacherQuizzesByUser.value[user.username] = detailedQuizzes
-      }
+      teacherQuizzesByUser.value[user.username] = detailedQuizzes
+      loadArchivedSeedQuizzesFromStorage()
     } finally {
       isLoading.value = false
     }
