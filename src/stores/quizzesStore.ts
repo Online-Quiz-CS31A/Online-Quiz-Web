@@ -204,7 +204,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     timeLimit: '',
     description: '',
     questions: [] as QuizQuestion[],
-    currentQuestionIndex: -1
+    currentQuestionIndex: -1,
+    assignedSections: [] as string[],
+    assignedCourseIds: [] as number[],
   })
 
   const currentAttempt = reactive({
@@ -461,7 +463,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
-  async function saveQuiz(status: 'draft' | 'published' = 'draft') {
+  async function saveQuiz(status: 'draft' | 'published' = 'draft', courseIdsOverride?: number[]) {
     if (!currentQuiz.title.trim()) {
       throw new Error('Quiz title is required')
     }
@@ -525,7 +527,23 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       (c.code || '').trim().toLowerCase() === rawSubject
     )
 
-    const courseId = course ? course.id : (currentQuiz as any).courseId || 0
+    let courseId = 0
+    if (status === 'published') {
+      if (!course) {
+        throw new Error('Please select a valid course before publishing')
+      }
+      courseId = course.id
+    } else {
+      courseId = course ? course.id : 0
+    }
+
+    const targetCourseIds = (courseIdsOverride && courseIdsOverride.length > 0)
+      ? courseIdsOverride
+      : (courseId !== 0 ? [courseId] : [])
+
+    if (targetCourseIds.length === 0 && status === 'published') {
+      throw new Error('Please select at least one section before publishing')
+    }
 
     const timeLimitMatch = currentQuiz.timeLimit.match(/\d+/)
     const timeLimitMinutes = timeLimitMatch ? parseInt(timeLimitMatch[0], 10) : 30
@@ -556,7 +574,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     const payload: any = {
       quizId: currentQuiz.id ?? 0,
-      courseId: courseId,
+      courseId: status === 'draft' && courseId === 0 ? null : courseId,
       title: currentQuiz.title,
       dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       timeLimitMinutes: timeLimitMinutes,
@@ -565,15 +583,20 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       questions: mappedQuestions
     }
 
-    if (currentQuiz.id) {
-      await api.put(`/Quiz/${currentQuiz.id}?userId=${userId}`, payload)
-    } else {
-      payload.createdBy = userId
-      const response = await api.post('/Quiz', payload)
-      if (response.data && (response.data.quizId || response.data.id)) {
-        const newId = response.data.quizId || response.data.id
-        currentQuiz.id = newId
-        payload.quizId = newId
+    for (let i = 0; i < targetCourseIds.length; i++) {
+      const cid = targetCourseIds[i]
+      payload.courseId = cid
+
+      if (currentQuiz.id) {
+        await api.put(`/Quiz/${currentQuiz.id}?userId=${userId}`, payload)
+      } else {
+        payload.createdBy = userId
+        const response = await api.post('/Quiz', payload)
+        if (response.data && (response.data.quizId || response.data.id)) {
+          const newId = response.data.quizId || response.data.id
+          currentQuiz.id = newId
+          payload.quizId = newId
+        }
       }
     }
 
@@ -746,6 +769,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.subject = quiz.subject
     currentQuiz.description = quiz.description || ''
     currentQuiz.timeLimit = (quiz as any).timeLimit || ''
+    currentQuiz.assignedSections = Array.isArray((quiz as any).assignedSections)
+      ? [...(quiz as any).assignedSections]
+      : ((quiz as any).class ? [(quiz as any).class] : [])
 
     const rawQuestions = quiz.questions ? JSON.parse(JSON.stringify(quiz.questions)) : []
     currentQuiz.questions = rawQuestions.map((q: any) => {
@@ -758,6 +784,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   async function loadQuizForEditingAsync(quizId: number): Promise<boolean> {
+    if (loadQuizForEditing(quizId)) {
+      return true
+    }
+
     const authLocal = useAuthStore()
     const userId = authLocal.currentUser?.id
     if (userId) {
@@ -775,6 +805,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           const rawQs = Array.isArray(detail.questions) ? detail.questions : []
           currentQuiz.questions = rawQs.map(mapApiQuestionToFrontend)
           currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
+          // assignedCourseIds parameter removed
           return true
         }
       } catch (e) {
@@ -793,6 +824,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.description = ''
     currentQuiz.questions = []
     currentQuiz.currentQuestionIndex = -1
+    currentQuiz.assignedSections = []
   }
 
   function getAllQuizzes(): TeacherQuizItem[] {
@@ -1414,9 +1446,11 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     if (!user || user.role !== 'teacher' || !user.id) return
 
     const hasExisting = myTeacherQuizzes.value.length > 0
-    if (!hasExisting) {
-      isLoading.value = true
+    if (hasExisting) {
+      return
     }
+    
+    isLoading.value = true
 
     try {
       const coursesStoreLocal = useCoursesStore()
@@ -1425,9 +1459,11 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       }
       const courses = coursesStoreLocal.rawTeacherCourses
 
-      const quizzesByCourseResults = await Promise.all(
-        courses.map(course => fetchQuizzesForCourse(course.courseId, user.id as number, false, course.name))
-      )
+      const quizzesByCourseResults = []
+      for (const course of courses) {
+        const result = await fetchQuizzesForCourse(course.courseId, user.id as number, false, course.name)
+        quizzesByCourseResults.push(result)
+      }
 
       const allBriefQuizzes: TeacherQuizItem[] = []
       quizzesByCourseResults.forEach((qs, idx) => {

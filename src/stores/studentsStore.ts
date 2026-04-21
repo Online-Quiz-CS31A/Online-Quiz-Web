@@ -28,6 +28,10 @@ export const useStudentsStore = defineStore('students', () => {
   }
 
   async function fetchAllStudentsFromApi() {
+    if (Object.keys(profiles.value).length > 0) {
+        return Object.keys(profiles.value).length
+    }
+    
     try {
       const response = await api.get('/User')
       const allUsers = response.data || []

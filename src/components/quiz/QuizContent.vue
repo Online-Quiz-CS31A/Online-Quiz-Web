@@ -37,15 +37,53 @@ const quiz = quizzesStore.currentQuiz
 const currentQuestion = computed(() => quizzesStore.currentQuestion)
 const teacherSubjects = computed(() => coursesStore.mySubjects)
 
+const hasAssignedSections = computed(() => {
+  if (quizzesStore.currentQuiz.assignedSections.length > 0) return true
+  const id = quizzesStore.currentQuiz.id
+  if (!id) return false
+  const quizData = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
+  if (!quizData) return false
+  const assignedSections = (quizData as any).assignedSections
+  return Array.isArray(assignedSections) && assignedSections.length > 0
+})
+
+const hasCourseSelected = computed(() => {
+  return !!quiz.subject && quiz.subject.trim() !== ''
+})
+
 const { questionSettings, questionTypes, syncSettings } = useQuestionSettings(currentQuestion)
 const { showMediaUpload, onQuestionMediaChange, clearQuestionMedia } = useMediaUpload(
   currentQuestion,
   computed(() => questionSettings.mediaType)
 )
 
+const toast = useToast()
+
 function handleSelectQuestion(index: number) {
   selectQuestion(index)
   syncSettings()
+}
+
+function handleAddQuestionClick() {
+  if (!hasCourseSelected.value) {
+    toast.info('Please select a course first before adding questions.')
+    return
+  }
+  
+  if (!hasAssignedSections.value) {
+    toast.info('Please assign a section for this quiz in the assign tab before adding questions.')
+    return
+  }
+  
+  openAddQuestionModal()
+}
+
+function handleDisabledAddQuestionClick() {
+  if (!hasCourseSelected.value) {
+    toast.info('Please select a course first before adding questions.')
+  } else if (!hasAssignedSections.value) {
+    toast.info('Please assign a section first in the assign tab before adding questions.')
+  }
 }
 
 function saveQuiz() {
@@ -123,8 +161,22 @@ defineExpose({
           <div class="bg-white p-4 flex items-start gap-4 rounded-lg">
             <!-- Add Question Button -->
             <div class="flex-shrink-0">
-              <button @click="openAddQuestionModal"
-                      class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
+              <!-- Real button when enabled -->
+              <button 
+                v-if="hasCourseSelected && hasAssignedSections"
+                @click="handleAddQuestionClick"
+                class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer"
+              >
+                <i class="fas fa-plus mr-2"></i>
+                Add Question
+              </button>
+              
+              <!-- Fake disabled button when disabled -->
+              <button 
+                v-else
+                @click="handleDisabledAddQuestionClick"
+                class="bg-gray-400 text-gray-200 py-2 px-4 rounded-md flex items-center cursor-pointer"
+              >
                 <i class="fas fa-plus mr-2"></i>
                 Add Question
               </button>

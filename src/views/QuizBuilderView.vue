@@ -7,11 +7,9 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
-
 // CONSTANTS
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
-
 
 // REACTIVE
 const route = useRoute()
@@ -41,7 +39,6 @@ watch(() => route.name, (newRouteName) => {
     router.replace({ name: 'quiz-results', params: route.params, query: route.query })
   }
 })
-
 
 // METHODS
 function syncPublished() {
@@ -73,6 +70,13 @@ async function onSave() {
 }
 
 async function onPublish() {
+  const hasAssignedSections = checkHasAssignedSections()
+  if (!hasAssignedSections) {
+    alert('Please assign the quiz to at least one section before publishing.')
+    onAssign() 
+    return
+  }
+  
   await creatorRef.value?.publishQuiz?.()
   published.value = true
   router.push({ name: 'quiz-builder', params: route.params, query: route.query })
@@ -94,8 +98,18 @@ function onPreview() {
   router.push({ name: 'quiz-preview', params: route.params, query: route.query })
 }
 
-// LIFECYCLE
+function checkHasAssignedSections(): boolean {
+  const id = quizzesStore.currentQuiz.id
+  if (!id) return false
+  
+  const quiz = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
+  if (!quiz) return false
+  
+  const assignedSections = (quiz as any).assignedSections
+  return Array.isArray(assignedSections) && assignedSections.length > 0
+}
 
+// LIFECYCLE
 onMounted(() => {
   if (quizzesStore.currentQuiz.id === null && quizzesStore.currentQuiz.questions.length === 0) {
     quizzesStore.resetCurrentQuiz()

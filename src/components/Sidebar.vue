@@ -100,7 +100,13 @@ function colorDotClass(color?: string) {
 
 function navigateToQuizCreator() {
   quizzesStore.resetCurrentQuiz()
-  router.push(`/teacher/create-quiz`)
+  
+  let classId = '1'
+  if (myClasses.value.length > 0) {
+    classId = String(myClasses.value[0].id)
+  }
+  
+  router.push({ name: 'quiz-builder', params: { id: classId } })
 }
 
 function openImportModal() {

@@ -162,8 +162,10 @@ const router = createRouter({
     },
     {
       path: '/teacher/create-quiz',
-      redirect: '/teacher/create-quiz-redirect',
       name: 'create-quiz-root',
+      redirect: (to) => {
+        return { name: 'quiz-builder', params: { id: '1' } }
+      }
     },
     {
       path: '/teacher/classes/:id/quiz/results',

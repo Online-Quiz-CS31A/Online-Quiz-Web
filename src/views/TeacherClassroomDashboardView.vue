@@ -426,7 +426,10 @@ watch([sectionId], () => {
 // METHODS
 function navigateToQuizCreator() {
   quizzesStore.resetCurrentQuiz()
-  router.push(`/teacher/create-quiz`)
+  
+  const sectionId = route.params.id as string
+  
+  router.push({ name: 'quiz-builder', params: { id: sectionId } })
 }
 
 function handleBreadcrumbSegment(segment: string) {
