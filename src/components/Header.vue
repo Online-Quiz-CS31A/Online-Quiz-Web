@@ -186,7 +186,6 @@ function markAllAsRead() {
         class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
       >
         <button 
-          v-if="published && !props.archivedQuiz"
           @click="emit('content')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -197,7 +196,6 @@ function markAllAsRead() {
           Content
         </button>
         <button 
-          v-if="published"
           @click="emit('assign')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
