@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useCoursesStore } from '@/stores/coursesStore'
@@ -232,16 +232,16 @@ onMounted(async () => {
     })
   })
 
-  const assignedSections: string[] =
-    (meta && Array.isArray((meta as any).assignedSections)
-      ? (meta as any).assignedSections
-      : []) || []
+  const storeAssigned = quizzesStore.currentQuiz.assignedSections || []
+  const metaAssigned = (meta && Array.isArray((meta as any).assignedSections)) 
+      ? (meta as any).assignedSections 
+      : []
 
   const fallbackClass = (meta && (meta as any).class) || ''
 
-  const effectiveAssignedSections = assignedSections.length > 0
-    ? assignedSections
-    : (fallbackClass ? [fallbackClass] : [])
+  const combinedAssigned = new Set([...storeAssigned, ...metaAssigned, fallbackClass].filter(Boolean))
+
+  const effectiveAssignedSections = Array.from(combinedAssigned)
 
   if (effectiveAssignedSections.length > 0) {
     classes.forEach(c => {
@@ -256,7 +256,13 @@ onMounted(async () => {
       }
     })
   }
+
+  quizzesStore.currentQuiz.assignedSections = classes.filter(c => c.selected).map(c => c.name)
 })
+
+watch(classes, (newClasses) => {
+  quizzesStore.currentQuiz.assignedSections = newClasses.filter(c => c.selected).map(c => c.name)
+}, { deep: true })
 
 // COMPUTED
 const selectedClasses = computed(() => classes.filter(c => c.selected))
