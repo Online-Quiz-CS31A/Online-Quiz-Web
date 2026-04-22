@@ -522,30 +522,35 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const coursesStoreLocal = useCoursesStore()
     const rawSubject = (currentQuiz.subject || '').trim().toLowerCase()
 
-    let course = coursesStoreLocal.allCourses.find(c =>
-      (c.name || '').trim().toLowerCase() === rawSubject ||
-      (c.code || '').trim().toLowerCase() === rawSubject
-    )
+    let targetCourseIds = courseIdsOverride && courseIdsOverride.length > 0 ? courseIdsOverride : []
 
-    let courseId = 0
+    if (targetCourseIds.length === 0) {
+      const matchingRawCourses = coursesStoreLocal.rawTeacherCourses.filter(c => 
+        (c.name || '').trim().toLowerCase() === rawSubject ||
+        (c.code || '').trim().toLowerCase() === rawSubject
+      )
+
+      if (currentQuiz.assignedSections && currentQuiz.assignedSections.length > 0) {
+        const selectedSections = currentQuiz.assignedSections.map(s => s.trim().toLowerCase())
+        targetCourseIds = matchingRawCourses
+          .filter(c => c.section && selectedSections.includes(c.section.trim().toLowerCase()))
+          .map(c => c.courseId)
+      } else if (matchingRawCourses.length > 0) {
+        targetCourseIds = [matchingRawCourses[0].courseId]
+      }
+    }
+
     if (status === 'published') {
-      if (!course) {
+      if (!rawSubject) {
         throw new Error('Please select a valid course before publishing')
       }
-      courseId = course.id
-    } else {
-      courseId = course ? course.id : 0
+      if (targetCourseIds.length === 0) {
+        throw new Error('Please select at least one section before publishing')
+      }
     }
 
-    const targetCourseIds = (courseIdsOverride && courseIdsOverride.length > 0)
-      ? courseIdsOverride
-      : (courseId !== 0 ? [courseId] : [])
-
-    if (targetCourseIds.length === 0 && status === 'published') {
-      throw new Error('Please select at least one section before publishing')
-    }
-
-    const timeLimitMatch = currentQuiz.timeLimit.match(/\d+/)
+    const timeLimitValue = currentQuiz.timeLimit ? String(currentQuiz.timeLimit) : '30'
+    const timeLimitMatch = timeLimitValue.match(/\d+/)
     const timeLimitMinutes = timeLimitMatch ? parseInt(timeLimitMatch[0], 10) : 30
 
     const mappedQuestions = currentQuiz.questions.map((q, idx) => {
@@ -572,9 +577,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       }
     })
 
-    const payload: any = {
-      quizId: currentQuiz.id ?? 0,
-      courseId: status === 'draft' && courseId === 0 ? null : courseId,
+    const payloadTemplate: any = {
       title: currentQuiz.title,
       dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       timeLimitMinutes: timeLimitMinutes,
@@ -583,19 +586,22 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       questions: mappedQuestions
     }
 
+    const isCreatingNew = !currentQuiz.id;
+
     for (let i = 0; i < targetCourseIds.length; i++) {
       const cid = targetCourseIds[i]
-      payload.courseId = cid
+      const currentPayload = { ...payloadTemplate, courseId: cid, quizId: isCreatingNew ? 0 : currentQuiz.id }
 
-      if (currentQuiz.id) {
-        await api.put(`/Quiz/${currentQuiz.id}?userId=${userId}`, payload)
+      if (isCreatingNew) {
+        currentPayload.createdBy = userId
+        const response = await api.post('/Quiz', currentPayload)
+        
+        if (i === 0 && response.data && (response.data.quizId || response.data.id)) {
+          currentQuiz.id = response.data.quizId || response.data.id
+        }
       } else {
-        payload.createdBy = userId
-        const response = await api.post('/Quiz', payload)
-        if (response.data && (response.data.quizId || response.data.id)) {
-          const newId = response.data.quizId || response.data.id
-          currentQuiz.id = newId
-          payload.quizId = newId
+        if (i === 0) {
+          await api.put(`/Quiz/${currentQuiz.id}?userId=${userId}`, currentPayload)
         }
       }
     }
@@ -609,7 +615,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       title: currentQuiz.title,
       subject: currentQuiz.subject,
       description: currentQuiz.description,
-      dueDate: seedQuiz ? seedQuiz.dueDate : payload.dueAt,
+      dueDate: seedQuiz ? seedQuiz.dueDate : payloadTemplate.dueAt,
       class: seedQuiz ? seedQuiz.class : '',
       submitted: seedQuiz ? seedQuiz.submitted : 0,
       total: seedQuiz ? seedQuiz.total : 0,

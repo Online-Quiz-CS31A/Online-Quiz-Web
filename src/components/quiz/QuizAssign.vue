@@ -161,13 +161,13 @@ onMounted(async () => {
   }
   options.attempts = attempts
 
-  const subject = current.subject || ''
+  const subject = (current.subject || '').trim().toLowerCase()
   
   let targetCourseIds: number[] = []
 
   if (subject) {
     targetCourseIds = coursesStore.rawTeacherCourses
-      .filter(c => c.name === subject || c.code === subject)
+      .filter(c => (c.name || '').trim().toLowerCase() === subject || (c.code || '').trim().toLowerCase() === subject)
       .map(c => c.courseId)
   }
 
@@ -214,22 +214,24 @@ onMounted(async () => {
     classes.push({
       id: String(section.id),
       name: section.name,
-      students: section.studentUsernames.length || section.students,
+      students: Array.isArray(section.studentUsernames) ? section.studentUsernames.length : section.students,
       selected: false,
     })
 
-    section.studentUsernames.forEach(username => {
-      const profile = studentsStore.profiles[username]
-      const fullName = profile ? `${profile.firstName} ${profile.lastName}` : username
+    if (Array.isArray(section.studentUsernames)) {
+      section.studentUsernames.forEach(username => {
+        const profile = studentsStore.profiles[username]
+        const fullName = profile ? `${profile.firstName} ${profile.lastName}` : username
 
-      individuals.push({
-        id: username,
-        name: fullName,
-        section: section.name,
-        selected: false,
-        avatar: profile?.photoUrl || defaultAvatar,
+        individuals.push({
+          id: username,
+          name: fullName,
+          section: section.name,
+          selected: false,
+          avatar: profile?.photoUrl || defaultAvatar,
+        })
       })
-    })
+    }
   })
 
   const storeAssigned = quizzesStore.currentQuiz.assignedSections || []
