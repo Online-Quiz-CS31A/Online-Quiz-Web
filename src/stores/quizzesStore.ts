@@ -276,33 +276,36 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     const studentQuizzes: StudentQuizItem[] = []
 
-    for (const course of courses) {
-      try {
-        const response = await api.get(`/Quiz/course/${course.id}?userId=${user.id}&isStudent=true`)
-        const quizzesData = response.data?.data || response.data || []
+    const results = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          const response = await api.get(`/Quiz/course/${course.id}?userId=${user.id}&isStudent=true`)
+          const quizzesData = response.data?.data || response.data || []
 
-        const arr = Array.isArray(quizzesData) ? quizzesData : []
-        arr.forEach((quiz: any) => {
-          if (!quiz) return
-          studentQuizzes.push({
-            id: quiz.quizId || quiz.id,
-            subject: course.name,
-            title: quiz.title,
-            description: quiz.description || '',
-            dueDate: quiz.dueAt || quiz.dueDate || '',
-            class: '',
-            timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
-            status: 'Not Started',
-            color: 'blue',
-            maxAttempts: quiz.maxAttempts || 3
-          })
-        })
-      } catch (e) {
-        console.error(`Failed to load quizzes for course ${course.id}`, e)
-      }
-    }
+          const arr = Array.isArray(quizzesData) ? quizzesData : []
+          return arr.map((quiz: any) => {
+            if (!quiz) return null
+            return {
+              id: quiz.quizId || quiz.id,
+              subject: course.name,
+              title: quiz.title,
+              description: quiz.description || '',
+              dueDate: quiz.dueAt || quiz.dueDate || '',
+              class: '',
+              timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
+              status: 'Not Started',
+              color: 'blue',
+              maxAttempts: quiz.maxAttempts || 3
+            }
+          }).filter(Boolean) as StudentQuizItem[]
+        } catch (e) {
+          console.error(`Failed to load quizzes for course ${course.id}`, e)
+          return []
+        }
+      })
+    )
 
-    studentQuizzesFromApi.value = studentQuizzes
+    studentQuizzesFromApi.value = results.flat()
   }
 
   function loadArchivedSeedQuizzesFromStorage() {
@@ -1498,11 +1501,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       }
       const courses = coursesStoreLocal.rawTeacherCourses
 
-      const quizzesByCourseResults = []
-      for (const course of courses) {
-        const result = await fetchQuizzesForCourse(course.courseId, user.id as number, false, course.name)
-        quizzesByCourseResults.push(result)
-      }
+      const quizzesByCourseResults = await Promise.all(
+        courses.map(course => fetchQuizzesForCourse(course.courseId, user.id as number, false, course.name))
+      )
 
       const allBriefQuizzes: TeacherQuizItem[] = []
       quizzesByCourseResults.forEach((qs, idx) => {
@@ -1550,40 +1551,29 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         })
       })
 
-      const BATCH_SIZE = 3
-      const BATCH_DELAY_MS = 300
-      const detailedQuizzes: TeacherQuizItem[] = []
-
-      for (let batchStart = 0; batchStart < allBriefQuizzes.length; batchStart += BATCH_SIZE) {
-        const batch = allBriefQuizzes.slice(batchStart, batchStart + BATCH_SIZE)
-        const batchResults = await Promise.all(
-          batch.map(async (q) => {
-            try {
-              const detail = await fetchQuizDetail(q.id, user.id as number)
-              if (detail) {
-                const rawQs = Array.isArray(detail.questions) ? detail.questions : []
-                return {
-                  ...q,
-                  questions: rawQs.map(mapApiQuestionToFrontend),
-                  description: detail.description || q.description || '',
-                  subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
-                  class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
-                  dueDate: q.dueDate || detail.dueAt,
-                  assignedSections: (q as any).assignedSections,
-                  quizIdsGroup: (q as any).quizIdsGroup
-                }
-              }
-            } catch (e) {
-              console.error(`Failed to fetch quiz details for quiz ${q.id}`, e)
+      const detailedQuizzes = await Promise.all(
+        allBriefQuizzes.map(async (q) => {
+          try {
+            const detail = await fetchQuizDetail(q.id, user.id as number)
+            if (detail) {
+              const rawQs = Array.isArray(detail.questions) ? detail.questions : []
+              return {
+                ...q,
+                questions: rawQs.map(mapApiQuestionToFrontend),
+                description: detail.description || q.description || '',
+                subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
+                class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
+                dueDate: q.dueDate || detail.dueAt,
+                assignedSections: (q as any).assignedSections,
+                quizIdsGroup: (q as any).quizIdsGroup
+              } as TeacherQuizItem
             }
-            return q
-          })
-        )
-        detailedQuizzes.push(...batchResults)
-        if (batchStart + BATCH_SIZE < allBriefQuizzes.length) {
-          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
-        }
-      }
+          } catch (e) {
+            console.error(`Failed to fetch quiz details for quiz ${q.id}`, e)
+          }
+          return q
+        })
+      )
 
       teacherQuizzesByUser.value[user.username] = detailedQuizzes
       loadArchivedSeedQuizzesFromStorage()
