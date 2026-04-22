@@ -207,6 +207,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuestionIndex: -1,
     assignedSections: [] as string[],
     assignedCourseIds: [] as number[],
+    quizIdsGroup: [] as number[],
   })
 
   const currentAttempt = reactive({
@@ -590,18 +591,39 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     for (let i = 0; i < targetCourseIds.length; i++) {
       const cid = targetCourseIds[i]
-      const currentPayload = { ...payloadTemplate, courseId: cid, quizId: isCreatingNew ? 0 : currentQuiz.id }
-
+      
       if (isCreatingNew) {
+        const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
         currentPayload.createdBy = userId
         const response = await api.post('/Quiz', currentPayload)
         
         if (i === 0 && response.data && (response.data.quizId || response.data.id)) {
           currentQuiz.id = response.data.quizId || response.data.id
         }
+        if (response.data && (response.data.quizId || response.data.id)) {
+          if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
+          if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
+            currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
+          }
+        }
       } else {
-        if (i === 0) {
-          await api.put(`/Quiz/${currentQuiz.id}?userId=${userId}`, currentPayload)
+        const existingQuizId = (currentQuiz.quizIdsGroup && currentQuiz.quizIdsGroup.length > i)
+          ? currentQuiz.quizIdsGroup[i]
+          : (i === 0 ? currentQuiz.id : null)
+
+        if (existingQuizId) {
+          const currentPayload = { ...payloadTemplate, courseId: cid, quizId: existingQuizId }
+          await api.put(`/Quiz/${existingQuizId}?userId=${userId}`, currentPayload)
+        } else {
+          const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
+          currentPayload.createdBy = userId
+          const response = await api.post('/Quiz', currentPayload)
+          if (response.data && (response.data.quizId || response.data.id)) {
+            if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
+            if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
+              currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
+            }
+          }
         }
       }
     }
@@ -1479,9 +1501,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
           const sectionNames = [q.class, course.section].filter(Boolean) as string[]
 
-          const existing = allBriefQuizzes.find(e => e.id === q.id)
+          const existing = allBriefQuizzes.find(e => {
+            if (e.id === q.id) return true
+            if (e.title && q.title && e.title.trim() === q.title.trim() && e.subject === q.subject) {
+               const timeDiff = Math.abs(new Date(e.createdAt || 0).getTime() - new Date(q.createdAt || 0).getTime())
+               if (timeDiff < 10000) return true
+            }
+            return false
+          })
+          
           if (!existing) {
-            (q as any).assignedSections = [...new Set(sectionNames)]
+            (q as any).assignedSections = [...new Set(sectionNames)];
+            (q as any).quizIdsGroup = [q.id];
             if (!q.class && sectionNames.length > 0) q.class = sectionNames[0]
             allBriefQuizzes.push(q)
           } else {
@@ -1492,6 +1523,11 @@ export const useQuizzesStore = defineStore('quizzes', () => {
               }
             })
               ; (existing as any).assignedSections = existingSections
+              
+            if (!(existing as any).quizIdsGroup) (existing as any).quizIdsGroup = [existing.id];
+            if (!(existing as any).quizIdsGroup.includes(q.id)) {
+              (existing as any).quizIdsGroup.push(q.id)
+            }
 
             if (existing.class && sectionNames.length > 0 && !existing.class.includes(sectionNames[0])) {
               existing.class = `${existing.class}, ${sectionNames[0]}`
@@ -1515,7 +1551,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
                 subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
                 class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
                 dueDate: q.dueDate || detail.dueAt,
-                assignedSections: (q as any).assignedSections
+                assignedSections: (q as any).assignedSections,
+                quizIdsGroup: (q as any).quizIdsGroup
               }
             }
           } catch (e) {
