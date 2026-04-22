@@ -396,7 +396,8 @@ async function saveAssignment() {
         </div>
         <button @click="saveAssignment" :disabled="saving"
                 class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white px-4 py-2 rounded-lg transition duration-200">
-          <i class="fas fa-save w-4 h-4"></i>
+          <i v-if="saving" class="fas fa-spinner fa-spin mr-2"></i>
+          <i v-else class="fas fa-save w-4 h-4"></i>
           <span>{{ saving ? 'Saving...' : 'Save Assignment' }}</span>
         </button>
       </div>

@@ -144,6 +144,8 @@ watch(() => quizzesStore.currentQuiz.id, (id) => {
       :published="published"
       :archived-quiz="archivedQuiz"
       :read-only-results-only="archivedQuiz || isArchivedSectionContext || isArchivedCourseContext"
+      :saving="quizzesStore.isSaving"
+      :publishing="quizzesStore.isPublishing"
       @content="onContent"
       @save="onSave"
       @publish="onPublish"

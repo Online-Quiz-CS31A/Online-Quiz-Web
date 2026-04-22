@@ -8,6 +8,8 @@ import api from '../services/api'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
   const isLoading = ref(false)
+  const isSaving = ref(false)
+  const isPublishing = ref(false)
   const teacherQuizzesByUser = ref<Record<string, TeacherQuizItem[]>>({
     '0111111111': [
       {
@@ -465,204 +467,215 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   async function saveQuiz(status: 'draft' | 'published' = 'draft', courseIdsOverride?: number[]) {
-    if (!currentQuiz.title.trim()) {
-      throw new Error('Quiz title is required')
-    }
-    if (currentQuiz.questions.length === 0) {
-      throw new Error('Quiz must have at least one question')
-    }
-
-    for (let i = 0; i < currentQuiz.questions.length; i++) {
-      const q = currentQuiz.questions[i]
-
-      if (!q.text || !q.text.trim()) {
-        throw new Error(`Question ${i + 1} cannot be empty`)
-      }
-
-      if (q.type === 'multiple-choice') {
-        if (!q.options || q.options.length < 2) {
-          throw new Error(`Multiple choice question ${i + 1} must have at least 2 options`)
-        }
-
-        const hasEmptyOption = q.options.some(opt => !opt.text || !opt.text.trim())
-        if (hasEmptyOption) {
-          throw new Error(`All options in question ${i + 1} must have text`)
-        }
-      }
-
-      if (q.type === 'enumeration') {
-        if (!q.items || q.items.length < 2) {
-          throw new Error(`Enumeration question ${i + 1} must have at least 2 items`)
-        }
-
-        const hasEmptyItem = q.items.some(item => !item || !item.trim())
-        if (hasEmptyItem) {
-          throw new Error(`All items in enumeration question ${i + 1} must have text`)
-        }
-      }
-
-      if (q.type === 'matching') {
-        if (!q.pairs || q.pairs.length < 2) {
-          throw new Error(`Matching question ${i + 1} must have at least 2 pairs`)
-        }
-
-        const hasEmptyPair = q.pairs.some(p => !p.left || !p.left.trim() || !p.right || !p.right.trim())
-        if (hasEmptyPair) {
-          throw new Error(`All pairs in matching question ${i + 1} must have both sides filled`)
-        }
-      }
-    }
-
-    const auth = useAuthStore()
-    const username = auth.currentUser?.username
-    const userId = auth.currentUser?.id
-    if (!username || !userId) {
-      throw new Error('User not authenticated')
-    }
-
-    const coursesStoreLocal = useCoursesStore()
-    const rawSubject = (currentQuiz.subject || '').trim().toLowerCase()
-
-    let targetCourseIds = courseIdsOverride && courseIdsOverride.length > 0 ? courseIdsOverride : []
-
-    if (targetCourseIds.length === 0) {
-      const matchingRawCourses = coursesStoreLocal.rawTeacherCourses.filter(c => 
-        (c.name || '').trim().toLowerCase() === rawSubject ||
-        (c.code || '').trim().toLowerCase() === rawSubject
-      )
-
-      if (currentQuiz.assignedSections && currentQuiz.assignedSections.length > 0) {
-        const selectedSections = currentQuiz.assignedSections.map(s => s.trim().toLowerCase())
-        targetCourseIds = matchingRawCourses
-          .filter(c => c.section && selectedSections.includes(c.section.trim().toLowerCase()))
-          .map(c => c.courseId)
-      } else if (matchingRawCourses.length > 0) {
-        targetCourseIds = [matchingRawCourses[0].courseId]
-      }
-    }
-
     if (status === 'published') {
-      if (!rawSubject) {
-        throw new Error('Please select a valid course before publishing')
-      }
-      if (targetCourseIds.length === 0) {
-        throw new Error('Please select at least one section before publishing')
-      }
+      isPublishing.value = true
+    } else {
+      isSaving.value = true
     }
 
-    const timeLimitValue = currentQuiz.timeLimit ? String(currentQuiz.timeLimit) : '30'
-    const timeLimitMatch = timeLimitValue.match(/\d+/)
-    const timeLimitMinutes = timeLimitMatch ? parseInt(timeLimitMatch[0], 10) : 30
-
-    const mappedQuestions = currentQuiz.questions.map((q, idx) => {
-      let mappedType = q.type
-      if (q.type === 'multiple-choice') {
-        mappedType = 'Multiple'
-      } else if (q.type === 'true-false') {
-        mappedType = 'Single'
+    try {
+      if (!currentQuiz.title.trim()) {
+        throw new Error('Quiz title is required')
+      }
+      if (currentQuiz.questions.length === 0) {
+        throw new Error('Quiz must have at least one question')
       }
 
-      return {
-        questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
-        quizId: currentQuiz.id ?? 0,
-        type: mappedType,
-        body: q.text,
-        points: q.points || 1,
-        sortOrder: idx + 1,
-        choices: q.options ? q.options.map((opt) => ({
-          choiceId: 0,
-          questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
-          body: opt.text,
-          isCorrect: opt.isCorrect
-        })) : []
-      }
-    })
+      for (let i = 0; i < currentQuiz.questions.length; i++) {
+        const q = currentQuiz.questions[i]
 
-    const payloadTemplate: any = {
-      title: currentQuiz.title,
-      dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      timeLimitMinutes: timeLimitMinutes,
-      isPublished: status === 'published',
-      createdAt: new Date().toISOString(),
-      questions: mappedQuestions
-    }
-
-    const isCreatingNew = !currentQuiz.id;
-
-    for (let i = 0; i < targetCourseIds.length; i++) {
-      const cid = targetCourseIds[i]
-      
-      if (isCreatingNew) {
-        const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
-        currentPayload.createdBy = userId
-        const response = await api.post('/Quiz', currentPayload)
-        
-        if (i === 0 && response.data && (response.data.quizId || response.data.id)) {
-          currentQuiz.id = response.data.quizId || response.data.id
+        if (!q.text || !q.text.trim()) {
+          throw new Error(`Question ${i + 1} cannot be empty`)
         }
-        if (response.data && (response.data.quizId || response.data.id)) {
-          if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
-          if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
-            currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
+
+        if (q.type === 'multiple-choice') {
+          if (!q.options || q.options.length < 2) {
+            throw new Error(`Multiple choice question ${i + 1} must have at least 2 options`)
+          }
+
+          const hasEmptyOption = q.options.some(opt => !opt.text || !opt.text.trim())
+          if (hasEmptyOption) {
+            throw new Error(`All options in question ${i + 1} must have text`)
           }
         }
-      } else {
-        const existingQuizId = (currentQuiz.quizIdsGroup && currentQuiz.quizIdsGroup.length > i)
-          ? currentQuiz.quizIdsGroup[i]
-          : (i === 0 ? currentQuiz.id : null)
 
-        if (existingQuizId) {
-          const currentPayload = { ...payloadTemplate, courseId: cid, quizId: existingQuizId }
-          await api.put(`/Quiz/${existingQuizId}?userId=${userId}`, currentPayload)
-        } else {
+        if (q.type === 'enumeration') {
+          if (!q.items || q.items.length < 2) {
+            throw new Error(`Enumeration question ${i + 1} must have at least 2 items`)
+          }
+
+          const hasEmptyItem = q.items.some(item => !item || !item.trim())
+          if (hasEmptyItem) {
+            throw new Error(`All items in enumeration question ${i + 1} must have text`)
+          }
+        }
+
+        if (q.type === 'matching') {
+          if (!q.pairs || q.pairs.length < 2) {
+            throw new Error(`Matching question ${i + 1} must have at least 2 pairs`)
+          }
+
+          const hasEmptyPair = q.pairs.some(p => !p.left || !p.left.trim() || !p.right || !p.right.trim())
+          if (hasEmptyPair) {
+            throw new Error(`All pairs in matching question ${i + 1} must have both sides filled`)
+          }
+        }
+      }
+
+      const auth = useAuthStore()
+      const username = auth.currentUser?.username
+      const userId = auth.currentUser?.id
+      if (!username || !userId) {
+        throw new Error('User not authenticated')
+      }
+
+      const coursesStoreLocal = useCoursesStore()
+      const rawSubject = (currentQuiz.subject || '').trim().toLowerCase()
+
+      let targetCourseIds = courseIdsOverride && courseIdsOverride.length > 0 ? courseIdsOverride : []
+
+      if (targetCourseIds.length === 0) {
+        const matchingRawCourses = coursesStoreLocal.rawTeacherCourses.filter(c =>
+          (c.name || '').trim().toLowerCase() === rawSubject ||
+          (c.code || '').trim().toLowerCase() === rawSubject
+        )
+
+        if (currentQuiz.assignedSections && currentQuiz.assignedSections.length > 0) {
+          const selectedSections = currentQuiz.assignedSections.map(s => s.trim().toLowerCase())
+          targetCourseIds = matchingRawCourses
+            .filter(c => c.section && selectedSections.includes(c.section.trim().toLowerCase()))
+            .map(c => c.courseId)
+        } else if (matchingRawCourses.length > 0) {
+          targetCourseIds = [matchingRawCourses[0].courseId]
+        }
+      }
+
+      if (status === 'published') {
+        if (!rawSubject) {
+          throw new Error('Please select a valid course before publishing')
+        }
+        if (targetCourseIds.length === 0) {
+          throw new Error('Please select at least one section before publishing')
+        }
+      }
+
+      const timeLimitValue = currentQuiz.timeLimit ? String(currentQuiz.timeLimit) : '30'
+      const timeLimitMatch = timeLimitValue.match(/\d+/)
+      const timeLimitMinutes = timeLimitMatch ? parseInt(timeLimitMatch[0], 10) : 30
+
+      const mappedQuestions = currentQuiz.questions.map((q, idx) => {
+        let mappedType = q.type
+        if (q.type === 'multiple-choice') {
+          mappedType = 'Multiple'
+        } else if (q.type === 'true-false') {
+          mappedType = 'Single'
+        }
+
+        return {
+          questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+          quizId: currentQuiz.id ?? 0,
+          type: mappedType,
+          body: q.text,
+          points: q.points || 1,
+          sortOrder: idx + 1,
+          choices: q.options ? q.options.map((opt) => ({
+            choiceId: 0,
+            questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+            body: opt.text,
+            isCorrect: opt.isCorrect
+          })) : []
+        }
+      })
+
+      const payloadTemplate: any = {
+        title: currentQuiz.title,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        timeLimitMinutes: timeLimitMinutes,
+        isPublished: status === 'published',
+        createdAt: new Date().toISOString(),
+        questions: mappedQuestions
+      }
+
+      const isCreatingNew = !currentQuiz.id;
+
+      for (let i = 0; i < targetCourseIds.length; i++) {
+        const cid = targetCourseIds[i]
+
+        if (isCreatingNew) {
           const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
           currentPayload.createdBy = userId
           const response = await api.post('/Quiz', currentPayload)
+
+          if (i === 0 && response.data && (response.data.quizId || response.data.id)) {
+            currentQuiz.id = response.data.quizId || response.data.id
+          }
           if (response.data && (response.data.quizId || response.data.id)) {
             if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
             if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
               currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
             }
           }
+        } else {
+          const existingQuizId = (currentQuiz.quizIdsGroup && currentQuiz.quizIdsGroup.length > i)
+            ? currentQuiz.quizIdsGroup[i]
+            : (i === 0 ? currentQuiz.id : null)
+
+          if (existingQuizId) {
+            const currentPayload = { ...payloadTemplate, courseId: cid, quizId: existingQuizId }
+            await api.put(`/Quiz/${existingQuizId}?userId=${userId}`, currentPayload)
+          } else {
+            const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
+            currentPayload.createdBy = userId
+            const response = await api.post('/Quiz', currentPayload)
+            if (response.data && (response.data.quizId || response.data.id)) {
+              if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
+              if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
+                currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
+              }
+            }
+          }
         }
       }
+
+      const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
+      const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
+      const seedQuiz = allSeedQuizzes.find(q => q.id === id)
+
+      const quizItem: TeacherQuizItem = {
+        id,
+        title: currentQuiz.title,
+        subject: currentQuiz.subject,
+        description: currentQuiz.description,
+        dueDate: seedQuiz ? seedQuiz.dueDate : payloadTemplate.dueAt,
+        class: seedQuiz ? seedQuiz.class : '',
+        submitted: seedQuiz ? seedQuiz.submitted : 0,
+        total: seedQuiz ? seedQuiz.total : 0,
+        color: seedQuiz ? seedQuiz.color : 'blue',
+        status,
+        questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
+        createdAt: seedQuiz ? seedQuiz.createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ownerUsername: username
+      }
+
+      currentQuiz.id = quizItem.id
+
+      if (!teacherQuizzesByUser.value[username]) {
+        teacherQuizzesByUser.value[username] = []
+      }
+      const userQuizzes = teacherQuizzesByUser.value[username]
+      const mIdx = userQuizzes.findIndex(q => q.id === quizItem.id)
+      if (mIdx !== -1) {
+        userQuizzes[mIdx] = quizItem
+      } else {
+        userQuizzes.push(quizItem)
+      }
+
+      return quizItem
+    } finally {
+      isSaving.value = false
+      isPublishing.value = false
     }
-
-    const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
-    const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
-    const seedQuiz = allSeedQuizzes.find(q => q.id === id)
-
-    const quizItem: TeacherQuizItem = {
-      id,
-      title: currentQuiz.title,
-      subject: currentQuiz.subject,
-      description: currentQuiz.description,
-      dueDate: seedQuiz ? seedQuiz.dueDate : payloadTemplate.dueAt,
-      class: seedQuiz ? seedQuiz.class : '',
-      submitted: seedQuiz ? seedQuiz.submitted : 0,
-      total: seedQuiz ? seedQuiz.total : 0,
-      color: seedQuiz ? seedQuiz.color : 'blue',
-      status,
-      questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-      createdAt: seedQuiz ? seedQuiz.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ownerUsername: username
-    }
-
-    currentQuiz.id = quizItem.id
-
-    if (!teacherQuizzesByUser.value[username]) {
-      teacherQuizzesByUser.value[username] = []
-    }
-    const userQuizzes = teacherQuizzesByUser.value[username]
-    const mIdx = userQuizzes.findIndex(q => q.id === quizItem.id)
-    if (mIdx !== -1) {
-      userQuizzes[mIdx] = quizItem
-    } else {
-      userQuizzes.push(quizItem)
-    }
-
-    return quizItem
   }
 
   async function deleteQuiz(quizId: number) {
@@ -672,7 +685,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       console.error('Failed to delete quiz:', e)
     }
 
-    // Also remove from teacherQuizzesByUser
     Object.keys(teacherQuizzesByUser.value).forEach(list => {
       teacherQuizzesByUser.value[list] = teacherQuizzesByUser.value[list].filter(q => q.id !== quizId)
     })
@@ -1504,12 +1516,12 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           const existing = allBriefQuizzes.find(e => {
             if (e.id === q.id) return true
             if (e.title && q.title && e.title.trim() === q.title.trim() && e.subject === q.subject) {
-               const timeDiff = Math.abs(new Date(e.createdAt || 0).getTime() - new Date(q.createdAt || 0).getTime())
-               if (timeDiff < 10000) return true
+              const timeDiff = Math.abs(new Date(e.createdAt || 0).getTime() - new Date(q.createdAt || 0).getTime())
+              if (timeDiff < 10000) return true
             }
             return false
           })
-          
+
           if (!existing) {
             (q as any).assignedSections = [...new Set(sectionNames)];
             (q as any).quizIdsGroup = [q.id];
@@ -1523,7 +1535,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
               }
             })
               ; (existing as any).assignedSections = existingSections
-              
+
             if (!(existing as any).quizIdsGroup) (existing as any).quizIdsGroup = [existing.id];
             if (!(existing as any).quizIdsGroup.includes(q.id)) {
               (existing as any).quizIdsGroup.push(q.id)
@@ -1538,29 +1550,40 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         })
       })
 
-      const detailedQuizzes = await Promise.all(
-        allBriefQuizzes.map(async (q) => {
-          try {
-            const detail = await fetchQuizDetail(q.id, user.id as number)
-            if (detail) {
-              const rawQs = Array.isArray(detail.questions) ? detail.questions : []
-              return {
-                ...q,
-                questions: rawQs.map(mapApiQuestionToFrontend),
-                description: detail.description || q.description || '',
-                subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
-                class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
-                dueDate: q.dueDate || detail.dueAt,
-                assignedSections: (q as any).assignedSections,
-                quizIdsGroup: (q as any).quizIdsGroup
+      const BATCH_SIZE = 3
+      const BATCH_DELAY_MS = 300
+      const detailedQuizzes: TeacherQuizItem[] = []
+
+      for (let batchStart = 0; batchStart < allBriefQuizzes.length; batchStart += BATCH_SIZE) {
+        const batch = allBriefQuizzes.slice(batchStart, batchStart + BATCH_SIZE)
+        const batchResults = await Promise.all(
+          batch.map(async (q) => {
+            try {
+              const detail = await fetchQuizDetail(q.id, user.id as number)
+              if (detail) {
+                const rawQs = Array.isArray(detail.questions) ? detail.questions : []
+                return {
+                  ...q,
+                  questions: rawQs.map(mapApiQuestionToFrontend),
+                  description: detail.description || q.description || '',
+                  subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
+                  class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
+                  dueDate: q.dueDate || detail.dueAt,
+                  assignedSections: (q as any).assignedSections,
+                  quizIdsGroup: (q as any).quizIdsGroup
+                }
               }
+            } catch (e) {
+              console.error(`Failed to fetch quiz details for quiz ${q.id}`, e)
             }
-          } catch (e) {
-            console.error(`Failed to fetch quiz details for quiz ${q.id}`, e)
-          }
-          return q
-        })
-      )
+            return q
+          })
+        )
+        detailedQuizzes.push(...batchResults)
+        if (batchStart + BATCH_SIZE < allBriefQuizzes.length) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+        }
+      }
 
       teacherQuizzesByUser.value[user.username] = detailedQuizzes
       loadArchivedSeedQuizzesFromStorage()
@@ -1586,6 +1609,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     shuffleOptions,
     updateQuestionProperty,
     updateCurrentQuestionType,
+    resetCurrentQuiz,
+    isSaving,
+    isPublishing,
     saveQuiz,
     deleteQuiz,
     archiveQuiz,
@@ -1594,7 +1620,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     unarchiveQuizzesForCourse,
     saveQuizAssignment,
     loadQuizForEditing,
-    resetCurrentQuiz,
     getAllQuizzes,
     loadQuizzesFromStorage,
     saveQuizzesToStorage,

@@ -23,6 +23,8 @@ const props = withDefaults(defineProps<{
   published?: boolean
   archivedQuiz?: boolean
   readOnlyResultsOnly?: boolean
+  saving?: boolean
+  publishing?: boolean
 }>(), {
   breadcrumb: '',
   showNotification: true,
@@ -31,6 +33,8 @@ const props = withDefaults(defineProps<{
   published: false,
   archivedQuiz: false,
   readOnlyResultsOnly: false,
+  saving: false,
+  publishing: false,
 })
 
 // EMITS
@@ -239,12 +243,16 @@ function markAllAsRead() {
         <!-- Action buttons for quiz creator -->
         <div v-if="actionButtons" class="flex items-center space-x-2">
           <button v-if="!props.archivedQuiz && !props.readOnlyResultsOnly" @click="emit('save')" 
-                  class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
-            Save
+                  :disabled="props.saving || props.publishing"
+                  class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <i v-if="props.saving || (props.publishing && props.published)" class="fas fa-spinner fa-spin mr-2"></i>
+            {{ (props.saving || (props.publishing && props.published)) ? 'Saving...' : 'Save' }}
           </button>
           
           <button v-if="!published && !props.archivedQuiz && !props.readOnlyResultsOnly" @click="openPublishModal"
-                  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
+                  :disabled="props.saving || props.publishing"
+                  class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <i v-if="props.publishing" class="fas fa-spinner fa-spin mr-2"></i>
             Publish
           </button>
           
@@ -343,8 +351,11 @@ function markAllAsRead() {
           <p class="text-xs text-gray-500">Once published, students will be able to access this quiz.</p>
         </div>
         <div class="p-4 border-t border-gray-200 flex items-center justify-end space-x-2">
-          <button @click="closePublishModal" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-md">Cancel</button>
-          <button @click="confirmPublish" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md">Publish Quiz</button>
+          <button @click="closePublishModal" :disabled="props.publishing" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-md disabled:opacity-50">Cancel</button>
+          <button @click="confirmPublish" :disabled="props.publishing" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+            <i v-if="props.publishing" class="fas fa-spinner fa-spin mr-2"></i>
+            {{ props.publishing ? 'Publishing...' : 'Publish Quiz' }}
+          </button>
         </div>
       </div>
     </div>
