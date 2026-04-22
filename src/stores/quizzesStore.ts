@@ -805,7 +805,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           const rawQs = Array.isArray(detail.questions) ? detail.questions : []
           currentQuiz.questions = rawQs.map(mapApiQuestionToFrontend)
           currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
-          // assignedCourseIds parameter removed
           return true
         }
       } catch (e) {
@@ -1449,7 +1448,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     if (hasExisting) {
       return
     }
-    
+
     isLoading.value = true
 
     try {

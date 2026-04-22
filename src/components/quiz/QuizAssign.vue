@@ -57,6 +57,8 @@ const options = reactive({
 // LIFECYCLE
 onMounted(async () => {
   sectionsStore.loadArchivedSectionsFromStorage()
+
+  await coursesStore.fetchTeacherCourses()
   await studentsStore.fetchAllStudentsFromApi()
 
   const current = quizzesStore.currentQuiz
@@ -159,41 +161,55 @@ onMounted(async () => {
   }
   options.attempts = attempts
 
-  const rawId = route.params.id as string | string[] | undefined
-  let courseId = 0
+  const subject = current.subject || ''
+  
+  let targetCourseIds: number[] = []
 
-  if (typeof rawId === 'string') {
-    const numericId = Number(rawId)
-    if (!Number.isNaN(numericId) && numericId > 0) {
-      courseId = numericId
-    }
+  if (subject) {
+    targetCourseIds = coursesStore.rawTeacherCourses
+      .filter(c => c.name === subject || c.code === subject)
+      .map(c => c.courseId)
   }
 
-  if (!courseId) {
-    const subject = current.subject || ''
-    if (subject) {
-      const course = coursesStore.allCourses.find(c => c.name === subject)
-      if (course) {
-        courseId = course.id
+  courseIdRef.value = targetCourseIds.length > 0 ? targetCourseIds[0] : null
+
+  const enrichedSections = []
+  const seenIds = new Set<number>()
+
+  if (targetCourseIds.length > 0) {
+    for (const cid of targetCourseIds) {
+      const cidSections = sectionsStore.getSectionsByCourse(cid)
+      for (const s of cidSections) {
+        if (!seenIds.has(s.id)) {
+          enrichedSections.push(s)
+          seenIds.add(s.id)
+        }
+      }
+    }
+
+    const assignedSectionNames = coursesStore.rawTeacherCourses
+      .filter(c => targetCourseIds.includes(c.courseId) && c.section)
+      .map(c => c.section.trim())
+
+    const apiSections = sectionsStore.allSections.filter(s => assignedSectionNames.includes(s.name))
+    for (const s of apiSections) {
+      if (!seenIds.has(s.id)) {
+        enrichedSections.push(s)
+        seenIds.add(s.id)
       }
     }
   }
 
-  courseIdRef.value = courseId || null
-
-  const sections = sectionsStore.allSections
   const archivedMappings = sectionsStore.archivedSectionMappings
 
-  const globallyArchivedSectionIds = new Set(archivedMappings.map(m => m.sectionId))
+  const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
-  sections.forEach(section => {
-    const isArchivedForCourse = courseId
-      ? archivedMappings.some(m => m.courseIds.includes(courseId) && m.sectionId === section.id)
+  enrichedSections.forEach(section => {
+    const isArchivedForCourse = targetCourseIds.length > 0
+      ? archivedMappings.some(m => m.sectionId === section.id && targetCourseIds.some(cid => m.courseIds.includes(cid)))
       : false
 
-    const isGloballyArchived = globallyArchivedSectionIds.has(section.id)
-
-    if (isArchivedForCourse || isGloballyArchived) return
+    if (isArchivedForCourse) return
 
     classes.push({
       id: String(section.id),
@@ -201,16 +217,6 @@ onMounted(async () => {
       students: section.studentUsernames.length || section.students,
       selected: false,
     })
-  })
-
-  const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-
-  sections.forEach(section => {
-    const isArchivedForCourse = courseId
-      ? archivedMappings.some(m => m.courseIds.includes(courseId) && m.sectionId === section.id)
-      : false
-
-    if (isArchivedForCourse) return
 
     section.studentUsernames.forEach(username => {
       const profile = studentsStore.profiles[username]
@@ -271,7 +277,6 @@ const filteredClasses = computed(() => {
     ? classes.filter(c => c.name.toLowerCase().includes(term))
     : [...classes]
 
-  // Ensure already-assigned (selected) sections appear at the top
   return base.sort((a, b) => {
     if (a.selected === b.selected) return 0
     return a.selected ? -1 : 1
@@ -437,8 +442,19 @@ async function saveAssignment() {
                 <button @click="currentTab = 'individual'" :class="currentTab === 'individual' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-blue-600'" class="px-4 py-2 font-medium">By Individual</button>
               </div>
 
+              <!-- Missing Course Warning -->
+              <div v-if="!courseIdRef" class="py-12 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                  <i class="fas fa-book text-2xl text-red-400"></i>
+                </div>
+                <h4 class="text-lg font-medium text-gray-800 mb-2">No Course Selected</h4>
+                <p class="text-sm text-gray-500 max-w-sm">
+                  Please go back to the <strong>Quiz Content</strong> tab and select a course to load its sections.
+                </p>
+              </div>
+
               <!-- Class Selection -->
-              <div v-if="currentTab === 'class'" class="space-y-4">
+              <div v-else-if="currentTab === 'class'" class="space-y-4">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-2">
                     <i class="fas fa-search text-gray-400"></i>
@@ -460,7 +476,7 @@ async function saveAssignment() {
               </div>
 
               <!-- Individual Selection -->
-              <div v-else class="space-y-4">
+              <div v-else-if="currentTab === 'individual'" class="space-y-4">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-2">
                     <i class="fas fa-search text-gray-400"></i>

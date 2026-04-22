@@ -97,34 +97,6 @@ const coverUrl = computed(() => {
 
 const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
 
-const hasFetchedCounts = ref(false)
-
-const fetchStudentCounts = async () => {
-  if (hasFetchedCounts.value || !sections.value.length) return
-  hasFetchedCounts.value = true
-  
-  const { useAdminStore } = await import('@/stores/adminStore')
-  const adminStore = useAdminStore()
-  
-  for (const section of sections.value) {
-    if (section.name) {
-      try {
-        const students = await adminStore.fetchStudentsBySection(section.name)
-        sectionsStore.updateSection(section.id, {
-          students: students.length
-        })
-      } catch (e) {
-        console.error(`Failed to fetch students for section ${section.name}`, e)
-      }
-    }
-  }
-}
-
-watch(sections, (newSections) => {
-  if (newSections.length > 0 && !hasFetchedCounts.value) {
-    fetchStudentCounts()
-  }
-}, { immediate: true })
 
 onMounted(async () => {
   await classesStore.fetchTeacherCourses()
