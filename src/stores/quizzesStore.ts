@@ -697,14 +697,20 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function getStudentQuizQuestions(quizId: number): QuizQuestion[] {
-    const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
-    const seedQuiz = allSeedQuizzes.find(q => q.id === quizId)
+    try {
+      const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
+      const seedQuiz = allSeedQuizzes.find(q => q.id === quizId)
 
-    if (seedQuiz && seedQuiz.questions) {
-      return JSON.parse(JSON.stringify(seedQuiz.questions))
+      if (seedQuiz && seedQuiz.questions) {
+        return JSON.parse(JSON.stringify(seedQuiz.questions))
+      }
+
+      console.warn('Quiz not found in teacherQuizzesByUser for ID:', quizId)
+      return []
+    } catch (error) {
+      console.error('Error in getStudentQuizQuestions:', error)
+      return []
     }
-
-    return []
   }
 
   function startAttempt(quizId: number, quizTitle: string, questionsLength: number, durationSeconds: number = 0) {
@@ -801,6 +807,11 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
 
     const quizQuestions = getStudentQuizQuestions(currentAttempt.quizId)
+    
+    if (!quizQuestions || quizQuestions.length === 0) {
+      console.warn('No quiz questions found for quiz ID:', currentAttempt.quizId)
+      return []
+    }
 
     return quizQuestions.map((q, i) => {
       const rawUserAnswer = (i in currentAttempt.answers) ? currentAttempt.answers[i] : null

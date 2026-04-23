@@ -4,16 +4,20 @@ import { useRoute, useRouter } from 'vue-router'
 import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useAuthStore } from '@/stores/authStore'
+import api from '@/services/api'
 import type { QuizAttempt } from '@/interfaces/interfaces'
 
 
 const route = useRoute()
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
+const authStore = useAuthStore()
 
-onMounted(() => {
-  quizzesStore.loadAttemptFromStorage()
+const attemptHistory = ref<any[]>([])
+const isLoadingAttempts = ref(false)
 
+onMounted(async () => {
   const current = (quizzesStore as any).currentAttempt
   const id = Number((route.params as any)?.quizId)
   
@@ -21,13 +25,44 @@ onMounted(() => {
     const remaining = quizzesStore.getRemainingSeconds()
     if (remaining <= 0 && current.durationSeconds > 0) {
       quizzesStore.finishAttempt()
-      quizzesStore.saveAttemptToHistory()
       quizzesStore.clearAttemptStorage()
     }
   }
 
-  quizzesStore.loadAttemptHistoryFromStorage()
+  await loadAttemptHistory()
 })
+
+const loadAttemptHistory = async () => {
+  try {
+    isLoadingAttempts.value = true
+    const userId = authStore.currentUser?.id
+    const qId = quizId.value
+
+    if (!userId || !qId) {
+      console.error('Missing userId or quizId')
+      return
+    }
+
+    const response = await api.get(`/Attempt/student/${userId}`)
+    
+    if (response.data && Array.isArray(response.data)) {
+      const quizAttempts = response.data.filter((attempt: any) => 
+        attempt.quizId === qId && attempt.submittedAt
+      )
+      
+      quizAttempts.sort((a: any, b: any) => 
+        new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      )
+      
+      attemptHistory.value = quizAttempts
+      console.log('Loaded attempt history:', quizAttempts)
+    }
+  } catch (error) {
+    console.error('Failed to load attempt history:', error)
+  } finally {
+    isLoadingAttempts.value = false
+  }
+}
 
 interface RouteParams {
   quizId: string
@@ -36,14 +71,10 @@ interface RouteParams {
 // COMPUTED
 const quizId = computed(() => Number((route.params as unknown as RouteParams).quizId))
 
-const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value?.title || 'Quiz'}`)
+const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value?.title || 'Quiz'} > Score`)
 
 const studentQuizData = computed(() => {
   return quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
-})
-
-const attemptHistory = computed(() => {
-  return quizzesStore.getQuizAttemptHistory(quizId.value)
 })
 
 const quiz = computed(() => {
@@ -73,17 +104,6 @@ const quiz = computed(() => {
   const maxAttempts = studentQuiz.maxAttempts || 1
   const history = attemptHistory.value
   
-  const latestAttempt = history.length > 0 ? history[history.length - 1] : null
-  const bestAttempt = history.reduce((best, cur) => {
-    if (!best) return cur
-    return cur.percentage > best.percentage ? cur : best
-  }, null as any)
-  const correctAnswers = bestAttempt ? bestAttempt.score : 0
-  
-  const improvement = history.length >= 2 
-    ? history[history.length - 1].percentage - history[0].percentage 
-    : 0
-  
   const overallTotalPoints = quizQuestions.reduce((sum: number, q: any) => {
     const base = typeof q.points === 'number' ? q.points : 1
     if (q.type === 'matching' && Array.isArray((q as any).pairs) && (q as any).pairs.length > 0) {
@@ -95,8 +115,26 @@ const quiz = computed(() => {
     return sum + base
   }, 0)
 
-  const basePoints = bestAttempt ? bestAttempt.totalPoints : overallTotalPoints
+  const bestAttempt = history.reduce((best, cur) => {
+    if (!best) return cur
+    const curScore = cur.score || 0
+    const bestScore = best.score || 0
+    return curScore > bestScore ? cur : best
+  }, null as any)
+  
+  const latestAttempt = history.length > 0 ? history[0] : null
+  const correctAnswers = bestAttempt ? bestAttempt.score : 0
+  
+  const improvement = history.length >= 2 
+    ? ((history[0].score || 0) / (history[0].totalPoints || 1) * 100) - ((history[history.length - 1].score || 0) / (history[history.length - 1].totalPoints || 1) * 100)
+    : 0
+
+  const basePoints = bestAttempt ? (bestAttempt.totalPoints || overallTotalPoints) : overallTotalPoints
   const passingScore = Math.ceil(basePoints * 0.5)
+  
+  const bestPercentage = bestAttempt && bestAttempt.totalPoints 
+    ? Math.round((bestAttempt.score / bestAttempt.totalPoints) * 100)
+    : 0
   
   return {
     id: studentQuiz.id,
@@ -109,17 +147,21 @@ const quiz = computed(() => {
     passingPercentage: 50,
     attemptsAvailable: maxAttempts - history.length,
     maxAttempts,
-    currentScore: bestAttempt ? bestAttempt.percentage : (latestAttempt ? latestAttempt.percentage : 0),
+    currentScore: bestPercentage,
     improvement,
-    history: history.map(h => ({
-      attempt: h.attemptNumber.toString(),
-      attemptNumber: h.attemptNumber,
-      date: new Date(h.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      score: `${h.score}/${h.totalPoints}`,
-      mark: h.percentage.toString(),
-      isBest: bestAttempt ? h.percentage === bestAttempt.percentage : false,
-      percentage: h.percentage
-    })),
+    history: history.map((h, index) => {
+      const percentage = h.totalPoints ? Math.round((h.score / h.totalPoints) * 100) : 0
+      return {
+        attempt: (history.length - index).toString(),
+        attemptNumber: history.length - index,
+        attemptId: h.attemptId,
+        date: new Date(h.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        score: `${h.score || 0}/${h.totalPoints || basePoints}`,
+        mark: percentage.toString(),
+        isBest: bestAttempt ? h.attemptId === bestAttempt.attemptId : false,
+        percentage: percentage
+      }
+    }).sort((a, b) => a.attemptNumber - b.attemptNumber), // Sort by attempt number ascending
     basePoints,
     hasScore: history.length > 0
   }
@@ -185,12 +227,80 @@ const toggleMarkAsDone = () => {
   quizzesStore.toggleQuizDone(quizId.value)
 }
 
-const reviewAttempt = (attemptNumber: number) => {
-  const loaded = quizzesStore.loadAttemptForReview(quizId.value, attemptNumber)
-  if (loaded) {
-    router.push({ name: 'quiz-score' })
-  } else {
-    console.error('Failed to load attempt for review')
+const reviewAttempt = async (attemptId: number) => {
+  try {
+    const userId = authStore.currentUser?.id
+    if (!userId || !attemptId) {
+      console.error('Missing userId or attemptId')
+      return
+    }
+
+    const attempt = attemptHistory.value.find(a => a.attemptId === attemptId)
+    if (!attempt) {
+      console.error('Attempt not found')
+      return
+    }
+
+    const quizResponse = await api.get(`/Quiz/${quizId.value}`, {
+      params: { userId }
+    })
+
+    if (quizResponse.data) {
+      const questions = quizResponse.data.questions || []
+      const mappedQuestions = questions.map((q: any) => quizzesStore.mapApiQuestionToFrontend(q))
+      
+      const username = authStore.currentUser?.username
+      if (username) {
+        quizzesStore.setQuizQuestionsForScore(
+          quizId.value,
+          quiz.value.title,
+          mappedQuestions,
+          username
+        )
+      }
+      
+      quizzesStore.currentAttempt.quizId = quizId.value
+      quizzesStore.currentAttempt.quizTitle = quiz.value.title
+      quizzesStore.currentAttempt.questionsLength = mappedQuestions.length
+      quizzesStore.currentAttempt.startAtISO = attempt.startedAt
+      quizzesStore.currentAttempt.endAtISO = attempt.submittedAt
+      quizzesStore.currentAttempt.isOngoing = false
+      quizzesStore.currentAttempt.isHistoricalReview = true
+      
+      const answersResponse = await api.get(`/Answer/attempt/${attemptId}?userId=${userId}`)
+      
+      if (answersResponse.data && Array.isArray(answersResponse.data)) {
+        answersResponse.data.forEach((answer: any) => {
+          const questionIndex = mappedQuestions.findIndex((q: any) => 
+            (q.questionId || q.id) === answer.questionId
+          )
+          
+          if (questionIndex >= 0) {
+            const question = mappedQuestions[questionIndex]
+            
+            if (answer.choiceId && Array.isArray((question as any).options)) {
+              const choiceIndex = (question as any).options.findIndex((opt: any) => {
+                const choices = (question as any).choices || []
+                const matchingChoice = choices.find((c: any) => c.choiceId === answer.choiceId)
+                if (matchingChoice) {
+                  return opt.text === matchingChoice.body || opt.text === matchingChoice.text
+                }
+                return false
+              })
+              
+              if (choiceIndex >= 0) {
+                quizzesStore.setAnswer(questionIndex, choiceIndex)
+                quizzesStore.markAnswered(questionIndex)
+              }
+            }
+          }
+        })
+      }
+      
+      router.push({ name: 'quiz-score' })
+    }
+  } catch (error) {
+    console.error('Failed to load attempt for review:', error)
   }
 }
 </script>

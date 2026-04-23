@@ -19,7 +19,15 @@ const attemptData = ref<any>(null)
 const quizData = ref<any>(null)
 
 // COMPUTED
-const questions = computed(() => quizzesStore.getScoreItems() as ScoreReviewQuestion[])
+const questions = computed(() => {
+  if (isLoading.value) return []
+  try {
+    return quizzesStore.getScoreItems() as ScoreReviewQuestion[]
+  } catch (error) {
+    console.error('Error getting score items:', error)
+    return []
+  }
+})
 
 const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizData.value?.title || 'Quiz'} > Score`)
 
