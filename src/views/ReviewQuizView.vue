@@ -1,26 +1,64 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
+import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft, XCircle } from 'lucide-vue-next'
 import Header from '@/components/Header.vue'
 import ConfirmUnansweredModal from '@/components/modals/ConfirmUnansweredModal.vue'
 import type { ReviewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useAuthStore } from '@/stores/authStore'
+import api from '@/services/api'
 
 // CONSTANTS
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
+const authStore = useAuthStore()
 
 // REFS
 const currentDate = ref('')
 const currentTime = ref('')
 const timeInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const showConfirmModal = ref(false)
+const isLoading = ref(true)
+const attemptId = ref<number | null>(null)
+const quizQuestions = ref<any[]>([])
 
 // COMPUTED
 const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizzesStore.currentAttempt.quizTitle || 'Quiz'} > Review`)
 
-const questions = computed<ReviewQuestion[]>(() => quizzesStore.getReviewQuestions())
+const questions = computed(() => {
+  if (!quizQuestions.value || quizQuestions.value.length === 0) {
+    return []
+  }
+  
+  return quizQuestions.value.map((q, idx) => {
+    const userAnswer = quizzesStore.currentAttempt.answers[idx]
+    
+    let isAnswered = false
+    const qType = (q.type || '').toLowerCase()
+    
+    if (qType === 'multiple' || qType === 'single' || qType === 'multiple-choice' || qType === 'true-false') {
+      isAnswered = typeof userAnswer === 'number' && userAnswer >= 0
+    } else if (qType === 'text' || qType === 'essay') {
+      isAnswered = typeof userAnswer === 'string' && userAnswer.trim().length > 0
+    } else if (qType === 'enumeration') {
+      isAnswered = Array.isArray(userAnswer) && userAnswer.some(item => item && String(item).trim().length > 0)
+    } else if (qType === 'matching') {
+      isAnswered = typeof userAnswer === 'object' && !Array.isArray(userAnswer) && Object.keys(userAnswer).length > 0
+    } else if (qType === 'fillblank' || qType === 'fill-blank' || qType === 'fill_blank') {
+      isAnswered = Array.isArray(userAnswer) && userAnswer.some(blank => blank && String(blank).trim().length > 0)
+    } else {
+      isAnswered = userAnswer !== null && userAnswer !== undefined
+    }
+    
+    return {
+      id: idx + 1,
+      answered: isAnswered,
+      questionText: q.body || q.text || '',
+      questionType: q.type || ''
+    }
+  })
+})
 
 const unansweredCount = computed(() => questions.value.filter(q => !q.answered).length)
 
@@ -74,31 +112,143 @@ const backToQuiz = () => {
   router.push({ name: 'quiz' })
 }
 
-const submitQuiz = () => {
+const submitQuiz = async () => {
   if (unansweredCount.value > 0) {
     showConfirmModal.value = true
     return
   }
-  quizzesStore.finishAttempt()
-  quizzesStore.saveAttemptToHistory()
-  router.push({ name: 'quiz-score' })
+  
+  try {
+    const userId = authStore.currentUser?.id
+    if (!attemptId.value || !userId) {
+      console.error('Missing attemptId or userId')
+      return
+    }
+
+    const scoreDetails = quizzesStore.calculateScore()
+    const startTime = quizzesStore.currentAttempt.startAtISO 
+      ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
+      : Date.now()
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000)
+
+    await api.put(`/Attempt/${attemptId.value}/submit?studentId=${userId}`, {
+      score: scoreDetails.score,
+      timeSpentSeconds: timeSpent
+    })
+
+    quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
+    quizzesStore.currentAttempt.isOngoing = false
+    
+    router.push({ name: 'quiz-score' })
+  } catch (error) {
+    console.error('Failed to submit quiz:', error)
+  }
 }
 
-const confirmSubmit = () => {
+const confirmSubmit = async () => {
   showConfirmModal.value = false
-  quizzesStore.finishAttempt()
-  quizzesStore.saveAttemptToHistory()
-  router.push({ name: 'quiz-score' })
+  
+  try {
+    const userId = authStore.currentUser?.id
+    if (!attemptId.value || !userId) {
+      console.error('Missing attemptId or userId')
+      return
+    }
+
+    const scoreDetails = quizzesStore.calculateScore()
+    const startTime = quizzesStore.currentAttempt.startAtISO 
+      ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
+      : Date.now()
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000)
+
+    await api.put(`/Attempt/${attemptId.value}/submit?studentId=${userId}`, {
+      score: scoreDetails.score,
+      timeSpentSeconds: timeSpent
+    })
+
+    quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
+    quizzesStore.currentAttempt.isOngoing = false
+    
+    router.push({ name: 'quiz-score' })
+  } catch (error) {
+    console.error('Failed to submit quiz:', error)
+  }
 }
 
 const cancelSubmit = () => {
   showConfirmModal.value = false
 }
 
+const fetchQuizQuestions = async () => {
+  try {
+    isLoading.value = true
+    const quizId = quizzesStore.currentAttempt.quizId
+    const userId = authStore.currentUser?.id
+
+    if (!quizId || !userId) {
+      console.error('Missing quizId or userId')
+      return
+    }
+
+    const response = await api.get(`/Quiz/${quizId}`, {
+      params: { userId }
+    })
+
+    if (response.data) {
+      quizQuestions.value = response.data.questions || []
+      
+      if (quizQuestions.value.length > 0) {
+        quizzesStore.currentAttempt.questionsLength = quizQuestions.value.length
+      }
+    }
+
+    const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
+    
+    if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
+      const ongoingAttempt = attemptsResponse.data.find((attempt: any) => 
+        attempt.quizId === quizId && !attempt.submittedAt
+      )
+
+      if (ongoingAttempt) {
+        attemptId.value = ongoingAttempt.attemptId
+        
+        const answersResponse = await api.get(`/Answer/attempt/${attemptId.value}?userId=${userId}`)
+        
+        if (answersResponse.data && Array.isArray(answersResponse.data)) {
+          answersResponse.data.forEach((answer: any) => {
+            const questionIndex = quizQuestions.value.findIndex((q: any) => 
+              (q.questionId || q.id) === answer.questionId
+            )
+            
+            if (questionIndex >= 0) {
+              const question = quizQuestions.value[questionIndex]
+              if (answer.choiceId && Array.isArray((question as any).choices)) {
+                const choiceIndex = (question as any).choices.findIndex((c: any) => 
+                  c.choiceId === answer.choiceId
+                )
+                if (choiceIndex >= 0) {
+                  quizzesStore.setAnswer(questionIndex, choiceIndex)
+                  quizzesStore.markAnswered(questionIndex)
+                }
+              }
+            }
+          })
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch quiz questions:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   updateDateTime()
   timeInterval.value = setInterval(updateDateTime, 1000)
+  
+  await fetchQuizQuestions()
 })
 
 onUnmounted(() => {
@@ -131,13 +281,34 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="isLoading" class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4] p-12 text-center">
+        <div class="flex flex-col items-center justify-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4285f4] mb-4"></div>
+          <p class="text-gray-600">Loading quiz questions...</p>
+        </div>
+      </div>
+
+      <!-- No Questions State -->
+      <div v-else-if="questions.length === 0" class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4] p-12 text-center">
+        <AlertCircle class="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Questions Available</h3>
+        <p class="text-gray-600 mb-6">There are no questions to review for this quiz.</p>
+        <button 
+          @click="backToQuiz"
+          class="px-6 py-3 bg-[#4285f4] hover:bg-[#4866DA] text-white rounded-xl font-semibold transition-all"
+        >
+          Back to Quiz
+        </button>
+      </div>
+
       <!-- Questions Grid -->
-      <div class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
+      <div v-else class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
         <div class="divide-y divide-gray-200">
           <div 
             v-for="question in questions" 
             :key="question.id"
-            class="p-6 hover:bg-[#F4F7F9] transition-all cursor-pointer"
+            class="p-6 hover:bg-[#F4F7F9] transition-all"
           >
             <div class="flex items-start">
               <div class="bg-[#4285f4] text-white rounded-full w-10 h-10 flex items-center justify-center shrink-0 font-semibold">
@@ -146,7 +317,8 @@ onUnmounted(() => {
               
               <div class="ml-4 flex-1">
                 <h3 class="font-semibold text-gray-800 text-lg">Question #{{ question.id }}</h3>
-                <div class="mt-2">
+                <p v-if="question.questionText" class="text-sm text-gray-600 mt-1">{{ question.questionText.substring(0, 100) }}{{ question.questionText.length > 100 ? '...' : '' }}</p>
+                <div class="mt-2 flex gap-2 flex-wrap">
                   <span 
                     v-if="question.answered"
                     class="inline-flex items-center px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-medium"
@@ -176,7 +348,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Action Buttons -->
-      <div class="mt-8 flex flex-col sm:flex-row justify-between gap-4">
+      <div v-if="!isLoading && questions.length > 0" class="mt-8 flex flex-col sm:flex-row justify-between gap-4">
         <button 
           @click="backToQuiz"
           class="px-6 py-3 bg-[#F4F7F9] hover:bg-gray-200 text-gray-800 rounded-xl font-semibold flex items-center justify-center border border-[#7B90DF] transition-all"

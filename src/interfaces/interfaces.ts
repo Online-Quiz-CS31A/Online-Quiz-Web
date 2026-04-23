@@ -360,6 +360,7 @@ export interface Participant {
 export interface ReviewQuestion {
   id: number
   answered: boolean
+  isCorrect?: boolean
 }
 
 export interface ScoreReviewQuestion {
