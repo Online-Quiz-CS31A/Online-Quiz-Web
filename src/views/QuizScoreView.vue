@@ -4,18 +4,29 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useAuthStore } from '@/stores/authStore'
+import api from '@/services/api'
 
 // CONSTANTS
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
-
-const questions: ScoreReviewQuestion[] = quizzesStore.getScoreItems() as ScoreReviewQuestion[]
+const authStore = useAuthStore()
 
 // REFS
 const currentQuestion = ref(0)
+const isLoading = ref(true)
+const attemptData = ref<any>(null)
+const quizData = ref<any>(null)
 
 // COMPUTED
-const breadcrumb = computed(() => `Dashboard > Quizzes > Week 1 Quiz > Score`)
+const questions = computed(() => quizzesStore.getScoreItems() as ScoreReviewQuestion[])
+
+const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizData.value?.title || 'Quiz'} > Score`)
+
+const currentQuestionData = computed(() => {
+  if (!questions.value || questions.value.length === 0) return null
+  return questions.value[currentQuestion.value]
+})
 
 const scoreDetails = computed(() => quizzesStore.calculateScore())
 
@@ -23,14 +34,20 @@ const score = computed(() => {
   return `${scoreDetails.value.score}/${scoreDetails.value.totalPoints}`
 })
 
-const correctCount = computed(() => questions.filter(q => q.isCorrect).length)
+const correctCount = computed(() => questions.value.filter(q => q.isCorrect).length)
 
 const startedAtText = computed(() => {
+  if (attemptData.value?.startedAt) {
+    return new Date(attemptData.value.startedAt).toLocaleString()
+  }
   const iso = quizzesStore.currentAttempt.startAtISO
   return iso ? new Date(iso).toLocaleString() : '-'
 })
 
 const completedAtText = computed(() => {
+  if (attemptData.value?.submittedAt) {
+    return new Date(attemptData.value.submittedAt).toLocaleString()
+  }
   const iso = quizzesStore.currentAttempt.endAtISO
   return iso ? new Date(iso).toLocaleString() : '-'
 })
@@ -41,7 +58,7 @@ const goToQuestion = (questionIndex: number) => {
 }
 
 const nextQuestion = () => {
-  if (currentQuestion.value < questions.length - 1) {
+  if (currentQuestion.value < questions.value.length - 1) {
     currentQuestion.value++
   }
 }
@@ -64,7 +81,9 @@ const finishReview = () => {
 }
 
 const getQuestionButtonClass = (index: number) => {
-  const question = questions[index]
+  const question = questions.value[index]
+  if (!question) return 'border-[#7B90DF] bg-[#F4F7F9] text-gray-800'
+  
   const isActive = currentQuestion.value === index
   
   if (isActive) {
@@ -79,7 +98,9 @@ const getQuestionButtonClass = (index: number) => {
 }
 
 const getOptionClass = (optionIndex: number) => {
-  const question = questions[currentQuestion.value]
+  const question = currentQuestionData.value
+  if (!question) return 'bg-[#F4F7F9] border-[#7B90DF]'
+  
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
@@ -97,7 +118,9 @@ const getOptionClass = (optionIndex: number) => {
 }
 
 const getOptionIconClass = (optionIndex: number) => {
-  const question = questions[currentQuestion.value]
+  const question = currentQuestionData.value
+  if (!question) return 'bg-[#F4F7F9] border-[#7B90DF] text-black'
+  
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
@@ -114,7 +137,9 @@ const getOptionIconClass = (optionIndex: number) => {
 }
 
 const showIcon = (optionIndex: number) => {
-  const question = questions[currentQuestion.value]
+  const question = currentQuestionData.value
+  if (!question) return false
+  
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
@@ -122,14 +147,17 @@ const showIcon = (optionIndex: number) => {
 }
 
 const getIconType = (optionIndex: number) => {
-  const question = questions[currentQuestion.value]
+  const question = currentQuestionData.value
+  if (!question) return 'times'
+  
   const isCorrectAnswer = question.correctAnswer === optionIndex
   
   return isCorrectAnswer ? 'check' : 'times'
 }
 
 const isCorrectOption = (optionIndex: number) => {
-  const question = questions[currentQuestion.value]
+  const question = currentQuestionData.value
+  if (!question) return false
   return question.correctAnswer === optionIndex
 }
 
@@ -156,7 +184,7 @@ const isShortAnswerCorrect = (answer: any) => {
 }
 
 const getQuestionScore = (index: number) => {
-  const q = questions[index]
+  const q = questions.value[index]
   if (!q) {
     return { earned: 0, total: 0 }
   }
@@ -225,7 +253,7 @@ const getQuestionScore = (index: number) => {
 }
 
 const isEnumerationItemCorrect = (itemIndex: number) => {
-  const q = questions[currentQuestion.value]
+  const q = currentQuestionData.value
   if (!q || !Array.isArray(q.options)) return false
 
   const items = q.options
@@ -244,6 +272,129 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
 
   return correctSet.has(userTrim)
 }
+
+const loadScoreData = async () => {
+  try {
+    isLoading.value = true
+    const userId = authStore.currentUser?.id
+    const quizId = quizzesStore.currentAttempt.quizId
+
+    console.log('Loading score data for quizId:', quizId, 'userId:', userId)
+
+    if (!userId || !quizId) {
+      console.error('Missing userId or quizId')
+      isLoading.value = false
+      return
+    }
+
+    const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
+    console.log('Attempts response:', attemptsResponse.data)
+    
+    if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
+      const submittedAttempts = attemptsResponse.data.filter((attempt: any) => 
+        attempt.quizId === quizId && attempt.submittedAt
+      )
+      
+      console.log('Submitted attempts for this quiz:', submittedAttempts)
+      
+      if (submittedAttempts.length > 0) {
+        submittedAttempts.sort((a: any, b: any) => 
+          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+        )
+        attemptData.value = submittedAttempts[0]
+        console.log('Using attempt:', attemptData.value)
+
+        const quizResponse = await api.get(`/Quiz/${quizId}`, {
+          params: { userId }
+        })
+
+        console.log('Quiz response:', quizResponse.data)
+
+        if (quizResponse.data) {
+          quizData.value = quizResponse.data
+          
+          const questions = quizResponse.data.questions || []
+          console.log('Raw questions from API:', questions)
+          
+          const mappedQuestions = questions.map((q: any) => quizzesStore.mapApiQuestionToFrontend(q))
+          console.log('Mapped questions:', mappedQuestions)
+          
+          const username = authStore.currentUser?.username
+          if (username) {
+            quizzesStore.setQuizQuestionsForScore(
+              quizId,
+              quizData.value.title,
+              mappedQuestions,
+              username
+            )
+          }
+          
+          if (mappedQuestions.length > 0) {
+            quizzesStore.currentAttempt.questionsLength = mappedQuestions.length
+          }
+
+          const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
+          console.log('Answers response:', answersResponse.data)
+          
+          if (answersResponse.data && Array.isArray(answersResponse.data)) {
+            answersResponse.data.forEach((answer: any) => {
+              const questionIndex = mappedQuestions.findIndex((q: any) => 
+                (q.questionId || q.id) === answer.questionId
+              )
+              
+              console.log('Mapping answer for questionId:', answer.questionId, 'to index:', questionIndex)
+              
+              if (questionIndex >= 0) {
+                const question = mappedQuestions[questionIndex]
+                
+                if (answer.choiceId && Array.isArray((question as any).options)) {
+                  const choiceIndex = (question as any).options.findIndex((opt: any) => {
+                    const choices = (question as any).choices || []
+                    const matchingChoice = choices.find((c: any) => c.choiceId === answer.choiceId)
+                    if (matchingChoice) {
+                      return opt.text === matchingChoice.body || opt.text === matchingChoice.text
+                    }
+                    return false
+                  })
+                  
+                  console.log('Found choice index:', choiceIndex, 'for choiceId:', answer.choiceId)
+                  
+                  if (choiceIndex >= 0) {
+                    quizzesStore.setAnswer(questionIndex, choiceIndex)
+                    quizzesStore.markAnswered(questionIndex)
+                  }
+                }
+              }
+            })
+          }
+
+          quizzesStore.currentAttempt.quizId = quizId
+          quizzesStore.currentAttempt.quizTitle = quizData.value.title
+          quizzesStore.currentAttempt.startAtISO = attemptData.value.startedAt
+          quizzesStore.currentAttempt.endAtISO = attemptData.value.submittedAt
+          quizzesStore.currentAttempt.isOngoing = false
+          
+          console.log('Final store state:', {
+            questionsLength: quizzesStore.currentAttempt.questionsLength,
+            answers: quizzesStore.currentAttempt.answers,
+            answeredSet: Array.from(quizzesStore.currentAttempt.answeredSet)
+          })
+        }
+      } else {
+        console.warn('No submitted attempts found for this quiz')
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load score data:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// LIFECYCLE
+onMounted(async () => {
+  await loadScoreData()
+})
 </script>
 
 <template>
@@ -255,8 +406,8 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
       <div class="mb-6 flex items-start gap-6">
         <!-- Title Block -->
         <div class="shrink-0">
-          <h1 class="text-3xl font-bold text-[#4285f4] leading-tight">Week 1 Quiz</h1>
-          <p class="text-base text-gray-800">Business Math</p>
+          <h1 class="text-3xl font-bold text-[#4285f4] leading-tight">{{ quizData?.title || 'Quiz' }}</h1>
+          <p class="text-base text-gray-800">{{ quizData?.course?.name || 'Course' }}</p>
         </div>
 
         <!-- Info Box -->
@@ -292,7 +443,21 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
       <main class="grid grid-cols-3 gap-6">
         <!-- Left Panel -->
         <div class="col-span-2">
-          <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
+          <!-- Loading State -->
+          <div v-if="isLoading" class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] text-center">
+            <div class="flex flex-col items-center justify-center py-12">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4285f4] mb-4"></div>
+              <p class="text-gray-600">Loading quiz results...</p>
+            </div>
+          </div>
+          
+          <!-- No Data State -->
+          <div v-else-if="!currentQuestionData" class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] text-center">
+            <p class="text-gray-600">No quiz data available. Please complete a quiz first.</p>
+          </div>
+          
+          <!-- Question Display -->
+          <div v-else class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
             <div class="mb-6">
               <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-gray-800">Question {{ currentQuestion + 1 }}</h2>
@@ -303,14 +468,14 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                   {{ getQuestionScore(currentQuestion).total }}
                 </span>
               </div>
-              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].question }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ currentQuestionData.question }}</p>
             </div>
             
             <div class="space-y-3">
               <!-- Multiple Choice / True-False Rendering -->
-              <template v-if="questions[currentQuestion].questionType === 'multiple-choice' || questions[currentQuestion].questionType === 'true-false' || !questions[currentQuestion].questionType">
+              <template v-if="currentQuestionData.questionType === 'multiple-choice' || currentQuestionData.questionType === 'true-false' || !currentQuestionData.questionType">
                 <div 
-                  v-for="(option, index) in questions[currentQuestion].options" 
+                  v-for="(option, index) in currentQuestionData.options" 
                   :key="index"
                   :class="[
                     'relative flex items-center p-2 rounded-xl transition-all border-1',
@@ -318,7 +483,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                   ]"
                 >
                   <div 
-                    v-if="isCorrectOption(index) && questions[currentQuestion].userAnswer !== index" 
+                    v-if="isCorrectOption(index) && currentQuestionData.userAnswer !== index" 
                     class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
                   >
                     Correct
@@ -340,17 +505,17 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                   <span 
                     :class="[
                       'text-base font-medium',
-                      questions[currentQuestion].userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
+                      currentQuestionData.userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
                     ]"
                   >{{ option }}</span>
                 </div>
               </template>
 
               <!-- Enumeration Rendering -->
-              <template v-else-if="questions[currentQuestion].questionType === 'enumeration'">
+              <template v-else-if="currentQuestionData.questionType === 'enumeration'">
                 <div class="space-y-3">
                   <div
-                    v-for="(_, index) in (questions[currentQuestion].options || [])"
+                    v-for="(_, index) in (currentQuestionData.options || [])"
                     :key="index"
                     class="flex items-center gap-3"
                   >
@@ -387,19 +552,19 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                           Your answer:
                           <span
                             v-if="
-                              (questions[currentQuestion].userAnswer || [])[index] &&
-                              String((questions[currentQuestion].userAnswer || [])[index]).trim() !== ''
+                              (currentQuestionData.userAnswer || [])[index] &&
+                              String((currentQuestionData.userAnswer || [])[index]).trim() !== ''
                             "
                           >
-                            {{ (questions[currentQuestion].userAnswer || [])[index] }}
+                            {{ (currentQuestionData.userAnswer || [])[index] }}
                           </span>
                           <span v-else class="italic">(unanswered)</span>
                         </span>
                         <span
-                          v-if="!isEnumerationItemCorrect(index) && (questions[currentQuestion].options || [])[index]"
+                          v-if="!isEnumerationItemCorrect(index) && (currentQuestionData.options || [])[index]"
                           class="text-xs text-[#16a34a] mt-1"
                         >
-                          Correct: {{ (questions[currentQuestion].options || [])[index] || '' }}
+                          Correct: {{ (currentQuestionData.options || [])[index] || '' }}
                         </span>
                       </div>
                     </div>
@@ -408,20 +573,20 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
               </template>
 
               <!-- Fill in the Blank Rendering -->
-              <template v-else-if="questions[currentQuestion].questionType === 'fill-blank'">
+              <template v-else-if="currentQuestionData.questionType === 'fill-blank'">
                 <div
-                  v-if="!questions[currentQuestion].isCorrect"
+                  v-if="!currentQuestionData.isCorrect"
                   class="mt-3 text-sm"
                 >
                   <span class="font-semibold text-[#16a34a]">Correct answer: </span>
                   <span class="font-semibold text-gray-800">
-                    {{ questions[currentQuestion].correctAnswerText || '' }}
+                    {{ currentQuestionData.correctAnswerText || '' }}
                   </span>
                 </div>
                 <div
                   :class="[
                     'flex items-center p-2 rounded-xl transition-all border-1',
-                    questions[currentQuestion].isCorrect
+                    currentQuestionData.isCorrect
                       ? 'bg-[#86efac] border-[#4ade80]'
                       : 'bg-[#fca5a5] border-[#f87171]'
                   ]"
@@ -431,7 +596,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                     <div
                       :class="[
                         'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
-                        questions[currentQuestion].isCorrect
+                        currentQuestionData.isCorrect
                           ? 'bg-[#4ade80] border-[#4ade80] text-white'
                           : 'bg-[#f87171] border-[#f87171] text-white'
                       ]"
@@ -439,7 +604,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                       <i
                         :class="[
                           'fas',
-                          questions[currentQuestion].isCorrect ? 'fa-check' : 'fa-times',
+                          currentQuestionData.isCorrect ? 'fa-check' : 'fa-times',
                           'text-xs'
                         ]"
                       ></i>
@@ -449,13 +614,13 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                   
                   <span class="text-base font-medium text-gray-800">
                     {{
-                      questions[currentQuestion].userAnswer &&
-                      String(questions[currentQuestion].userAnswer).trim() !== ''
-                        ? questions[currentQuestion].userAnswer
+                      currentQuestionData.userAnswer &&
+                      String(currentQuestionData.userAnswer).trim() !== ''
+                        ? currentQuestionData.userAnswer
                         : ''
                     }}
                     <span
-                      v-if="!(questions[currentQuestion].userAnswer && String(questions[currentQuestion].userAnswer).trim() !== '')"
+                      v-if="!(currentQuestionData.userAnswer && String(currentQuestionData.userAnswer).trim() !== '')"
                       class="italic"
                     >(unanswered)</span>
                   </span>
@@ -463,9 +628,9 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
               </template>
 
               <!-- Text Rendering -->
-              <template v-else-if="questions[currentQuestion].questionType === 'text'">
+              <template v-else-if="currentQuestionData.questionType === 'text'">
                 <div
-                  v-if="!isShortAnswerCorrect(questions[currentQuestion].userAnswer)"
+                  v-if="!isShortAnswerCorrect(currentQuestionData.userAnswer)"
                   class="mb-2 text-sm"
                 >
                   <span class="font-semibold text-[#16a34a]">Correct answer:</span>
@@ -477,7 +642,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                 <div
                   :class="[
                     'flex items-center p-2 rounded-xl transition-all border-1',
-                    isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                    isShortAnswerCorrect(currentQuestionData.userAnswer)
                       ? 'bg-[#86efac] border-[#4ade80]'
                       : 'bg-[#fca5a5] border-[#f87171]'
                   ]"
@@ -486,7 +651,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                     <div
                       :class="[
                         'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
-                        isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                        isShortAnswerCorrect(currentQuestionData.userAnswer)
                           ? 'bg-[#4ade80] border-[#4ade80] text-white'
                           : 'bg-[#f87171] border-[#f87171] text-white'
                       ]"
@@ -494,7 +659,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                       <i
                         :class="[
                           'fas',
-                          isShortAnswerCorrect(questions[currentQuestion].userAnswer)
+                          isShortAnswerCorrect(currentQuestionData.userAnswer)
                             ? 'fa-check'
                             : 'fa-times',
                           'text-xs'
@@ -505,11 +670,11 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                   <span class="text-base font-medium text-gray-800">
                     <template
                       v-if="
-                        questions[currentQuestion].userAnswer &&
-                        String(questions[currentQuestion].userAnswer).trim() !== ''
+                        currentQuestionData.userAnswer &&
+                        String(currentQuestionData.userAnswer).trim() !== ''
                       "
                     >
-                      {{ questions[currentQuestion].userAnswer }}
+                      {{ currentQuestionData.userAnswer }}
                     </template>
                     <span
                       v-else
@@ -520,7 +685,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
               </template>
 
               <!-- Matching Rendering -->
-              <template v-else-if="questions[currentQuestion].questionType === 'matching'">
+              <template v-else-if="currentQuestionData.questionType === 'matching'">
                 <div>
                   <div class="grid grid-cols-2 gap-6 mb-3">
                     <h3 class="font-semibold text-gray-700">Column A</h3>
@@ -528,7 +693,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
                   </div>
 
                   <div
-                    v-for="(pair, index) in (questions[currentQuestion].matchingPairs || [])"
+                    v-for="(pair, index) in (currentQuestionData.matchingPairs || [])"
                     :key="index"
                     class="grid grid-cols-2 gap-6 mb-2 items-stretch"
                   >
@@ -590,7 +755,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
               <template v-else>
                 <div class="flex items-center p-2 rounded-xl transition-all border-1 bg-[#F4F7F9] border-[#7B90DF]">
                   <span class="text-base font-medium text-gray-800">
-                    {{ questions[currentQuestion].options[0] || '(answer recorded)' }}
+                    {{ currentQuestionData.options[0] || '(answer recorded)' }}
                   </span>
                 </div>
               </template>
@@ -618,7 +783,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
 
         <!-- Right Panel -->
         <div class="col-span-1">
-          <div class="bg-[#F4F7F9] rounded-xl shadow-sm p-4">
+          <div v-if="!isLoading" class="bg-[#F4F7F9] rounded-xl shadow-sm p-4">
             <div class="mb-4">
               <p class="text-sm font-medium text-gray-600 text-right">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
             </div>

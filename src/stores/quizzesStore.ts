@@ -1310,6 +1310,38 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
+  function setQuizQuestionsForScore(quizId: number, quizTitle: string, questions: QuizQuestion[], username: string) {
+    const tempQuiz = {
+      id: quizId,
+      title: quizTitle,
+      subject: '',
+      description: '',
+      dueDate: '',
+      class: '',
+      submitted: 0,
+      total: 0,
+      color: 'blue',
+      status: 'published' as const,
+      questions: JSON.parse(JSON.stringify(questions)),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ownerUsername: username
+    }
+    
+    if (!teacherQuizzesByUser.value[username]) {
+      teacherQuizzesByUser.value[username] = []
+    }
+    
+    const existingIndex = teacherQuizzesByUser.value[username].findIndex(q => q.id === quizId)
+    if (existingIndex >= 0) {
+      teacherQuizzesByUser.value[username][existingIndex] = tempQuiz
+    } else {
+      teacherQuizzesByUser.value[username].push(tempQuiz)
+    }
+    
+    console.log('Set quiz questions for score view:', quizId, 'questions count:', questions.length)
+  }
+
   async function fetchTeacherQuizzes() {
     const authLocal = useAuthStore()
     const user = authLocal.currentUser
@@ -1474,6 +1506,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     loadQuizForEditingAsync,
     fetchQuizDetail,
     fetchStudentQuizzesAsync,
-    mapApiQuestionToFrontend
+    mapApiQuestionToFrontend,
+    setQuizQuestionsForScore
   }
 })
