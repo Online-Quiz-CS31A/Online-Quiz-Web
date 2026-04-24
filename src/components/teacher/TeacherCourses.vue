@@ -5,8 +5,9 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { ClassItem } from '@/interfaces/interfaces'
-import CourseDeleteModal from '@/components/modals/CourseDeleteModal.vue'
+import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
+import TeacherCourseSkeleton from '@/components/skeletons/TeacherCourseSkeleton.vue'
 import bg1 from '@/assets/image/bg1.jpg'
 import bg2 from '@/assets/image/bg2.jpg'
 import bg3 from '@/assets/image/bg3.jpg'
@@ -61,7 +62,7 @@ const onDocClick = (e: MouseEvent) => {
 }
 
 const handleEnterClass = (classItem: ClassItem) => {
-  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  router.push({ name: 'teacher-class', params: { code: classItem.code } })
 }
 
 const handleLeaveClass = (classItem: ClassItem) => {
@@ -71,7 +72,7 @@ const handleLeaveClass = (classItem: ClassItem) => {
 }
 
 const handleEditClass = (classItem: ClassItem) => {
-  router.push({ name: 'teacher-class', params: { id: classItem.id.toString() } })
+  router.push({ name: 'teacher-class', params: { code: classItem.code } })
   menuOpenForId.value = null
 }
 
@@ -142,15 +143,60 @@ const getInitials = (name: string) => {
   return (first + last).toUpperCase()
 }
 
-const getStudentCount = (courseId: number) => {
-  const sections = sectionsStore.getSectionsByCourse(courseId)
+const getSectionsForCourse = (classItem: ClassItem) => {
+  const code = classItem.code
+  if (!code) {
+    return sectionsStore.getSectionsByCourse(classItem.id)
+  }
+
+  const targetCourseIds = classesStore.rawTeacherCourses
+    .filter(c => c.code === code)
+    .map(c => c.courseId)
+    
+  if (targetCourseIds.length === 0) {
+    targetCourseIds.push(classItem.id)
+  }
+
+  const allSections = []
+  const seenIds = new Set<number>()
+  
+  for (const cid of targetCourseIds) {
+    const cidSections = sectionsStore.getSectionsByCourse(cid)
+    for (const s of cidSections) {
+      if (!seenIds.has(s.id)) {
+        allSections.push(s)
+        seenIds.add(s.id)
+      }
+    }
+  }
+
+  const assignedSectionNames = classesStore.rawTeacherCourses
+    .filter(c => c.code === code && c.section)
+    .map(c => c.section.trim())
+
+  const apiSections = sectionsStore.allSections.filter(s => assignedSectionNames.includes(s.name))
+  for (const s of apiSections) {
+    if (!seenIds.has(s.id)) {
+      allSections.push(s)
+      seenIds.add(s.id)
+    }
+  }
+
+  return allSections
+}
+
+const getStudentCount = (classItem: ClassItem) => {
+  const sections = getSectionsForCourse(classItem)
   return sections.reduce((total, section) => total + (section.students || 0), 0)
 }
 
 const hasFetchedCounts = ref(false)
 
 const fetchStudentCounts = async () => {
+  // Guard must be set synchronously at the top — setting it at the end
+  // is too late because concurrent async calls can bypass the check
   if (hasFetchedCounts.value) return
+  hasFetchedCounts.value = true
   
   await new Promise(resolve => setTimeout(resolve, 100))
   
@@ -160,23 +206,14 @@ const fetchStudentCounts = async () => {
   const coursesToProcess = classes.value.filter(c => c.id)
   if (!coursesToProcess.length) return
   
-  console.log('Fetching student counts for', coursesToProcess.length, 'courses')
-  
   for (const classItem of coursesToProcess) {
-    const sections = sectionsStore.getSectionsByCourse(classItem.id)
-    
-    if (!sections.length) {
-      console.log(`No sections found for course ${classItem.id} (${classItem.name})`)
-      continue
-    }
-    
-    console.log(`Found ${sections.length} sections for course ${classItem.id}`)
+    const sections = getSectionsForCourse(classItem)
+    if (!sections.length) continue
     
     for (const section of sections) {
       if (section.name) {
         try {
           const students = await adminStore.fetchStudentsBySection(section.name)
-          console.log(`Section ${section.name}: ${students.length} students`)
           sectionsStore.updateSection(section.id, {
             students: students.length
           })
@@ -186,14 +223,10 @@ const fetchStudentCounts = async () => {
       }
     }
   }
-  
-  hasFetchedCounts.value = true
-  console.log('Finished fetching all student counts')
 }
 
 watch(classes, (newClasses) => {
   if (newClasses.length > 0 && !hasFetchedCounts.value) {
-    console.log('Classes loaded, triggering student count fetch')
     fetchStudentCounts()
   }
 }, { immediate: true })
@@ -202,7 +235,9 @@ watch(classes, (newClasses) => {
 onMounted(async () => {
   document.addEventListener('click', onDocClick)
   
-  await classesStore.fetchTeacherCourses()
+  if (classesStore.rawTeacherCourses.length === 0) {
+    await classesStore.fetchTeacherCourses()
+  }
   
   if (classes.value.length > 0 && !hasFetchedCounts.value) {
     fetchStudentCounts()
@@ -220,9 +255,14 @@ onBeforeUnmount(() => {
       <h2 class="text-xl font-bold text-gray-800">My Courses</h2>
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
+
+    <!-- Loading State -->
+    <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <TeacherCourseSkeleton v-for="i in (props.maxItems || 3)" :key="i" />
+    </div>
     
     <!-- Empty State -->
-    <div v-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+    <div v-else-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
         <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
           <i class="fas fa-book-open text-4xl text-blue-400"></i>
@@ -293,7 +333,7 @@ onBeforeUnmount(() => {
                   @click.stop="handleLeaveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
                 >
-                  Leave
+                  Archive
                 </button>
               </template>
             </div>
@@ -309,7 +349,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="min-w-0 leading-tight">
                 <div class="text-xs truncate max-w-[180px]">{{ classItem.teacher }}</div>
-                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem.id) }} students</div>
+                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem) }} students</div>
               </div>
             </div>
           </div>
@@ -324,7 +364,7 @@ onBeforeUnmount(() => {
     </div>
   </div>
 
-  <CourseDeleteModal
+  <CourseArchiveModal
     :open="showCourseDeleteModal"
     :courseName="coursePendingDeletion?.name"
     @cancel="handleCancelDelete"

@@ -10,11 +10,13 @@ import AdminPagination from '@/components/admin/AdminPagination.vue'
 import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import type { AdminUser, User } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
+import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
 import { sendPasswordEmail } from '@/services/emailService'
 
 // STORE
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
 
 // CONSTANTS / TYPRS
 const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
@@ -296,56 +298,21 @@ const saveUser = async () => {
     apiStatus = 'Inactive'
   }
 
-  let roleWasChanged = false
   if (isEditing.value) {
-    const existingUser = adminStore.users.find((u: any) => u.id === form.id)
-    const roleHasChanged = existingUser && existingUser.role !== form.role
-    roleWasChanged = !!roleHasChanged
-    
-    if (roleHasChanged && form.id > 0) {
-      const generatedPassword = form.password || genPassword()
-      const userData = {
-        email: form.email,
-        fullName: form.fullName,
-        password: generatedPassword,
-        roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
-        studentId: form.username,
-        yearLevel: Number(form.year) || null,
-        section: form.section || null,
-        course: form.course || null,
-        department: form.department || null,
-        contactNumber: form.contactNumber || null,
-        emergencyContactNumber: form.emergencyContactNumber || null,
-        status: apiStatus,
-        createdBy: 1
-      }
-      
-      const deleteSuccess = await adminStore.deleteUser(form.id)
-      if (deleteSuccess) {
-        success = await adminStore.createUser(userData)
-        if (success) {
-          console.log('Role completely changed. Sending password email to:', form.email)
-          sendPasswordEmail(form.email, form.fullName, generatedPassword)
-        }
-      } else {
-        adminStore.error = 'Failed to delete old user record to change role.'
-      }
-    } else {
-      const userData = {
-        email: form.email,
-        fullName: form.fullName,
-        roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
-        studentId: form.username,
-        yearLevel: Number(form.year) || null,
-        section: form.section || null,
-        course: form.course || null,
-        department: form.department || null,
-        contactNumber: form.contactNumber || null,
-        emergencyContactNumber: form.emergencyContactNumber || null,
-        status: apiStatus
-      }
-      success = await adminStore.updateUser(form.id, userData)
+    const userData = {
+      email: form.email,
+      fullName: form.fullName,
+      roleId: form.role === 'Student' ? 3 : form.role === 'Teacher' ? 2 : 1,
+      studentId: form.username,
+      yearLevel: Number(form.year) || null,
+      section: form.section || null,
+      course: form.course || null,
+      department: form.department || null,
+      contactNumber: form.contactNumber || null,
+      emergencyContactNumber: form.emergencyContactNumber || null,
+      status: apiStatus
     }
+    success = await adminStore.updateUser(form.id, userData)
   } else {
     const generatedPassword = genPassword()
     console.log('Generated password for new user:', generatedPassword)
@@ -382,7 +349,7 @@ const saveUser = async () => {
     let archivedUsers = stored ? JSON.parse(stored) : []
 
     const storeUser = adminStore.users.find((u: any) => u.email === form.email)
-    const userIdToUse = (!roleWasChanged && form.id) ? form.id : (storeUser ? storeUser.id : 0)
+    const userIdToUse = form.id || (storeUser ? storeUser.id : 0)
 
     if (isArchived) {
       archivedUsers = archivedUsers.filter((au: any) => au.email !== form.email)
@@ -410,6 +377,13 @@ const saveUser = async () => {
       if (filtered.length !== archivedUsers.length) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
       }
+    }
+
+    if (isEditing.value && form.id === authStore.currentUser?.id && originalRole.value !== form.role) {
+      console.log('Admin changed their own role. Logging out for security.')
+      await authStore.logout()
+      window.location.href = '/login'
+      return
     }
 
     showModal.value = false

@@ -7,6 +7,7 @@ import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
 import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
+import TeacherQuizSkeleton from '@/components/skeletons/TeacherQuizSkeleton.vue'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
@@ -117,8 +118,8 @@ const closeMenu = () => {
   openMenuId.value = null
 }
 
-const openQuizInBuilder = (quiz: TeacherQuizItem) => {
-  quizzesStore.loadQuizForEditing(quiz.id)
+const openQuizInBuilder = async (quiz: TeacherQuizItem) => {
+  await quizzesStore.loadQuizForEditingAsync(quiz.id)
   router.push({
     name: 'quiz-builder',
     params: { id: quiz.class || 'default' },
@@ -205,6 +206,36 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
     percent
   }
 }
+
+const formatDueDate = (dateStr: string) => {
+  if (!dateStr) return 'No due date'
+  
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return `Due: ${dateStr}`
+  
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  
+  if (targetDate.getTime() === today.getTime()) {
+    return 'Due: Today'
+  }
+  
+  if (targetDate.getTime() === tomorrow.getTime()) {
+    return 'Due: Tomorrow'
+  }
+  
+  const formattedDate = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(date)
+
+  return `Due: ${formattedDate}`
+}
 </script>
 
 <template>
@@ -250,9 +281,14 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
         <i class="fas fa-check-circle mr-2"></i>Published
       </button>
     </div>
+
+    <!-- Loading State -->
+    <div v-if="quizzesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <TeacherQuizSkeleton v-for="i in 3" :key="i" />
+    </div>
     
     <!-- Empty State -->
-    <div v-if="filteredQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+    <div v-else-if="filteredQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
         <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
           <i class="fas fa-clipboard-list text-4xl text-blue-400"></i>
@@ -281,7 +317,7 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
         <div class="p-5 min-h-[180px] flex flex-col justify-between" :class="quiz.status === 'draft' ? 'bg-gradient-to-br from-slate-600 to-slate-700' : ''">
           <div class="flex justify-between items-start mb-3">
             <div class="flex items-center gap-2">
-              <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">Due: {{ quiz.dueDate }}</span>
+              <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">{{ formatDueDate(quiz.dueDate) }}</span>
               <span 
                 v-if="quiz.status === 'draft'"
                 class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-sm"
@@ -328,7 +364,7 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                     class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                     @click="handleDeleteQuiz(quiz)"
                   >
-                    Delete
+                    Archive
                   </button>
                 </template>
               </div>
@@ -375,7 +411,7 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
             <div class="flex items-start justify-between">
               <div>
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-500'">Due: {{ quiz.dueDate }}</span>
+                  <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-500'">{{ formatDueDate(quiz.dueDate) }}</span>
                   <span 
                     v-if="quiz.status === 'draft'"
                     class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full"
@@ -442,7 +478,7 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
                       class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                       @click="handleDeleteQuiz(quiz)"
                     >
-                      Delete
+                      Archive
                     </button>
                   </template>
                 </div>

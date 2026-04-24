@@ -78,9 +78,9 @@ export function useQuizEditor() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function saveQuizDraft() {
+  async function saveQuizDraft() {
     try {
-      store.saveQuiz('draft')
+      await store.saveQuiz('draft')
       toast.success('Quiz saved as draft!')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save quiz')
@@ -95,19 +95,19 @@ export function useQuizEditor() {
     return (fromDefaults?.status === 'published') || (fromStorage?.status === 'published')
   }
 
-  function saveQuiz() {
+  async function saveQuiz() {
     try {
       const keepPublished = isCurrentQuizPublished()
-      store.saveQuiz(keepPublished ? 'published' : 'draft')
+      await store.saveQuiz(keepPublished ? 'published' : 'draft')
       toast.success(keepPublished ? 'Quiz saved!' : 'Quiz saved as draft!')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save quiz')
     }
   }
 
-  function publishQuiz() {
+  async function publishQuiz() {
     try {
-      store.saveQuiz('published')
+      await store.saveQuiz('published')
       toast.success('Quiz published successfully!')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to publish quiz')

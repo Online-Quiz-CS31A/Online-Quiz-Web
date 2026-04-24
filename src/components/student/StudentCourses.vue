@@ -111,6 +111,7 @@ const getStudentCount = (courseId: number) => {
 // LIFECYCLE
 onMounted(() => {
   document.addEventListener('click', onDocClick)
+  classesStore.fetchStudentCourses()
 })
 
 onBeforeUnmount(() => {

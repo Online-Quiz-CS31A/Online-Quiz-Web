@@ -11,6 +11,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 import ClassSectionCard from '@/components/teacher/ClassSectionCard.vue'
+import TeacherClassSkeleton from '@/components/skeletons/TeacherClassSkeleton.vue'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const SectionDeleteModal = defineAsyncComponent(() => import('@/components/modals/SectionDeleteModal.vue'))
 
@@ -19,7 +20,7 @@ const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const router = useRouter()
 
 // PROPS
-interface Props { id: string }
+interface Props { code: string }
 const props = defineProps<Props>()
 
 // REACTIVE
@@ -40,28 +41,45 @@ const sectionToDeleteName = ref('')
 
 // COMPUTED
 const sections = computed(() => {
-  const cid = Number(props.id)
-  return sectionsStore.getSectionsByCourse(cid)
-})
+  const code = props.code
+  if (!code) return []
 
-const sectionsWithSchedule = computed(() => {
-  const cid = Number(props.id)
-  return sections.value.map(section => {
-    const schedule = sectionsStore.getSchedule(cid, section.id)
-    return {
-      ...section,
-      scheduleDay: schedule?.scheduleDay || 'TBA',
-      scheduleTime: schedule?.scheduleTime ? formatTime(schedule.scheduleTime) : '—',
-      classroom: schedule?.classroom || 'TBA'
+  const targetCourseIds = classesStore.rawTeacherCourses
+    .filter(c => c.code === code)
+    .map(c => c.courseId)
+
+  const allSections = []
+  const seenIds = new Set<number>()
+  
+  for (const cid of targetCourseIds) {
+    const cidSections = sectionsStore.getSectionsByCourse(cid)
+    for (const s of cidSections) {
+      if (!seenIds.has(s.id)) {
+        allSections.push(s)
+        seenIds.add(s.id)
+      }
     }
-  })
+  }
+
+  const assignedSectionNames = classesStore.rawTeacherCourses
+    .filter(c => c.code === code && c.section)
+    .map(c => c.section.trim())
+
+  const apiSections = sectionsStore.allSections.filter(s => assignedSectionNames.includes(s.name))
+  for (const s of apiSections) {
+    if (!seenIds.has(s.id)) {
+      allSections.push(s)
+      seenIds.add(s.id)
+    }
+  }
+
+  return allSections
 })
 
 const current = computed<ClassItem>(() => {
-  const cid = Number(props.id)
-  const found = classesStore.allCourses.find((c: ClassItem) => c.id === cid)
+  const found = classesStore.allCourses.find((c: ClassItem) => c.code === props.code)
   return (
-    found || { id: cid, code: '', name: `Class ${props.id}`, teacher: '', description: '—', students: 0, color: 'gray' }
+    found || { id: 0, code: props.code, name: props.code, teacher: '', description: '—', students: 0, color: 'gray' }
   )
 })
 
@@ -79,45 +97,12 @@ const coverUrl = computed(() => {
 
 const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.name}`)
 
-const fetchStudentCounts = async () => {
-  if (!sections.value.length) return
-  
-  const { useAdminStore } = await import('@/stores/adminStore')
-  const adminStore = useAdminStore()
-  
-  for (const section of sections.value) {
-    if (section.name) {
-      try {
-        const students = await adminStore.fetchStudentsBySection(section.name)
-        sectionsStore.updateSection(section.id, {
-          students: students.length
-        })
-      } catch (e) {
-        console.error(`Failed to fetch students for section ${section.name}`, e)
-      }
-    }
-  }
-}
-
-watch(sections, (newSections) => {
-  if (newSections.length > 0) {
-    fetchStudentCounts()
-  }
-}, { immediate: true })
 
 onMounted(async () => {
   await classesStore.fetchTeacherCourses()
 })
 
 // METHODS
-function formatTime(time24: string): string {
-  if (!time24 || time24 === '—') return '—'
-  const [hours, minutes] = time24.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hours12 = hours % 12 || 12
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
-}
-
 function getDeterministicIndex(key: string) {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -130,15 +115,16 @@ function getDeterministicIndex(key: string) {
 function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
 
 function openCreateClass() {
-  router.push({ name: 'class-management', params: { id: props.id } })
+  router.push({ name: 'class-management', params: { code: props.code } })
 }
 
 function openEditClass(id: number) {
-  router.push({ name: 'class-management', params: { id: props.id }, query: { sectionId: String(id) } })
+  router.push({ name: 'class-management', params: { code: props.code }, query: { sectionId: String(id) } })
 }
 
 function deleteClass(id: number) {
-  sectionsStore.archiveSection(id, Number(props.id))
+  const anchorCourseId = classesStore.rawTeacherCourses.find(rc => rc.code === props.code)?.courseId ?? 0
+  sectionsStore.archiveSection(id, anchorCourseId)
   if (selectedClassId.value === String(id)) {
     closeDetails()
   }
@@ -171,11 +157,18 @@ function closeDetails() {
 }
 
 
-function openDashboard(id: number) {
+function openDashboard(sectionId: number) {
+  const section = sectionsStore.allSections.find(s => s.id === sectionId)
+  const sectionName = section?.name ?? ''
+  const rawEntry = classesStore.rawTeacherCourses.find(
+    rc => rc.code === props.code && rc.section?.trim() === sectionName.trim()
+  ) ?? classesStore.rawTeacherCourses.find(rc => rc.code === props.code)
+  const courseId = rawEntry?.courseId ?? 0
+
   router.push({
     name: 'teacher-class-dashboard',
-    params: { id: String(id) },
-    query: { courseId: props.id },
+    params: { id: String(sectionId) },
+    query: { courseId: String(courseId) },
   })
 }
 </script>
@@ -219,7 +212,7 @@ function openDashboard(id: number) {
       <div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800">Your Classes</h2>
-          <!-- <button
+          <button
             @click="openCreateClass"
             :disabled="isCourseArchived"
             :title="isCourseArchived ? `Can't edit archived course` : 'Create a new class'"
@@ -231,11 +224,16 @@ function openDashboard(id: number) {
             ]"
           >
             <i class="fas fa-plus mr-2"></i> New Class
-          </button> -->
+          </button>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <TeacherClassSkeleton v-for="i in 3" :key="i" />
         </div>
 
         <!-- Empty State -->
-        <div v-if="sectionsWithSchedule.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
+        <div v-else-if="sections.length === 0" class="p-12 flex flex-col items-center justify-center text-center">
           <div class="relative mb-6">
             <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
               <i class="fas fa-chalkboard-teacher text-4xl text-blue-400"></i>
@@ -269,14 +267,11 @@ function openDashboard(id: number) {
         <!-- Classes Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ClassSectionCard
-            v-for="section in sectionsWithSchedule"
+            v-for="section in sections"
             :key="section.id"
             :section="{
               id: section.id,
               name: section.name,
-              scheduleDay: section.scheduleDay,
-              scheduleTime: section.scheduleTime,
-              classroom: section.classroom,
               students: section.students,
             }"
             :show-menu="true"

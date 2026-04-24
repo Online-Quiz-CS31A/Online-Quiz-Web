@@ -6,36 +6,15 @@ import { useSectionsStore } from './sectionsStore'
 import api from '../services/api'
 
 export const useCoursesStore = defineStore('classes', () => {
-  const teacherNames: Record<string, string> = {
-    '0112345678': 'Donald Francisco',
-    '0111111111': 'Alice Mao',
-  }
 
+
+  const rawTeacherCourses = ref<TeacherCourseDto[]>([])
   const allCourses = ref<ClassItem[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  function loadCoursesFromStorage() {
-    try {
-      const stored = localStorage.getItem('courses')
-      if (stored) {
-        const parsed = JSON.parse(stored) as ClassItem[]
-        if (Array.isArray(parsed) && parsed.length) {
-          allCourses.value = parsed
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load courses from localStorage:', e)
-    }
-  }
 
-  function saveCoursesToStorage() {
-    try {
-      localStorage.setItem('courses', JSON.stringify(allCourses.value))
-    } catch (e) {
-      console.error('Failed to save courses to localStorage:', e)
-    }
-  }
+  function saveCoursesToStorage() {}
 
   async function fetchTeacherCourses() {
     const auth = useAuthStore()
@@ -45,25 +24,77 @@ export const useCoursesStore = defineStore('classes', () => {
       return
     }
 
+    const hasExisting = rawTeacherCourses.value.length > 0
+    if (hasExisting) {
+      return
+    }
+    
     isLoading.value = true
+    
     error.value = null
 
     try {
       const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
       const dtoCourses = response.data || []
-
-      for (const course of dtoCourses) {
+      
+      const sectionsStore = useSectionsStore()
+      
+      await sectionsStore.fetchSectionsFromApi()
+      
+      const enrollmentResults = await Promise.all(dtoCourses.map(async (course) => {
         try {
           const enrollResponse = await api.get<any[]>(`/Course/${course.courseId}/enrollments?teacherId=${user.id}`)
-          course.students = (enrollResponse.data && Array.isArray(enrollResponse.data)) ? enrollResponse.data.length : 0
+          return { courseId: course.courseId, enrollments: enrollResponse.data }
         } catch (e) {
           console.error(`Failed to fetch enrollments for course ${course.courseId}`, e)
+          return { courseId: course.courseId, enrollments: [] }
+        }
+      }))
+
+      for (const res of enrollmentResults) {
+        const course = dtoCourses.find(c => c.courseId === res.courseId)
+        if (!course) continue
+
+        const enrollments = res.enrollments
+
+        if (enrollments && Array.isArray(enrollments)) {
+          course.students = enrollments.length
+
+          const uniqueSections = new Set<string>()
+
+          if (course.section && typeof course.section === 'string') {
+            uniqueSections.add(course.section.trim())
+          }
+
+          enrollments.forEach(e => {
+            const sec = e.section || e.studentSection || e.courseSection
+            if (sec && typeof sec === 'string') {
+              uniqueSections.add(sec.trim())
+            }
+          })
+
+          uniqueSections.forEach(secName => {
+            const existingSec = sectionsStore.allSections.find(s => s.name === secName)
+            if (existingSec) {
+              sectionsStore.addSectionToCourse(existingSec.id, course.courseId)
+            } else {
+              const newId = secName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+              sectionsStore.allSections.push({
+                id: newId,
+                name: secName,
+                students: 0,
+                studentUsernames: []
+              })
+              sectionsStore.addSectionToCourse(newId, course.courseId)
+            }
+          })
+
+        } else {
           course.students = 0
         }
       }
 
-      const sectionsStore = useSectionsStore()
-      sectionsStore.setSectionsFromApi(dtoCourses)
+      rawTeacherCourses.value = dtoCourses
 
       const grouped = new Map<string, TeacherCourseDto[]>()
       dtoCourses.forEach(c => {
@@ -75,7 +106,6 @@ export const useCoursesStore = defineStore('classes', () => {
       const mapped: ClassItem[] = []
       for (const [code, items] of grouped) {
         const first = items[0]
-
         const totalStudents = items.reduce((sum, item) => sum + (item.students || 0), 0)
 
         mapped.push({
@@ -101,6 +131,43 @@ export const useCoursesStore = defineStore('classes', () => {
     }
   }
 
+  async function fetchStudentCourses() {
+    const auth = useAuthStore()
+    const user = auth.currentUser
+
+    if (!user || user.role !== 'student' || !user.id) {
+      return
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await api.get<any[]>(`/Course/student/${user.id}`)
+      const courses = response.data || []
+
+      const mapped: ClassItem[] = courses.map(c => ({
+        id: c.courseId,
+        code: c.code,
+        name: c.name,
+        teacher: c.instructorName || c.instructorUsername || 'Teacher',
+        description: c.category || '',
+        students: 0,
+        color: 'blue',
+        status: (c.status === 'Active' || c.status === 'Archived') ? c.status : 'Active',
+        studentUsernames: []
+      }))
+
+      allCourses.value = mapped
+      saveCoursesToStorage()
+    } catch (e: any) {
+      console.error('Failed to fetch student courses from API:', e)
+      error.value = e?.message || 'Failed to load courses'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const allCoursesWithCounts = computed<ClassItem[]>(() => {
     const sectionsStore = useSectionsStore()
     return allCourses.value.map(course => {
@@ -108,7 +175,7 @@ export const useCoursesStore = defineStore('classes', () => {
       const studentCount = sections.reduce((total, section) => total + section.studentUsernames.length, 0)
       return {
         ...course,
-        teacher: teacherNames[course.teacher] || course.teacher,
+        teacher: course.teacher,
         students: studentCount,
       }
     })
@@ -116,7 +183,7 @@ export const useCoursesStore = defineStore('classes', () => {
 
   const auth = useAuthStore()
 
-  loadCoursesFromStorage()
+
   const myClasses = computed<ClassItem[]>(() => {
     const user = auth.currentUser
     if (!user) return []
@@ -129,20 +196,12 @@ export const useCoursesStore = defineStore('classes', () => {
           const studentCount = sections.reduce((total, section) => total + section.studentUsernames.length, 0)
           return {
             ...course,
-            teacher: teacherNames[course.teacher] || course.teacher,
+            teacher: course.teacher,
             students: studentCount,
           }
         })
     } else {
-      const uname = user.username
-      const sectionsStore = useSectionsStore()
-
-      return allCoursesWithCounts.value.filter(c => {
-        if (c.status === 'Archived') return false
-
-        const sections = sectionsStore.getSectionsByCourse(c.id)
-        return sections.some(section => (section.studentUsernames || []).includes(uname))
-      })
+      return allCoursesWithCounts.value.filter(c => c.status !== 'Archived')
     }
   })
 
@@ -191,9 +250,11 @@ export const useCoursesStore = defineStore('classes', () => {
     error,
     myClasses,
     mySubjects,
+    rawTeacherCourses,
     addClass,
     archiveCourse,
     unarchiveCourse,
     fetchTeacherCourses,
+    fetchStudentCourses,
   }
 })

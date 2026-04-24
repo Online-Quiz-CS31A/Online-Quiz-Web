@@ -127,7 +127,7 @@ function closePreview() {
                 </div>
               </div>
               <p class="text-base text-gray-700 leading-relaxed mb-4">
-                {{ questions[currentQuestion].text }}
+                {{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}
               </p>
               <div v-if="questions[currentQuestion].mediaUrl" class="mb-4">
                 <img
@@ -140,11 +140,11 @@ function closePreview() {
 
             <!-- Multiple Choice / True-False -->
             <div
-              v-if="questions[currentQuestion].type === 'multiple-choice' || questions[currentQuestion].type === 'true-false'"
+              v-if="['multiple-choice', 'true-false', 'Single', 'Multiple'].includes(questions[currentQuestion].type)"
               class="space-y-3"
             >
               <div
-                v-for="(option, index) in (questions[currentQuestion].options || [])"
+                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])"
                 :key="index"
                 :class="[
                   'relative flex items-center p-2 rounded-xl transition-all border-1',
@@ -175,13 +175,13 @@ function closePreview() {
                     showAnswers && (option as any).isCorrect ? 'text-green-900' : 'text-gray-800'
                   ]"
                 >
-                  {{ (option && 'text' in option) ? (option as any).text : option }}
+                  {{ (option && 'text' in option) ? (option as any).text : (option && 'body' in option ? (option as any).body : option) }}
                 </span>
               </div>
             </div>
 
             <!-- Text -->
-            <div v-else-if="questions[currentQuestion].type === 'text'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'text' || questions[currentQuestion].type === 'Text'" class="space-y-3">
               <textarea
                 :value="showAnswers && questions[currentQuestion].correctAnswer
                   ? questions[currentQuestion].correctAnswer
@@ -199,7 +199,7 @@ function closePreview() {
             </div>
 
             <!-- Enumeration -->
-            <div v-else-if="questions[currentQuestion].type === 'enumeration'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'enumeration' || questions[currentQuestion].type === 'Enumeration'" class="space-y-3">
               <div
                 v-for="(item, index) in (((questions[currentQuestion] as any)?.items) || [])"
                 :key="index"
@@ -224,7 +224,7 @@ function closePreview() {
             </div>
 
             <!-- Matching (read-only) -->
-            <div v-else-if="questions[currentQuestion].type === 'matching'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'matching' || questions[currentQuestion].type === 'Matching'" class="space-y-3">
               <div class="grid grid-cols-2 gap-6">
                 <!-- Column A -->
                 <div>
@@ -277,7 +277,7 @@ function closePreview() {
             </div>
 
             <!-- Fill in the Blank (read-only) -->
-            <div v-else-if="questions[currentQuestion].type === 'fill-blank'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'fill-blank' || questions[currentQuestion].type === 'FillBlank'" class="space-y-3">
               <div
                 v-for="(blank, index) in (((questions[currentQuestion] as any)?.blanks) || Array(1).fill({}))"
                 :key="index"

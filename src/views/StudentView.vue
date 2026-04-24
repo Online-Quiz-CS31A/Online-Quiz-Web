@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { defineAsyncComponent } from 'vue'
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
@@ -18,9 +18,10 @@ const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
+const coursesStore = useCoursesStore()
 
 // METHODS
-const upcomingQuizzes = quizzesStore.myStudentQuizzes
+const upcomingQuizzes = computed(() => quizzesStore.myStudentQuizzes)
 
 const toggleSidebar = () => {
   sidebarActive.value = !sidebarActive.value
@@ -64,8 +65,10 @@ const handleClickOutside = (e: Event) => {
 }
 
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
+  await coursesStore.fetchStudentCourses()
+  await quizzesStore.fetchStudentQuizzesAsync()
 })
 
 onUnmounted(() => {

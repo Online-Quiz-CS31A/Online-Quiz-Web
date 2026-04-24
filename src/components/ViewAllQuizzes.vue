@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
@@ -19,6 +19,13 @@ const router = useRouter()
 const query = ref('')
 const statusFilter = ref<'all' | 'draft' | 'published'>('all')
 
+// LIFECYCLE
+onMounted(async () => {
+  if (isTeacher.value) {
+    await quizzesStore.fetchTeacherQuizzes()
+  }
+})
+
 function addQuiz() {
   if (!isTeacher.value) return
   quizzesStore.resetCurrentQuiz()
@@ -33,22 +40,7 @@ const isTeacher = computed(() => auth.userRole === 'teacher')
 
 const quizzes = computed<(TeacherQuizItem | StudentQuizItem)[]>(() => {
   if (isTeacher.value) {
-    const stored = quizzesStore.loadQuizzesFromStorage()
-    const seed = quizzesStore.myTeacherQuizzes
-
-    const byId = new Map<number, TeacherQuizItem>()
-    seed.forEach((q) => {
-      if (!(q as any).archived) {
-        byId.set(q.id, q)
-      }
-    })
-    stored.forEach((q) => {
-      if (!(q as any).archived) {
-        byId.set(q.id, q)
-      }
-    })
-
-    return Array.from(byId.values())
+    return quizzesStore.myTeacherQuizzes.filter(q => !(q as any).archived)
   }
   return quizzesStore.myStudentQuizzes
 })
@@ -99,8 +91,9 @@ const filtered = computed(() => {
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-header="true" :show-filters="false" />
     <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-header="true" />
 
-    <div v-if="filtered.length === 0" class="text-center text-gray-500 py-12">
-      No quizzes found for "{{ query }}".
+    <div v-if="filtered.length === 0 && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">
+      <span v-if="query">No quizzes found for "{{ query }}".</span>
+      <span v-else>No quizzes found.</span>
     </div>
   </div>
 </template>

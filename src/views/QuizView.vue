@@ -4,11 +4,15 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useAuthStore } from '@/stores/authStore'
+import api from '@/services/api'
 
 const router = useRouter()
 const quizzesStore = useQuizzesStore()
+const authStore = useAuthStore()
 
 const quizId = ref<number | null>((history.state?.quizId as number) || null)
+const attemptId = ref<number | null>(null)
 const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
 const questions = ref<QuizQuestion[]>(quizStateQuestions)
 const quizTitle = ref(history.state?.quizTitle || 'Quiz')
@@ -43,28 +47,47 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
   
-  const selectOption = (optionIndex: number) => {
+  const selectOption = async (optionIndex: number) => {
     selectedOption.value = optionIndex
     quizzesStore.setAnswer(currentQuestion.value, optionIndex)
+    quizzesStore.markAnswered(currentQuestion.value)
+    
+    await saveAnswerToBackend(currentQuestion.value, optionIndex)
   }
 
-  const updateTextAnswer = () => {
+  const updateTextAnswer = async () => {
     quizzesStore.setTextAnswer(currentQuestion.value, textAnswer.value)
+    if (textAnswer.value.trim()) {
+      quizzesStore.markAnswered(currentQuestion.value)
+      await saveAnswerToBackend(currentQuestion.value, textAnswer.value)
+    }
   }
 
-  const updateEnumerationAnswer = (index: number, value: string) => {
+  const updateEnumerationAnswer = async (index: number, value: string) => {
     enumerationAnswers.value[index] = value
     quizzesStore.setEnumerationAnswer(currentQuestion.value, enumerationAnswers.value)
+    if (enumerationAnswers.value.some(item => item.trim())) {
+      quizzesStore.markAnswered(currentQuestion.value)
+      await saveAnswerToBackend(currentQuestion.value, enumerationAnswers.value)
+    }
   }
 
-  const updateMatchingAnswer = (leftIndex: number, rightIndex: number) => {
+  const updateMatchingAnswer = async (leftIndex: number, rightIndex: number) => {
     matchingAnswers.value[leftIndex] = rightIndex
     quizzesStore.setMatchingAnswer(currentQuestion.value, matchingAnswers.value)
+    if (Object.keys(matchingAnswers.value).length > 0) {
+      quizzesStore.markAnswered(currentQuestion.value)
+      await saveAnswerToBackend(currentQuestion.value, matchingAnswers.value)
+    }
   }
 
-  const updateFillBlankAnswer = (index: number, value: string) => {
+  const updateFillBlankAnswer = async (index: number, value: string) => {
     fillBlankAnswers.value[index] = value
     quizzesStore.setFillBlankAnswer(currentQuestion.value, fillBlankAnswers.value)
+    if (fillBlankAnswers.value.some(blank => blank.trim())) {
+      quizzesStore.markAnswered(currentQuestion.value)
+      await saveAnswerToBackend(currentQuestion.value, fillBlankAnswers.value)
+    }
   }
 
   const clearAnswers = () => {
@@ -122,22 +145,149 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     currentQuestion.value = questionIndex
     loadCurrentQuestionAnswers()
   }
+
+  const startAttemptInBackend = async () => {
+    try {
+      const userId = authStore.currentUser?.id
+      if (!quizId.value || !userId) return
+
+      const response = await api.post('/Attempt/start', {
+        quizId: quizId.value,
+        studentId: userId
+      })
+
+      if (response.data && response.data.attemptId) {
+        attemptId.value = response.data.attemptId
+        quizzesStore.currentAttempt.quizId = quizId.value
+        quizzesStore.currentAttempt.quizTitle = response.data.quizTitle || quizTitle.value
+        quizzesStore.currentAttempt.startAtISO = response.data.startedAt
+        quizzesStore.currentAttempt.isOngoing = true
+        console.log('Attempt started:', attemptId.value)
+      }
+    } catch (error) {
+      console.error('Failed to start attempt:', error)
+    }
+  }
+
+  const saveAnswerToBackend = async (questionIndex: number, answer: any) => {
+    try {
+      if (!attemptId.value || !authStore.currentUser?.id) return
+
+      const question = questions.value[questionIndex]
+      if (!question) return
+
+      const questionId = (question as any).questionId || (question as any).id
+
+      let choiceId = null
+      if (typeof answer === 'number' && Array.isArray((question as any).choices)) {
+        const choices = (question as any).choices
+        if (answer >= 0 && answer < choices.length) {
+          choiceId = choices[answer].choiceId
+        }
+      }
+
+      await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
+        attemptId: attemptId.value,
+        questionId: questionId,
+        choiceId: choiceId
+      })
+
+      console.log('Answer saved for question', questionIndex)
+    } catch (error) {
+      console.error('Failed to save answer:', error)
+    }
+  }
+
+  const submitAttempt = async () => {
+    try {
+      if (!attemptId.value || !authStore.currentUser?.id) return
+
+      const scoreDetails = quizzesStore.calculateScore()
+      const startTime = quizzesStore.currentAttempt.startAtISO 
+        ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
+        : Date.now()
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000)
+
+      await api.put(`/Attempt/${attemptId.value}/submit?studentId=${authStore.currentUser.id}`, {
+        score: scoreDetails.score,
+        timeSpentSeconds: timeSpent
+      })
+
+      quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
+      quizzesStore.currentAttempt.isOngoing = false
+      
+      console.log('Attempt submitted successfully')
+    } catch (error) {
+      console.error('Failed to submit attempt:', error)
+    }
+  }
+
+  const loadAttemptFromBackend = async () => {
+    try {
+      const userId = authStore.currentUser?.id
+      if (!userId || !quizId.value) return
+
+      const response = await api.get(`/Attempt/student/${userId}`)
+      
+      if (response.data && Array.isArray(response.data)) {
+        const ongoingAttempt = response.data.find((attempt: any) => 
+          attempt.quizId === quizId.value && !attempt.submittedAt
+        )
+
+        if (ongoingAttempt) {
+          attemptId.value = ongoingAttempt.attemptId
+          
+          const answersResponse = await api.get(`/Answer/attempt/${attemptId.value}?userId=${userId}`)
+          
+          if (answersResponse.data && Array.isArray(answersResponse.data)) {
+            answersResponse.data.forEach((answer: any) => {
+              const questionIndex = questions.value.findIndex((q: any) => 
+                (q.questionId || q.id) === answer.questionId
+              )
+              
+              if (questionIndex >= 0) {
+                const question = questions.value[questionIndex]
+                if (answer.choiceId && Array.isArray((question as any).choices)) {
+                  const choiceIndex = (question as any).choices.findIndex((c: any) => 
+                    c.choiceId === answer.choiceId
+                  )
+                  if (choiceIndex >= 0) {
+                    quizzesStore.setAnswer(questionIndex, choiceIndex)
+                    quizzesStore.markAnswered(questionIndex)
+                  }
+                }
+              }
+            })
+          }
+
+          console.log('Loaded ongoing attempt:', attemptId.value)
+          return true
+        }
+      }
+      
+      return false
+    } catch (error) {
+      console.error('Failed to load attempt from backend:', error)
+      return false
+    }
+  }
   
-  const finishQuiz = () => {
+  const finishQuiz = async () => {
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
       timerInterval.value = null
     }
-    quizzesStore.finishAttempt()
+    
     router.push({ name: 'quiz-review' })
   }
 
-  const autoSubmitOnTimeout = () => {
+  const autoSubmitOnTimeout = async () => {
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
       timerInterval.value = null
     }
-    quizzesStore.finishAttempt()
+    
+    await submitAttempt()
     router.push({ name: 'quiz-score' })
   }
   
@@ -157,7 +307,6 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   }
 
   const initDuration = () => {
-    quizzesStore.loadAttemptFromStorage()
     
     if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
       durationSeconds.value = quizzesStore.currentAttempt.durationSeconds
@@ -221,7 +370,24 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   }
   
   // LIFECYCLE
-  onMounted(() => {
+  onMounted(async () => {
+    if (questions.value.length === 0 && quizId.value != null) {
+      const authLocal = useAuthStore()
+      if (authLocal.currentUser?.id) {
+        const detail = await quizzesStore.fetchQuizDetail(quizId.value, authLocal.currentUser.id)
+        if (detail && Array.isArray(detail.questions)) {
+          questions.value = detail.questions.map((q: any) => quizzesStore.mapApiQuestionToFrontend(q))
+          quizzesStore.currentAttempt.questionsLength = questions.value.length
+        }
+      }
+    }
+
+    const hasOngoingAttempt = await loadAttemptFromBackend()
+    
+    if (!hasOngoingAttempt) {
+      await startAttemptInBackend()
+    }
+
     initDuration()
     loadCurrentQuestionAnswers()
 
@@ -270,7 +436,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
-              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
               <div v-if="questions[currentQuestion].mediaUrl" class="mb-6">
                 <img
                   :src="questions[currentQuestion].mediaUrl"
@@ -281,9 +447,9 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             </div>
             
             <!-- Multiple Choice / True-False -->
-            <div v-if="questions[currentQuestion].type === 'multiple-choice' || questions[currentQuestion].type === 'true-false'" class="space-y-3">
+            <div v-if="['multiple-choice', 'true-false', 'Single', 'Multiple'].includes(questions[currentQuestion].type)" class="space-y-3">
               <div 
-                v-for="(option, index) in (questions[currentQuestion].options || [])" 
+                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])" 
                 :key="index"
                 :class="[
                   'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
@@ -314,12 +480,12 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
                     'text-base font-medium',
                     selectedOption === index ? 'text-[#4866DA]' : 'text-gray-800'
                   ]"
-                >{{ (option && 'text' in option) ? option.text : option }}</span>
+                >{{ (option && 'text' in option) ? (option as any).text : (option && 'body' in option ? (option as any).body : option) }}</span>
               </div>
             </div>
 
             <!-- Text -->
-            <div v-else-if="questions[currentQuestion].type === 'text'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'text' || questions[currentQuestion].type === 'Text'" class="space-y-3">
               <textarea
                 v-model="textAnswer"
                 @input="updateTextAnswer"
@@ -330,7 +496,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             </div>
 
             <!-- Enumeration -->
-            <div v-else-if="questions[currentQuestion].type === 'enumeration'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'enumeration' || questions[currentQuestion].type === 'Enumeration'" class="space-y-3">
               <div
                 v-for="(item, index) in (((questions[currentQuestion] as any)?.items) || [])"
                 :key="index"
@@ -348,7 +514,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             </div>
 
             <!-- Matching Type -->
-            <div v-else-if="questions[currentQuestion].type === 'matching'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'matching' || questions[currentQuestion].type === 'Matching'" class="space-y-3">
               <div class="grid grid-cols-2 gap-6">
                 <!-- Column A -->
                 <div>
@@ -390,7 +556,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             </div>
 
             <!-- Fill in the Blank -->
-            <div v-else-if="questions[currentQuestion].type === 'fill-blank'" class="space-y-3">
+            <div v-else-if="questions[currentQuestion].type === 'fill-blank' || questions[currentQuestion].type === 'FillBlank'" class="space-y-3">
               <div v-for="(blank, index) in (((questions[currentQuestion] as any)?.blanks) || Array(1).fill({}))" :key="index" class="flex items-center gap-3">
                 <span class="text-gray-600 font-medium">Blank {{ index + 1 }}:</span>
                 <input

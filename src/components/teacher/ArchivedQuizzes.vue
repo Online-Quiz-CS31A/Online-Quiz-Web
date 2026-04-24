@@ -9,6 +9,7 @@ const emit = defineEmits<{ 'update:tab': [value: 'published' | 'draft'] }>()
 const quizzesStore = useQuizzesStore()
 
 const archivedQuizzes = computed(() => {
+  void quizzesStore.quizzesVersion
   const stored = quizzesStore.getAllQuizzes()
   const combined = [...stored, ...quizzesStore.myTeacherQuizzes]
 

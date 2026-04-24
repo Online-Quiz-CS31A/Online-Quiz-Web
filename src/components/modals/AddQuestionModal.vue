@@ -15,10 +15,10 @@ const emit = defineEmits<{
 const questionTypes = [
   { value: 'multiple-choice', label: 'Multiple Choice', icon: 'fas fa-list-ul' },
   { value: 'true-false', label: 'True/False', icon: 'fas fa-check' },
-  { value: 'fill-blank', label: 'Fill in the Blank', icon: 'fas fa-pencil-alt' },
-  { value: 'text', label: 'Text', icon: 'fas fa-align-left' },
-  { value: 'matching', label: 'Matching', icon: 'fas fa-random' },
-  { value: 'enumeration', label: 'Enumeration', icon: 'fas fa-list-ol' }
+  // { value: 'fill-blank', label: 'Fill in the Blank', icon: 'fas fa-pencil-alt' },
+  // { value: 'text', label: 'Text', icon: 'fas fa-align-left' },
+  // { value: 'matching', label: 'Matching', icon: 'fas fa-random' },
+  // { value: 'enumeration', label: 'Enumeration', icon: 'fas fa-list-ol' }
 ]
 
 function getQuestionTypeDescription(type: string) {

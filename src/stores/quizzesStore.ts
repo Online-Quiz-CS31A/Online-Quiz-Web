@@ -1,200 +1,18 @@
 import { ref, computed, reactive } from 'vue'
 import { defineStore } from 'pinia'
-import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, QuizAttemptHistory } from '../interfaces/interfaces'
+import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, QuizAttemptHistory, User } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useCoursesStore } from './coursesStore'
 import { useSectionsStore } from './sectionsStore'
 import api from '../services/api'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
-  const teacherQuizzesByUser = ref<Record<string, TeacherQuizItem[]>>({
-    '0111111111': [
-      {
-        id: 101,
-        subject: 'Web Development',
-        title: 'HTML & CSS Fundamentals',
-        description: 'Basic HTML structure and CSS styling',
-        dueDate: '2025-06-01 23:59',
-        class: 'CS22A',
-        submitted: 5,
-        total: 15,
-        color: 'purple',
-        status: 'published',
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'What does HTML stand for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Hyper Text Markup Language', isCorrect: true }, { text: 'High Tech Modern Language', isCorrect: false }, { text: 'Home Tool Markup Language', isCorrect: false }, { text: 'Hyperlinks and Text Markup Language', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'CSS stands for Cascading Style Sheets.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'Which HTML tag is used for the largest heading?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: '<heading>', isCorrect: false }, { text: '<h6>', isCorrect: false }, { text: '<h1>', isCorrect: true }, { text: '<head>', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'text', text: 'What is the purpose of the <div> tag in HTML?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'The <div> tag is a generic block-level container used to group content for layout or styling with CSS.', pairs: [], items: [] },
-          { id: 5, type: 'multiple-choice', text: 'Which CSS property is used to change text color?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'text-color', isCorrect: false }, { text: 'color', isCorrect: true }, { text: 'font-color', isCorrect: false }, { text: 'text-style', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'enumeration', text: 'List three ways to include CSS in an HTML document.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['Inline CSS', 'Internal CSS', 'External CSS'] }
-        ],
-        createdAt: '2024-05-10T10:00:00Z',
-        updatedAt: '2024-05-10T10:00:00Z'
-      },
-      {
-        id: 102,
-        subject: 'Data Structures',
-        title: 'Arrays and Linked Lists',
-        description: 'Fundamental data structures and their operations',
-        dueDate: '2025-06-05 23:59',
-        class: 'CS33A',
-        submitted: 8,
-        total: 20,
-        color: 'orange',
-        status: 'published',
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'What is the time complexity of accessing an element in an array by index?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'O(1)', isCorrect: true }, { text: 'O(n)', isCorrect: false }, { text: 'O(log n)', isCorrect: false }, { text: 'O(n²)', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'A linked list requires contiguous memory allocation.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'Which data structure uses LIFO principle?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Queue', isCorrect: false }, { text: 'Stack', isCorrect: true }, { text: 'Array', isCorrect: false }, { text: 'Linked List', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'matching', text: 'Match the data structure with its primary operation.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [{ left: 'Stack', right: 'Push/Pop' }, { left: 'Queue', right: 'Enqueue/Dequeue' }, { left: 'Array', right: 'Index Access' }], items: [] },
-          { id: 5, type: 'text', text: 'What is the advantage of a doubly linked list over a singly linked list?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'A doubly linked list allows traversal in both directions and makes insertion and deletion easier because each node keeps references to both its previous and next nodes.', pairs: [], items: [] },
-          { id: 6, type: 'text', text: 'Compare and contrast arrays and linked lists in terms of memory usage and access time.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Arrays use contiguous memory and provide fast O(1) indexed access but can be expensive to resize, while linked lists use non-contiguous memory with O(n) access time but allow efficient insertions and deletions at arbitrary positions.', pairs: [], items: [] }
-        ],
-        createdAt: '2024-05-12T10:00:00Z',
-        updatedAt: '2024-05-12T10:00:00Z'
-      },
-    ],
-    '0112345678': [
-      {
-        id: 1,
-        subject: 'Information Assurance',
-        title: 'Week 1 Quiz',
-        description: 'Fundamentals of Information Security',
-        dueDate: '2025-05-15 23:59',
-        class: 'CS31A',
-        submitted: 12,
-        total: 24,
-        color: 'blue',
-        status: 'published',
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'What is the CIA triad in information security?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Confidentiality, Integrity, Availability', isCorrect: true }, { text: 'Control, Integration, Authentication', isCorrect: false }, { text: 'Cryptography, Identity, Authorization', isCorrect: false }, { text: 'Code, Implementation, Access', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'Encryption is the process of converting plaintext to ciphertext.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'Which of the following is NOT a type of malware?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Virus', isCorrect: false }, { text: 'Worm', isCorrect: false }, { text: 'Firewall', isCorrect: true }, { text: 'Trojan', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'text', text: 'Define what a firewall is and its primary purpose.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'A firewall is a network security system that monitors and controls incoming and outgoing traffic based on predefined security rules, acting as a barrier between a trusted internal network and untrusted external networks such as the internet.', pairs: [], items: [] },
-          { id: 5, type: 'multiple-choice', text: 'What is the primary goal of a DDoS attack?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Steal data', isCorrect: false }, { text: 'Make services unavailable', isCorrect: true }, { text: 'Delete files', isCorrect: false }, { text: 'Install malware', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'enumeration', text: 'List three common authentication factors.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['Something you know', 'Something you have', 'Something you are'] }
-        ],
-        createdAt: '2024-05-01T10:00:00Z',
-        updatedAt: '2024-05-01T10:00:00Z'
-      },
-      {
-        id: 2,
-        subject: 'Information Assurance',
-        title: 'Week 2 Quiz',
-        description: 'Cryptography and Network Security',
-        dueDate: '2025-05-18 23:59',
-        class: 'CS31A',
-        submitted: 8,
-        total: 24,
-        color: 'green',
-        status: 'published',
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'Which encryption algorithm is symmetric?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'RSA', isCorrect: false }, { text: 'AES', isCorrect: true }, { text: 'ECC', isCorrect: false }, { text: 'DSA', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'Public key cryptography uses the same key for encryption and decryption.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'What is a digital signature used for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Authentication and non-repudiation', isCorrect: true }, { text: 'Encryption only', isCorrect: false }, { text: 'Compression', isCorrect: false }, { text: 'Storage', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'matching', text: 'Match the security concept with its description.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [{ left: 'Hash Function', right: 'One-way function' }, { left: 'Salt', right: 'Random data for passwords' }, { left: 'SSL/TLS', right: 'Secure communication protocol' }], items: [] },
-          { id: 5, type: 'text', text: 'Explain the difference between symmetric and asymmetric encryption.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Symmetric encryption uses the same key for both encryption and decryption, while asymmetric encryption uses a public key to encrypt data and a separate private key to decrypt it.', pairs: [], items: [] },
-          { id: 6, type: 'text', text: 'Discuss the importance of key management in cryptographic systems.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Key management is critical because the security of cryptographic systems depends on generating, distributing, storing, rotating, and revoking keys securely to prevent unauthorized access or key compromise.', pairs: [], items: [] }
-        ],
-        createdAt: '2024-05-02T10:00:00Z',
-        updatedAt: '2024-05-02T10:00:00Z'
-      },
-      {
-        id: 3,
-        subject: 'Computer Architecture',
-        title: 'Week 5 Quiz',
-        description: 'Memory Hierarchy and Cache',
-        dueDate: '2025-05-20 23:59',
-        class: 'CS22A',
-        submitted: 3,
-        total: 24,
-        color: 'purple',
-        status: 'published',
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'Which memory is fastest?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Hard Disk', isCorrect: false }, { text: 'RAM', isCorrect: false }, { text: 'Cache', isCorrect: true }, { text: 'ROM', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'Cache memory is located between CPU and RAM.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'What is the principle of locality?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Programs tend to access same memory locations', isCorrect: true }, { text: 'Memory is organized locally', isCorrect: false }, { text: 'Cache is local to CPU', isCorrect: false }, { text: 'All data is stored locally', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'text', text: 'Explain the difference between temporal and spatial locality.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Temporal locality means a program tends to reuse the same data or instructions within a short time period, while spatial locality means it tends to access data locations that are close to each other in memory.', pairs: [], items: [] },
-          { id: 5, type: 'multiple-choice', text: 'What does a cache miss mean?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Data found in cache', isCorrect: false }, { text: 'Data not found in cache', isCorrect: true }, { text: 'Cache is full', isCorrect: false }, { text: 'Cache error', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'enumeration', text: 'List three cache replacement policies.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['LRU (Least Recently Used)', 'FIFO (First In First Out)', 'LFU (Least Frequently Used)'] }
-        ],
-        createdAt: '2024-05-03T10:00:00Z',
-        updatedAt: '2024-05-03T10:00:00Z'
-      },
-      {
-        id: 4,
-        subject: 'Operating Systems',
-        title: 'Process Management Quiz',
-        description: 'Process Scheduling and Synchronization',
-        dueDate: '2025-05-25 23:59',
-        class: 'IT22A',
-        submitted: 17,
-        total: 28,
-        color: 'red',
-        status: 'published',
-        archived: true,
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'Which scheduling algorithm can cause starvation?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Round Robin', isCorrect: false }, { text: 'Priority Scheduling', isCorrect: true }, { text: 'FCFS', isCorrect: false }, { text: 'SJF', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'A process in the ready state is currently executing on the CPU.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: false }, { text: 'False', isCorrect: true }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'What is a race condition?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Two processes competing for CPU', isCorrect: false }, { text: 'Multiple processes accessing shared data', isCorrect: true }, { text: 'Fast process execution', isCorrect: false }, { text: 'Process scheduling conflict', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'matching', text: 'Match the process state with its description.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [{ left: 'New', right: 'Process being created' }, { left: 'Running', right: 'Instructions being executed' }, { left: 'Waiting', right: 'Waiting for I/O' }], items: [] },
-          { id: 5, type: 'text', text: 'What is a critical section in process synchronization?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'A critical section is a part of a program where shared resources are accessed and that must not be executed by more than one process or thread at the same time to avoid data races.', pairs: [], items: [] },
-          { id: 6, type: 'text', text: 'Compare and contrast preemptive and non-preemptive scheduling.', points: 20, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'Preemptive scheduling allows the operating system to interrupt and switch out a running process, while non-preemptive scheduling lets a process run until it finishes or blocks; preemptive systems improve responsiveness but add overhead and complexity.', pairs: [], items: [] }
-        ],
-        createdAt: '2024-05-04T10:00:00Z',
-        updatedAt: '2024-05-04T10:00:00Z'
-      },
-      {
-        id: 5,
-        subject: 'Automata',
-        title: 'PDA and CFG Quiz',
-        description: 'Pushdown Automata and Context-Free Grammars',
-        dueDate: '2025-05-28 23:59',
-        class: 'IT11B',
-        submitted: 9,
-        total: 22,
-        color: 'yellow',
-        status: 'published',
-        timeLimit: '30 min',
-        questions: [
-          { id: 1, type: 'multiple-choice', text: 'What type of language does a PDA accept?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Regular', isCorrect: false }, { text: 'Context-Free', isCorrect: true }, { text: 'Context-Sensitive', isCorrect: false }, { text: 'Recursive', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 2, type: 'true-false', text: 'A context-free grammar can generate any regular language.', points: 5, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 3, type: 'multiple-choice', text: 'Which component is NOT part of a PDA?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Input tape', isCorrect: false }, { text: 'Stack', isCorrect: false }, { text: 'Queue', isCorrect: true }, { text: 'States', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 4, type: 'text', text: 'What is the pumping lemma for context-free languages used for?', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: 'The pumping lemma for context-free languages is used to prove that certain languages are not context-free by showing that all sufficiently long strings in the language cannot be pumped while still remaining in the language.', pairs: [], items: [] },
-          { id: 5, type: 'multiple-choice', text: 'What does CFG stand for?', points: 10, mediaType: 'none', mediaUrl: '', required: true, options: [{ text: 'Context-Free Grammar', isCorrect: true }, { text: 'Computational Finite Grammar', isCorrect: false }, { text: 'Complete Formal Grammar', isCorrect: false }, { text: 'Complex Function Generator', isCorrect: false }], correctAnswer: '', pairs: [], items: [] },
-          { id: 6, type: 'enumeration', text: 'List the four components of a formal grammar.', points: 15, mediaType: 'none', mediaUrl: '', required: true, options: [], correctAnswer: '', pairs: [], items: ['Variables (Non-terminals)', 'Terminals', 'Production Rules', 'Start Symbol'] }
-        ],
-        createdAt: '2024-05-05T10:00:00Z',
-        updatedAt: '2024-05-05T10:00:00Z'
-      },
-    ],
-  })
+  const isLoading = ref(false)
+  const isSaving = ref(false)
+  const isPublishing = ref(false)
+  const teacherQuizzesByUser = ref<Record<string, TeacherQuizItem[]>>({})
 
-  const studentCourseEnrollments = ref<Record<string, { teacherUsername: string, subjects: string[] }[]>>({
-    '0212345678': [
-      { teacherUsername: '0112345678', subjects: ['Information Assurance', 'Automata', 'Computer Architecture'] },
-      { teacherUsername: '0111111111', subjects: ['Web Development', 'Data Structures'] }
-    ],
-    '0221111111': [
-      { teacherUsername: '0112345678', subjects: ['Information Assurance', 'Automata'] },
-      { teacherUsername: '0111111111', subjects: ['Web Development'] }
-    ],
-    '0222222222': [
-      { teacherUsername: '0112345678', subjects: ['Computer Architecture', 'Operating Systems'] }
-    ],
-    '0223333333': [
-      { teacherUsername: '0111111111', subjects: ['Data Structures', 'Web Development'] }
-    ],
-    '0224444444': [
-      { teacherUsername: '0112345678', subjects: ['Information Assurance', 'Automata', 'Computer Architecture', 'Operating Systems'] }
-    ]
-  })
+  const studentCourseEnrollments = ref<Record<string, { teacherUsername: string, subjects: string[] }[]>>({})
 
   const currentQuiz = reactive({
     id: null as number | null,
@@ -203,7 +21,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     timeLimit: '',
     description: '',
     questions: [] as QuizQuestion[],
-    currentQuestionIndex: -1
+    currentQuestionIndex: -1,
+    assignedSections: [] as string[],
+    assignedCourseIds: [] as number[],
+    quizIdsGroup: [] as number[],
   })
 
   const currentAttempt = reactive({
@@ -251,94 +72,56 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       }
     })
 
-    const storedQuizzes = loadQuizzesFromStorage()
-    storedQuizzes.forEach(q => {
-      if ((q as any).ownerUsername === uname && q.subject) {
-        subjects.add(q.subject)
-      }
-    })
-
     return Array.from(subjects)
   })
 
+  const studentQuizzesFromApi = ref<StudentQuizItem[]>([])
+
   const myStudentQuizzes = computed<StudentQuizItem[]>(() => {
-    const uname = auth.currentUser?.username
-    if (!uname) return []
+    return studentQuizzesFromApi.value
+  })
 
-    void quizzesVersion.value
+  async function fetchStudentQuizzesAsync() {
+    const authLocal = useAuthStore()
+    const user = authLocal.currentUser
+    if (!user || user.role !== 'student' || !user.id) return
 
-    const enrollments = studentCourseEnrollments.value[uname] || []
-    if (enrollments.length === 0) return []
-
-    const storedQuizzes = getAllQuizzes()
-    const storedById = new Map<number, TeacherQuizItem>()
-    storedQuizzes.forEach(q => {
-      storedById.set(q.id, q)
-    })
-
-    const activeSubjects = new Set(
-      coursesStore.allCourses
-        .filter(c => c.status !== 'Archived')
-        .map(c => c.name)
-    )
+    const coursesStoreLocal = useCoursesStore()
+    const courses = coursesStoreLocal.allCourses.filter(c => c.status !== 'Archived')
 
     const studentQuizzes: StudentQuizItem[] = []
 
-    enrollments.forEach(enrollment => {
-      const teacherQuizzes = teacherQuizzesByUser.value[enrollment.teacherUsername] || []
+    const results = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          const response = await api.get(`/Quiz/course/${course.id}?userId=${user.id}&isStudent=true`)
+          const quizzesData = response.data?.data || response.data || []
 
-      teacherQuizzes.forEach(seedQuiz => {
-        const override = storedById.get(seedQuiz.id)
-        const quiz = override ? { ...seedQuiz, ...override } : seedQuiz
-
-        if (!(quiz as any).archived && enrollment.subjects.includes(quiz.subject) && activeSubjects.has(quiz.subject)) {
-          const course = coursesStore.allCourses.find(c => c.name === quiz.subject)
-          if (!course) return
-
-          const assignedSections: string[] = (quiz as any).assignedSections && Array.isArray((quiz as any).assignedSections)
-            ? (quiz as any).assignedSections
-            : ((quiz as any).class ? [(quiz as any).class] : [])
-
-          if (assignedSections.length === 0) return
-
-          sectionsStore.allSections.forEach(section => {
-            const inSection = (section.studentUsernames || []).includes(uname)
-            if (!inSection) return
-
-            if (!assignedSections.includes(section.name)) return
-
-            const isArchivedSection = sectionsStore.archivedSectionMappings.some(
-              m => m.sectionId === section.id
-            )
-            if (isArchivedSection) return
-
-            const hasActiveMapping = sectionsStore.courseSectionMappings.some(
-              m => m.courseId === course.id && m.sectionId === section.id
-            )
-            if (!hasActiveMapping) return
-
-            const maxAttempts = (quiz as any).maxAttempts != null ? Number((quiz as any).maxAttempts) || 1 : 3
-            const timeLimitStr = (quiz as any).timeLimit || '30 min'
-
-            studentQuizzes.push({
-              id: quiz.id,
-              subject: quiz.subject,
+          const arr = Array.isArray(quizzesData) ? quizzesData : []
+          return arr.map((quiz: any) => {
+            if (!quiz) return null
+            return {
+              id: quiz.quizId || quiz.id,
+              subject: course.name,
               title: quiz.title,
-              description: quiz.description,
-              dueDate: (quiz as any).dueDate,
-              class: section.name,
-              timeLimit: timeLimitStr,
+              description: quiz.description || '',
+              dueDate: quiz.dueAt || quiz.dueDate || '',
+              class: '',
+              timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
               status: 'Not Started',
-              color: quiz.color,
-              maxAttempts
-            })
-          })
+              color: 'blue',
+              maxAttempts: quiz.maxAttempts || 3
+            }
+          }).filter(Boolean) as StudentQuizItem[]
+        } catch (e) {
+          console.error(`Failed to load quizzes for course ${course.id}`, e)
+          return []
         }
       })
-    })
+    )
 
-    return studentQuizzes
-  })
+    studentQuizzesFromApi.value = results.flat()
+  }
 
   function loadArchivedSeedQuizzesFromStorage() {
     try {
@@ -380,23 +163,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function loadQuizDoneFromStorage() {
     if (quizDoneLoaded) return
     quizDoneLoaded = true
-    try {
-      const stored = localStorage.getItem('quizDoneMap')
-      if (stored) {
-        quizDoneMap.value = JSON.parse(stored)
-      }
-    } catch (e) {
-      console.error('Failed to load quiz done map from localStorage:', e)
-      quizDoneMap.value = {}
-    }
   }
 
   function saveQuizDoneToStorage() {
-    try {
-      localStorage.setItem('quizDoneMap', JSON.stringify(quizDoneMap.value))
-    } catch (e) {
-      console.error('Failed to save quiz done map to localStorage:', e)
-    }
+
   }
 
   function getQuizDoneKey(quizId: number): string | null {
@@ -514,81 +284,178 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
-  function saveQuiz(status: 'draft' | 'published' = 'draft') {
-    if (!currentQuiz.title.trim()) {
-      throw new Error('Quiz title is required')
-    }
-    if (currentQuiz.questions.length === 0) {
-      throw new Error('Quiz must have at least one question')
-    }
-
-    for (let i = 0; i < currentQuiz.questions.length; i++) {
-      const q = currentQuiz.questions[i]
-
-      if (!q.text || !q.text.trim()) {
-        throw new Error(`Question ${i + 1} cannot be empty`)
-      }
-
-      if (q.type === 'multiple-choice') {
-        if (!q.options || q.options.length < 2) {
-          throw new Error(`Multiple choice question ${i + 1} must have at least 2 options`)
-        }
-
-        const hasEmptyOption = q.options.some(opt => !opt.text || !opt.text.trim())
-        if (hasEmptyOption) {
-          throw new Error(`All options in question ${i + 1} must have text`)
-        }
-      }
-
-      if (q.type === 'enumeration') {
-        if (!q.items || q.items.length < 2) {
-          throw new Error(`Enumeration question ${i + 1} must have at least 2 items`)
-        }
-
-        const hasEmptyItem = q.items.some(item => !item || !item.trim())
-        if (hasEmptyItem) {
-          throw new Error(`All items in enumeration question ${i + 1} must have text`)
-        }
-      }
-
-      if (q.type === 'matching') {
-        if (!q.pairs || q.pairs.length < 2) {
-          throw new Error(`Matching question ${i + 1} must have at least 2 pairs`)
-        }
-
-        const hasEmptyPair = q.pairs.some(p => !p.left || !p.left.trim() || !p.right || !p.right.trim())
-        if (hasEmptyPair) {
-          throw new Error(`All pairs in matching question ${i + 1} must have both sides filled`)
-        }
-      }
-    }
-
-    const auth = useAuthStore()
-    const username = auth.currentUser?.username
-    if (!username) {
-      throw new Error('User not authenticated')
-    }
-
-    const quizzes = getAllQuizzes()
-    const existingIndex = currentQuiz.id ? quizzes.findIndex(q => q.id === currentQuiz.id) : -1
-
-    if (existingIndex !== -1) {
-      const existingQuiz = quizzes[existingIndex]
-      quizzes[existingIndex] = {
-        ...existingQuiz,
-        title: currentQuiz.title,
-        subject: currentQuiz.subject,
-        description: currentQuiz.description,
-        status,
-        questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
-        updatedAt: new Date().toISOString(),
-        ownerUsername: existingQuiz.ownerUsername || username
-      }
-      saveQuizzesToStorage(quizzes)
-      return quizzes[existingIndex]
+  async function saveQuiz(status: 'draft' | 'published' = 'draft', courseIdsOverride?: number[]) {
+    if (status === 'published') {
+      isPublishing.value = true
     } else {
-      const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
+      isSaving.value = true
+    }
 
+    try {
+      if (!currentQuiz.title.trim()) {
+        throw new Error('Quiz title is required')
+      }
+      if (currentQuiz.questions.length === 0) {
+        throw new Error('Quiz must have at least one question')
+      }
+
+      for (let i = 0; i < currentQuiz.questions.length; i++) {
+        const q = currentQuiz.questions[i]
+
+        if (!q.text || !q.text.trim()) {
+          throw new Error(`Question ${i + 1} cannot be empty`)
+        }
+
+        if (q.type === 'multiple-choice') {
+          if (!q.options || q.options.length < 2) {
+            throw new Error(`Multiple choice question ${i + 1} must have at least 2 options`)
+          }
+
+          const hasEmptyOption = q.options.some(opt => !opt.text || !opt.text.trim())
+          if (hasEmptyOption) {
+            throw new Error(`All options in question ${i + 1} must have text`)
+          }
+        }
+
+        if (q.type === 'enumeration') {
+          if (!q.items || q.items.length < 2) {
+            throw new Error(`Enumeration question ${i + 1} must have at least 2 items`)
+          }
+
+          const hasEmptyItem = q.items.some(item => !item || !item.trim())
+          if (hasEmptyItem) {
+            throw new Error(`All items in enumeration question ${i + 1} must have text`)
+          }
+        }
+
+        if (q.type === 'matching') {
+          if (!q.pairs || q.pairs.length < 2) {
+            throw new Error(`Matching question ${i + 1} must have at least 2 pairs`)
+          }
+
+          const hasEmptyPair = q.pairs.some(p => !p.left || !p.left.trim() || !p.right || !p.right.trim())
+          if (hasEmptyPair) {
+            throw new Error(`All pairs in matching question ${i + 1} must have both sides filled`)
+          }
+        }
+      }
+
+      const auth = useAuthStore()
+      const username = auth.currentUser?.username
+      const userId = auth.currentUser?.id
+      if (!username || !userId) {
+        throw new Error('User not authenticated')
+      }
+
+      const coursesStoreLocal = useCoursesStore()
+      const rawSubject = (currentQuiz.subject || '').trim().toLowerCase()
+
+      let targetCourseIds = courseIdsOverride && courseIdsOverride.length > 0 ? courseIdsOverride : []
+
+      if (targetCourseIds.length === 0) {
+        const matchingRawCourses = coursesStoreLocal.rawTeacherCourses.filter(c =>
+          (c.name || '').trim().toLowerCase() === rawSubject ||
+          (c.code || '').trim().toLowerCase() === rawSubject
+        )
+
+        if (currentQuiz.assignedSections && currentQuiz.assignedSections.length > 0) {
+          const selectedSections = currentQuiz.assignedSections.map(s => s.trim().toLowerCase())
+          targetCourseIds = matchingRawCourses
+            .filter(c => c.section && selectedSections.includes(c.section.trim().toLowerCase()))
+            .map(c => c.courseId)
+        } else if (matchingRawCourses.length > 0) {
+          targetCourseIds = [matchingRawCourses[0].courseId]
+        }
+      }
+
+      if (status === 'published') {
+        if (!rawSubject) {
+          throw new Error('Please select a valid course before publishing')
+        }
+        if (targetCourseIds.length === 0) {
+          throw new Error('Please select at least one section before publishing')
+        }
+      }
+
+      const timeLimitValue = currentQuiz.timeLimit ? String(currentQuiz.timeLimit) : '30'
+      const timeLimitMatch = timeLimitValue.match(/\d+/)
+      const timeLimitMinutes = timeLimitMatch ? parseInt(timeLimitMatch[0], 10) : 30
+
+      const mappedQuestions = currentQuiz.questions.map((q, idx) => {
+        let mappedType = q.type
+        if (q.type === 'multiple-choice') {
+          mappedType = 'Multiple'
+        } else if (q.type === 'true-false') {
+          mappedType = 'Single'
+        }
+
+        return {
+          questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+          quizId: currentQuiz.id ?? 0,
+          type: mappedType,
+          body: q.text,
+          points: q.points || 1,
+          sortOrder: idx + 1,
+          choices: q.options ? q.options.map((opt) => ({
+            choiceId: 0,
+            questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+            body: opt.text,
+            isCorrect: opt.isCorrect
+          })) : []
+        }
+      })
+
+      const payloadTemplate: any = {
+        title: currentQuiz.title,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        timeLimitMinutes: timeLimitMinutes,
+        isPublished: status === 'published',
+        createdAt: new Date().toISOString(),
+        questions: mappedQuestions
+      }
+
+      const isCreatingNew = !currentQuiz.id;
+
+      for (let i = 0; i < targetCourseIds.length; i++) {
+        const cid = targetCourseIds[i]
+
+        if (isCreatingNew) {
+          const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
+          currentPayload.createdBy = userId
+          const response = await api.post('/Quiz', currentPayload)
+
+          if (i === 0 && response.data && (response.data.quizId || response.data.id)) {
+            currentQuiz.id = response.data.quizId || response.data.id
+          }
+          if (response.data && (response.data.quizId || response.data.id)) {
+            if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
+            if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
+              currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
+            }
+          }
+        } else {
+          const existingQuizId = (currentQuiz.quizIdsGroup && currentQuiz.quizIdsGroup.length > i)
+            ? currentQuiz.quizIdsGroup[i]
+            : (i === 0 ? currentQuiz.id : null)
+
+          if (existingQuizId) {
+            const currentPayload = { ...payloadTemplate, courseId: cid, quizId: existingQuizId }
+            await api.put(`/Quiz/${existingQuizId}?userId=${userId}`, currentPayload)
+          } else {
+            const currentPayload = { ...payloadTemplate, courseId: cid, quizId: 0 }
+            currentPayload.createdBy = userId
+            const response = await api.post('/Quiz', currentPayload)
+            if (response.data && (response.data.quizId || response.data.id)) {
+              if (!currentQuiz.quizIdsGroup) currentQuiz.quizIdsGroup = []
+              if (!currentQuiz.quizIdsGroup.includes(response.data.quizId || response.data.id)) {
+                currentQuiz.quizIdsGroup.push(response.data.quizId || response.data.id)
+              }
+            }
+          }
+        }
+      }
+
+      const id = currentQuiz.id != null ? currentQuiz.id : Date.now()
       const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
       const seedQuiz = allSeedQuizzes.find(q => q.id === id)
 
@@ -597,7 +464,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         title: currentQuiz.title,
         subject: currentQuiz.subject,
         description: currentQuiz.description,
-        dueDate: seedQuiz ? seedQuiz.dueDate : '',
+        dueDate: seedQuiz ? seedQuiz.dueDate : payloadTemplate.dueAt,
         class: seedQuiz ? seedQuiz.class : '',
         submitted: seedQuiz ? seedQuiz.submitted : 0,
         total: seedQuiz ? seedQuiz.total : 0,
@@ -608,32 +475,40 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         updatedAt: new Date().toISOString(),
         ownerUsername: username
       }
+
       currentQuiz.id = quizItem.id
-      quizzes.push(quizItem)
-      saveQuizzesToStorage(quizzes)
+
+      if (!teacherQuizzesByUser.value[username]) {
+        teacherQuizzesByUser.value[username] = []
+      }
+      const userQuizzes = teacherQuizzesByUser.value[username]
+      const mIdx = userQuizzes.findIndex(q => q.id === quizItem.id)
+      if (mIdx !== -1) {
+        userQuizzes[mIdx] = quizItem
+      } else {
+        userQuizzes.push(quizItem)
+      }
+
       return quizItem
+    } finally {
+      isSaving.value = false
+      isPublishing.value = false
     }
   }
 
-  function deleteQuiz(quizId: number) {
-    const quizzes = getAllQuizzes()
-    const filtered = quizzes.filter(q => q.id !== quizId)
-    saveQuizzesToStorage(filtered)
+  async function deleteQuiz(quizId: number) {
+    try {
+      await api.delete(`/Quiz/${quizId}`)
+    } catch (e) {
+      console.error('Failed to delete quiz:', e)
+    }
+
+    Object.keys(teacherQuizzesByUser.value).forEach(list => {
+      teacherQuizzesByUser.value[list] = teacherQuizzesByUser.value[list].filter(q => q.id !== quizId)
+    })
   }
 
   function archiveQuiz(quizId: number) {
-    const stored = getAllQuizzes()
-    let mutated = false
-    stored.forEach(q => {
-      if (q.id === quizId) {
-        ; (q as any).archived = true
-        mutated = true
-      }
-    })
-    if (mutated) {
-      saveQuizzesToStorage(stored)
-    }
-
     let seedMutated = false
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -664,128 +539,38 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   ) {
     if (!quizId) return
 
-    const all = getAllQuizzes()
-    let mutated = false
-
-    all.forEach(q => {
-      if (q.id === quizId) {
-        if (payload.dueDate != null) {
-          ; (q as any).dueDate = payload.dueDate
-        }
-
-        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
-            ; (q as any).assignedSections = unique
-          if (unique.length > 0) {
-            ; (q as any).class = unique[0]
-          }
-        } else if (payload.sectionName != null) {
-          ; (q as any).class = payload.sectionName
-            ; (q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
-        }
-
-        if (payload.timeLimitMinutes != null) {
-          ; (q as any).timeLimit = `${payload.timeLimitMinutes} min`
-        }
-        if (payload.maxAttempts != null) {
-          ; (q as any).maxAttempts = payload.maxAttempts
-        }
-        mutated = true
-      }
-    })
-
-    if (!mutated) {
-      const allSeed = Object.values(teacherQuizzesByUser.value).flat()
-      const seedQuiz = allSeed.find(q => q.id === quizId)
-
-      if (seedQuiz) {
-        const authLocal = useAuthStore()
-        const username = authLocal.currentUser?.username || (seedQuiz as any).ownerUsername
-
-        const storedCopy: TeacherQuizItem = {
-          id: seedQuiz.id,
-          title: seedQuiz.title,
-          subject: seedQuiz.subject,
-          description: seedQuiz.description,
-          dueDate: payload.dueDate != null ? payload.dueDate : seedQuiz.dueDate,
-          class:
-            payload.sectionNames && payload.sectionNames.length > 0
-              ? payload.sectionNames[0]
-              : payload.sectionName != null
-                ? payload.sectionName
-                : (seedQuiz as any).class,
-          submitted: seedQuiz.submitted,
-          total: seedQuiz.total,
-          color: seedQuiz.color,
-          status: seedQuiz.status || 'published',
-          timeLimit:
-            payload.timeLimitMinutes != null
-              ? `${payload.timeLimitMinutes} min`
-              : (seedQuiz as any).timeLimit || '30 min',
-          questions: JSON.parse(JSON.stringify(seedQuiz.questions || [])),
-          createdAt: seedQuiz.createdAt,
-          updatedAt: new Date().toISOString(),
-          ownerUsername: (seedQuiz as any).ownerUsername || username || ''
-        }
-
-        if (payload.maxAttempts != null) {
-          ; (storedCopy as any).maxAttempts = payload.maxAttempts
-        }
-
-        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          ; (storedCopy as any).assignedSections = Array.from(
-            new Set(payload.sectionNames.filter(Boolean))
-          )
-        } else if (payload.sectionName != null) {
-          ; (storedCopy as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
-        }
-
-        all.push(storedCopy)
-        mutated = true
-      }
-    }
-
-    if (mutated) {
-      saveQuizzesToStorage(all)
-    }
-
     const allSeed = Object.values(teacherQuizzesByUser.value).flat()
-    allSeed.forEach(q => {
-      if (q.id === quizId) {
-        if (payload.dueDate != null) {
-          ; (q as any).dueDate = payload.dueDate
-        }
+    const seedQuiz = allSeed.find(q => q.id === quizId)
 
-        if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
-          const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
-            ; (q as any).assignedSections = unique
-          if (unique.length > 0) {
-            ; (q as any).class = unique[0]
-          }
-        } else if (payload.sectionName != null) {
-          ; (q as any).class = payload.sectionName
-            ; (q as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
-        }
-
-        if (payload.timeLimitMinutes != null) {
-          ; (q as any).timeLimit = `${payload.timeLimitMinutes} min`
-        }
-        if (payload.maxAttempts != null) {
-          ; (q as any).maxAttempts = payload.maxAttempts
-        }
+    if (seedQuiz) {
+      if (payload.dueDate != null) {
+        ; (seedQuiz as any).dueDate = payload.dueDate
       }
-    })
+
+      if (payload.sectionNames && Array.isArray(payload.sectionNames)) {
+        const unique = Array.from(new Set(payload.sectionNames.filter(Boolean)))
+          ; (seedQuiz as any).assignedSections = unique
+        if (unique.length > 0) {
+          ; (seedQuiz as any).class = unique[0]
+        }
+      } else if (payload.sectionName != null) {
+        ; (seedQuiz as any).class = payload.sectionName
+          ; (seedQuiz as any).assignedSections = payload.sectionName ? [payload.sectionName] : []
+      }
+
+      if (payload.timeLimitMinutes != null) {
+        ; (seedQuiz as any).timeLimit = `${payload.timeLimitMinutes} min`
+      }
+      if (payload.maxAttempts != null) {
+        ; (seedQuiz as any).maxAttempts = payload.maxAttempts
+      }
+    }
   }
 
   function unarchiveQuizzesForCourse(courseName: string) {
     if (!courseName) return
 
-    const allStored = getAllQuizzes()
     const ids = new Set<number>()
-
-    allStored.forEach(q => {
-      if (q.subject === courseName && (q as any).archived) ids.add(q.id)
-    })
 
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -799,12 +584,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   function archiveQuizzesForCourse(courseName: string) {
     if (!courseName) return
 
-    const allStored = getAllQuizzes()
     const ids = new Set<number>()
-
-    allStored.forEach(q => {
-      if (q.subject === courseName) ids.add(q.id)
-    })
 
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -816,18 +596,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function unarchiveQuiz(quizId: number) {
-    const stored = getAllQuizzes()
-    let mutated = false
-    stored.forEach(q => {
-      if (q.id === quizId && (q as any).archived) {
-        ; (q as any).archived = false
-        mutated = true
-      }
-    })
-    if (mutated) {
-      saveQuizzesToStorage(stored)
-    }
-
     let seedMutated = false
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -850,12 +618,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function loadQuizForEditing(quizId: number) {
-    const quizzes = getAllQuizzes()
-    let quiz = quizzes.find(q => q.id === quizId)
-
-    if (!quiz) {
-      quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
-    }
+    let quiz = myTeacherQuizzes.value.find(q => q.id === quizId)
 
     if (!quiz) return false
 
@@ -864,10 +627,50 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.subject = quiz.subject
     currentQuiz.description = quiz.description || ''
     currentQuiz.timeLimit = (quiz as any).timeLimit || ''
-    currentQuiz.questions = quiz.questions ? JSON.parse(JSON.stringify(quiz.questions)) : []
+    currentQuiz.assignedSections = Array.isArray((quiz as any).assignedSections)
+      ? [...(quiz as any).assignedSections]
+      : ((quiz as any).class ? [(quiz as any).class] : [])
+
+    const rawQuestions = quiz.questions ? JSON.parse(JSON.stringify(quiz.questions)) : []
+    currentQuiz.questions = rawQuestions.map((q: any) => {
+      if (q.text !== undefined) return q
+      return mapApiQuestionToFrontend(q)
+    })
     currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
 
     return true
+  }
+
+  async function loadQuizForEditingAsync(quizId: number): Promise<boolean> {
+    if (loadQuizForEditing(quizId)) {
+      return true
+    }
+
+    const authLocal = useAuthStore()
+    const userId = authLocal.currentUser?.id
+    if (userId) {
+      try {
+        const detail = await fetchQuizDetail(quizId, userId)
+        if (detail) {
+          const coursesStoreLocal = useCoursesStore()
+          const course = coursesStoreLocal.allCourses.find(c => c.id === detail.courseId)
+
+          currentQuiz.id = detail.quizId || detail.id || quizId
+          currentQuiz.title = detail.title || ''
+          currentQuiz.subject = course?.name || detail.courseName || (detail.course && detail.course.name) || ''
+          currentQuiz.description = detail.description || ''
+          currentQuiz.timeLimit = detail.timeLimitMinutes ? `${detail.timeLimitMinutes} min` : ''
+          const rawQs = Array.isArray(detail.questions) ? detail.questions : []
+          currentQuiz.questions = rawQs.map(mapApiQuestionToFrontend)
+          currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
+          return true
+        }
+      } catch (e) {
+        console.error(`Failed to load full quiz from API for ID ${quizId}`, e)
+      }
+    }
+
+    return false
   }
 
   function resetCurrentQuiz() {
@@ -878,60 +681,36 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.description = ''
     currentQuiz.questions = []
     currentQuiz.currentQuestionIndex = -1
+    currentQuiz.assignedSections = []
   }
 
   function getAllQuizzes(): TeacherQuizItem[] {
-    try {
-      const stored = localStorage.getItem('quizzes')
-      return stored ? JSON.parse(stored) : []
-    } catch (error) {
-      console.error('Error loading quizzes from localStorage:', error)
-      return []
-    }
+    return []
   }
 
   function loadQuizzesFromStorage(): TeacherQuizItem[] {
-    const auth = useAuthStore()
-    const username = auth.currentUser?.username
-    const all = getAllQuizzes()
-    if (!username) return []
-    let mutated = false
-    all.forEach(q => {
-      if ((q.status === 'draft') && !q.ownerUsername) {
-        q.ownerUsername = username
-        mutated = true
-      }
-    })
-    if (mutated) {
-      saveQuizzesToStorage(all)
-    }
-    return all.filter(q => (q.status !== 'draft') || q.ownerUsername === username)
+    return []
   }
 
   function saveQuizzesToStorage(quizzes: TeacherQuizItem[]) {
-    try {
-      localStorage.setItem('quizzes', JSON.stringify(quizzes))
-      quizzesVersion.value++
-    } catch (error) {
-      console.error('Error saving quizzes to localStorage:', error)
-      throw new Error('Failed to save quizzes')
-    }
+
   }
 
   function getStudentQuizQuestions(quizId: number): QuizQuestion[] {
-    const stored = getAllQuizzes().find(q => q.id === quizId)
-    if (stored && stored.questions) {
-      return JSON.parse(JSON.stringify(stored.questions))
+    try {
+      const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
+      const seedQuiz = allSeedQuizzes.find(q => q.id === quizId)
+
+      if (seedQuiz && seedQuiz.questions) {
+        return JSON.parse(JSON.stringify(seedQuiz.questions))
+      }
+
+      console.warn('Quiz not found in teacherQuizzesByUser for ID:', quizId)
+      return []
+    } catch (error) {
+      console.error('Error in getStudentQuizQuestions:', error)
+      return []
     }
-
-    const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
-    const seedQuiz = allSeedQuizzes.find(q => q.id === quizId)
-
-    if (seedQuiz && seedQuiz.questions) {
-      return JSON.parse(JSON.stringify(seedQuiz.questions))
-    }
-
-    return []
   }
 
   function startAttempt(quizId: number, quizTitle: string, questionsLength: number, durationSeconds: number = 0) {
@@ -945,7 +724,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentAttempt.durationSeconds = durationSeconds
     currentAttempt.isOngoing = true
     currentAttempt.isHistoricalReview = false
-    saveAttemptToStorage()
+    // No longer saving to localStorage - data is managed via backend API
   }
 
   function markAnswered(index: number) {
@@ -962,7 +741,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     if (index >= 0 && index < currentAttempt.questionsLength) {
       currentAttempt.answers[index] = optionIndex
       markAnswered(index)
-      saveAttemptToStorage()
+      // No longer saving to localStorage - data is saved via backend API in QuizView
     }
   }
 
@@ -972,7 +751,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (text.trim()) {
         markAnswered(index)
       }
-      saveAttemptToStorage()
+      // No longer saving to localStorage - data is saved via backend API in QuizView
     }
   }
 
@@ -982,7 +761,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (items.some(item => item.trim())) {
         markAnswered(index)
       }
-      saveAttemptToStorage()
     }
   }
 
@@ -992,7 +770,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (Object.keys(pairs).length > 0) {
         markAnswered(index)
       }
-      saveAttemptToStorage()
     }
   }
 
@@ -1002,14 +779,15 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (blanks.some(blank => blank.trim())) {
         markAnswered(index)
       }
-      saveAttemptToStorage()
     }
   }
 
   function getReviewQuestions(): ReviewQuestion[] {
+    const scoreItems = getScoreItems()
     return Array.from({ length: currentAttempt.questionsLength }, (_, i) => ({
       id: i + 1,
-      answered: isAnswered(i)
+      answered: isAnswered(i),
+      isCorrect: scoreItems[i]?.isCorrect ?? false
     }))
   }
 
@@ -1029,6 +807,11 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
 
     const quizQuestions = getStudentQuizQuestions(currentAttempt.quizId)
+    
+    if (!quizQuestions || quizQuestions.length === 0) {
+      console.warn('No quiz questions found for quiz ID:', currentAttempt.quizId)
+      return []
+    }
 
     return quizQuestions.map((q, i) => {
       const rawUserAnswer = (i in currentAttempt.answers) ? currentAttempt.answers[i] : null
@@ -1200,53 +983,23 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function saveAttemptToStorage() {
-    try {
-      const attemptData = {
-        quizId: currentAttempt.quizId,
-        quizTitle: currentAttempt.quizTitle,
-        questionsLength: currentAttempt.questionsLength,
-        answeredSet: Array.from(currentAttempt.answeredSet),
-        answers: currentAttempt.answers,
-        startAtISO: currentAttempt.startAtISO,
-        endAtISO: currentAttempt.endAtISO,
-        durationSeconds: currentAttempt.durationSeconds,
-        isOngoing: currentAttempt.isOngoing
-      }
-      localStorage.setItem('currentQuizAttempt', JSON.stringify(attemptData))
-    } catch (e) {
-      console.error('Failed to save attempt to localStorage:', e)
-    }
   }
 
   function loadAttemptFromStorage(): boolean {
-    try {
-      const stored = localStorage.getItem('currentQuizAttempt')
-      if (!stored) return false
-      const data = JSON.parse(stored)
-      if (!data.isOngoing) return false
-
-      currentAttempt.quizId = data.quizId
-      currentAttempt.quizTitle = data.quizTitle
-      currentAttempt.questionsLength = data.questionsLength
-      currentAttempt.answeredSet = new Set(data.answeredSet || [])
-      currentAttempt.answers = data.answers || {}
-      currentAttempt.startAtISO = data.startAtISO
-      currentAttempt.endAtISO = data.endAtISO
-      currentAttempt.durationSeconds = data.durationSeconds || 0
-      currentAttempt.isOngoing = data.isOngoing
-      return true
-    } catch (e) {
-      console.error('Failed to load attempt from localStorage:', e)
-      return false
-    }
+    return false
   }
 
   function clearAttemptStorage() {
-    try {
-      localStorage.removeItem('currentQuizAttempt')
-    } catch (e) {
-      console.error('Failed to clear attempt storage:', e)
-    }
+    currentAttempt.quizId = null
+    currentAttempt.quizTitle = ''
+    currentAttempt.questionsLength = 0
+    currentAttempt.answeredSet = new Set<number>()
+    currentAttempt.answers = {}
+    currentAttempt.startAtISO = null
+    currentAttempt.endAtISO = null
+    currentAttempt.durationSeconds = 0
+    currentAttempt.isOngoing = false
+    currentAttempt.isHistoricalReview = false
   }
 
   function getRemainingSeconds(): number {
@@ -1444,26 +1197,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function saveAttemptHistoryToStorage() {
-    try {
-      localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
-    } catch (e) {
-      console.error('Failed to save attempt history to localStorage:', e)
-    }
+    localStorage.setItem('quizAttemptHistory', JSON.stringify(quizAttemptHistory.value))
   }
 
   function loadAttemptHistoryFromStorage() {
     if (attemptHistoryLoaded) return
-    try {
-      const stored = localStorage.getItem('quizAttemptHistory')
-      if (stored) {
+    const stored = localStorage.getItem('quizAttemptHistory')
+    if (stored) {
+      try {
         quizAttemptHistory.value = JSON.parse(stored)
-      }
-      attemptHistoryLoaded = true
-    } catch (e) {
-      console.error('Failed to load attempt history from localStorage:', e)
-      quizAttemptHistory.value = []
-      attemptHistoryLoaded = true
+      } catch (e) { }
     }
+    attemptHistoryLoaded = true
   }
 
   function loadAttemptForReview(quizId: number, attemptNumber: number) {
@@ -1496,32 +1241,77 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return true
   }
 
-  async function fetchQuizzesForCourse(courseId: number, userId: number, isStudent: boolean = false): Promise<TeacherQuizItem[]> {
+  function mapApiQuestionToFrontend(q: any): any {
+    let type = (q.type || '').toLowerCase()
+    if (type === 'multiple') type = 'multiple-choice'
+    else if (type === 'single') type = 'true-false'
+    else if (type === 'text' || type === 'essay') type = 'text'
+    else if (type === 'matching') type = 'matching'
+    else if (type === 'enumeration') type = 'enumeration'
+    else if (type === 'fillblank' || type === 'fill-blank' || type === 'fill_blank') type = 'fill-blank'
+
+    const options = Array.isArray(q.choices)
+      ? q.choices.map((c: any) => ({
+        text: c.body || c.text || '',
+        isCorrect: !!c.isCorrect,
+        imageUrl: c.imageUrl || ''
+      }))
+      : Array.isArray(q.options)
+        ? q.options
+        : []
+
+    return {
+      id: q.questionId || q.id || Date.now(),
+      type,
+      text: q.body || q.text || '',
+      points: q.points || 1,
+      mediaType: q.mediaType || 'none',
+      mediaUrl: q.mediaUrl || '',
+      required: q.required !== false,
+      options,
+      correctAnswer: q.correctAnswer || '',
+      pairs: Array.isArray(q.pairs) ? q.pairs : [],
+      items: Array.isArray(q.items) ? q.items : []
+    }
+  }
+
+  async function fetchQuizDetail(quizId: number, userId: number): Promise<any | null> {
+    try {
+      const response = await api.get(`/Quiz/${quizId}`, { params: { userId } })
+      return response.data || null
+    } catch {
+      return null
+    }
+  }
+
+  async function fetchQuizzesForCourse(courseId: number, userId: number, isStudent: boolean = false, courseName: string = ''): Promise<TeacherQuizItem[]> {
     try {
       const response = await api.get(`/Quiz/course/${courseId}`, {
-        params: {
-          userId,
-          isStudent
-        }
+        params: { userId, isStudent }
       })
 
       if (response.data && Array.isArray(response.data)) {
-        return response.data.map((quiz: any) => ({
-          id: quiz.quizId || quiz.id,
-          subject: quiz.courseName || '',
-          title: quiz.title || 'Untitled Quiz',
-          description: quiz.description || '',
-          dueDate: quiz.dueAt || '',
-          class: '',
-          submitted: 0,
-          total: 0,
-          color: 'blue',
-          status: quiz.isPublished ? 'published' : 'draft',
-          timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
-          questions: quiz.questions || [],
-          createdAt: quiz.createdAt || new Date().toISOString(),
-          updatedAt: quiz.updatedAt || new Date().toISOString(),
-        }))
+        return response.data.map((quiz: any) => {
+          const rawQuestions = Array.isArray(quiz.questions) ? quiz.questions : []
+          const mappedQuestions = rawQuestions.map(mapApiQuestionToFrontend)
+
+          return {
+            id: quiz.quizId || quiz.id,
+            subject: courseName || quiz.courseName || (quiz.course && quiz.course.name) || quiz.subject || '',
+            title: quiz.title || 'Untitled Quiz',
+            description: quiz.description || '',
+            dueDate: quiz.dueAt || quiz.dueDate || '',
+            class: quiz.sectionName || quiz.class || (quiz.section && quiz.section.name) || '',
+            submitted: quiz.submittedCount || quiz.submitted || 0,
+            total: quiz.totalStudents || quiz.total || 0,
+            color: quiz.color || 'blue',
+            status: quiz.isPublished ? 'published' : 'draft',
+            timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : (quiz.timeLimit || '30 min'),
+            questions: mappedQuestions,
+            createdAt: quiz.createdAt || new Date().toISOString(),
+            updatedAt: quiz.updatedAt || new Date().toISOString(),
+          } as TeacherQuizItem
+        })
       }
 
       return []
@@ -1531,7 +1321,140 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     }
   }
 
+  function setQuizQuestionsForScore(quizId: number, quizTitle: string, questions: QuizQuestion[], username: string) {
+    const tempQuiz = {
+      id: quizId,
+      title: quizTitle,
+      subject: '',
+      description: '',
+      dueDate: '',
+      class: '',
+      submitted: 0,
+      total: 0,
+      color: 'blue',
+      status: 'published' as const,
+      questions: JSON.parse(JSON.stringify(questions)),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ownerUsername: username
+    }
+    
+    if (!teacherQuizzesByUser.value[username]) {
+      teacherQuizzesByUser.value[username] = []
+    }
+    
+    const existingIndex = teacherQuizzesByUser.value[username].findIndex(q => q.id === quizId)
+    if (existingIndex >= 0) {
+      teacherQuizzesByUser.value[username][existingIndex] = tempQuiz
+    } else {
+      teacherQuizzesByUser.value[username].push(tempQuiz)
+    }
+    
+    console.log('Set quiz questions for score view:', quizId, 'questions count:', questions.length)
+  }
+
+  async function fetchTeacherQuizzes() {
+    const authLocal = useAuthStore()
+    const user = authLocal.currentUser
+    if (!user || user.role !== 'teacher' || !user.id) return
+
+    const hasExisting = myTeacherQuizzes.value.length > 0
+    if (hasExisting) {
+      return
+    }
+
+    isLoading.value = true
+
+    try {
+      const coursesStoreLocal = useCoursesStore()
+      if (coursesStoreLocal.rawTeacherCourses.length === 0) {
+        await coursesStoreLocal.fetchTeacherCourses()
+      }
+      const courses = coursesStoreLocal.rawTeacherCourses
+
+      const quizzesByCourseResults = await Promise.all(
+        courses.map(course => fetchQuizzesForCourse(course.courseId, user.id as number, false, course.name))
+      )
+
+      const allBriefQuizzes: TeacherQuizItem[] = []
+      quizzesByCourseResults.forEach((qs, idx) => {
+        const course = courses[idx]
+        qs.forEach(q => {
+          if (!q.subject) q.subject = course.name || ''
+          q.ownerUsername = user.username
+
+          const sectionNames = [q.class, course.section].filter(Boolean) as string[]
+
+          const existing = allBriefQuizzes.find(e => {
+            if (e.id === q.id) return true
+            if (e.title && q.title && e.title.trim() === q.title.trim() && e.subject === q.subject) {
+              const timeDiff = Math.abs(new Date(e.createdAt || 0).getTime() - new Date(q.createdAt || 0).getTime())
+              if (timeDiff < 10000) return true
+            }
+            return false
+          })
+
+          if (!existing) {
+            (q as any).assignedSections = [...new Set(sectionNames)];
+            (q as any).quizIdsGroup = [q.id];
+            if (!q.class && sectionNames.length > 0) q.class = sectionNames[0]
+            allBriefQuizzes.push(q)
+          } else {
+            const existingSections = ((existing as any).assignedSections || []) as string[]
+            sectionNames.forEach(sec => {
+              if (!existingSections.includes(sec)) {
+                existingSections.push(sec)
+              }
+            })
+              ; (existing as any).assignedSections = existingSections
+
+            if (!(existing as any).quizIdsGroup) (existing as any).quizIdsGroup = [existing.id];
+            if (!(existing as any).quizIdsGroup.includes(q.id)) {
+              (existing as any).quizIdsGroup.push(q.id)
+            }
+
+            if (existing.class && sectionNames.length > 0 && !existing.class.includes(sectionNames[0])) {
+              existing.class = `${existing.class}, ${sectionNames[0]}`
+            } else if (!existing.class && sectionNames.length > 0) {
+              existing.class = sectionNames[0]
+            }
+          }
+        })
+      })
+
+      const detailedQuizzes = await Promise.all(
+        allBriefQuizzes.map(async (q) => {
+          try {
+            const detail = await fetchQuizDetail(q.id, user.id as number)
+            if (detail) {
+              const rawQs = Array.isArray(detail.questions) ? detail.questions : []
+              return {
+                ...q,
+                questions: rawQs.map(mapApiQuestionToFrontend),
+                description: detail.description || q.description || '',
+                subject: detail.courseName || (detail.course && detail.course.name) || q.subject,
+                class: detail.sectionName || (detail.section && detail.section.name) ? (detail.sectionName || (detail.section && detail.section.name)) : q.class,
+                dueDate: q.dueDate || detail.dueAt,
+                assignedSections: (q as any).assignedSections,
+                quizIdsGroup: (q as any).quizIdsGroup
+              } as TeacherQuizItem
+            }
+          } catch (e) {
+            console.error(`Failed to fetch quiz details for quiz ${q.id}`, e)
+          }
+          return q
+        })
+      )
+
+      teacherQuizzesByUser.value[user.username] = detailedQuizzes
+      loadArchivedSeedQuizzesFromStorage()
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
+    isLoading,
     myTeacherQuizzes,
     myTeacherSubjects,
     myStudentQuizzes,
@@ -1547,6 +1470,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     shuffleOptions,
     updateQuestionProperty,
     updateCurrentQuestionType,
+    resetCurrentQuiz,
+    isSaving,
+    isPublishing,
     saveQuiz,
     deleteQuiz,
     archiveQuiz,
@@ -1555,7 +1481,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     unarchiveQuizzesForCourse,
     saveQuizAssignment,
     loadQuizForEditing,
-    resetCurrentQuiz,
     getAllQuizzes,
     loadQuizzesFromStorage,
     saveQuizzesToStorage,
@@ -1587,6 +1512,12 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     isQuizMarkedDone,
     toggleQuizDone,
     loadQuizDoneFromStorage,
-    fetchQuizzesForCourse
+    fetchQuizzesForCourse,
+    fetchTeacherQuizzes,
+    loadQuizForEditingAsync,
+    fetchQuizDetail,
+    fetchStudentQuizzesAsync,
+    mapApiQuestionToFrontend,
+    setQuizQuestionsForScore
   }
 })

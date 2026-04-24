@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineAsyncComponent } from 'vue'
 import { useStudentsStore } from '@/stores/studentsStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useCoursesStore } from '@/stores/coursesStore'
+import { useAuthStore } from '@/stores/authStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 import ImportResultsModal from '@/components/modals/ImportResultsModal.vue'
 
 // CONSTANTS
+const route = useRoute()
 const router = useRouter()
+const studentsStore = useStudentsStore()
+const sectionsStore = useSectionsStore()
+const classesStore = useCoursesStore()
 
 // REFS
 const selectedStudents = ref<StudentViewModel[]>([])
@@ -23,13 +29,15 @@ const importAdded = ref<StudentViewModel[]>([])
 const importSkipped = ref<{ studentNumber: string; name: string; reason: string }[]>([])
 const additionalSubjects = ref<string[]>([])
 const isSubjectDropdownOpen = ref(false)
+const showSectionDropdown = ref(false)
+const isSaving = ref(false)
 
 // COMPUTED
-const classId = computed(() => String(route.params.id || '1'))
+const courseCode = computed(() => String(route.params.code || ''))
 const teacherCourses = computed(() => classesStore.myClasses)
 const currentCourse = computed(() => {
-  const cid = Number(classId.value)
-  return teacherCourses.value.find(c => c.id === cid) || teacherCourses.value[0]
+  const code = courseCode.value
+  return teacherCourses.value.find(c => c.code === code) || teacherCourses.value[0]
 })
 
 const selectedSubjects = computed<string[]>(() => {
@@ -56,7 +64,8 @@ const students = computed<StudentViewModel[]>(() => {
 
 const filteredStudents = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return students.value.filter(s => {
+  
+  const baseList = students.value.filter(s => {
     const matchQuery = !q || 
       s.name.toLowerCase().includes(q) || 
       s.email.toLowerCase().includes(q) || 
@@ -64,14 +73,25 @@ const filteredStudents = computed(() => {
     const matchFilter = filters.value === 'All' || s.year === filters.value
     return matchQuery && matchFilter
   })
+
+  return baseList.sort((a, b) => {
+    const aSelected = isSelected(a.username)
+    const bSelected = isSelected(b.username)
+    
+    if (aSelected && !bSelected) return -1
+    if (!aSelected && bSelected) return 1
+    
+    return a.name.localeCompare(b.name)
+  })
+})
+
+const filteredSections = computed(() => {
+  if (!form.className) return sectionsStore.allSections
+  const lower = form.className.toLowerCase()
+  return sectionsStore.allSections.filter(s => s.name.toLowerCase().includes(lower))
 })
 
 // REACTIVE
-const route = useRoute()
-const studentsStore = useStudentsStore()
-const sectionsStore = useSectionsStore()
-const classesStore = useCoursesStore()
-
 const editingSectionId = computed(() => {
   const raw = route.query.sectionId
   if (typeof raw === 'string') {
@@ -83,9 +103,6 @@ const editingSectionId = computed(() => {
 const form = reactive({
   className: '',
   subject: currentCourse.value?.name || 'Information Assurance',
-  scheduleDay: 'Monday',
-  scheduleTime: '',
-  classroom: '',
 })
 
 // WATCHERS
@@ -95,35 +112,35 @@ watch(currentCourse, (newCourse) => {
   }
 }, { immediate: true })
 
-if (editingSectionId.value) {
-  const section = sectionsStore.allSections.find(s => s.id === editingSectionId.value)
-  if (section) {
-    form.className = section.name
-    const cid = Number(classId.value)
-    const schedule = sectionsStore.getSchedule(cid, section.id)
-    form.scheduleDay = schedule?.scheduleDay || form.scheduleDay
-    form.scheduleTime = schedule?.scheduleTime || form.scheduleTime
-    form.classroom = schedule?.classroom || form.classroom
+watch([editingSectionId, students], ([sectionId, studentList]) => {
+  if (sectionId && studentList.length > 0) {
+    const section = sectionsStore.allSections.find(s => s.id === sectionId)
+    if (section) {
+      form.className = section.name
+      
+      const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+        studentList.map(s => [s.username, s])
+      )
+      
+      selectedStudents.value = (section.studentUsernames || [])
+        .map(u => byUsername[u])
+        .filter((s): s is StudentViewModel => !!s)
 
-    const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
-      students.value.map(s => [s.username, s])
-    )
-    selectedStudents.value = (section.studentUsernames || [])
-      .map(u => byUsername[u])
-      .filter((s): s is StudentViewModel => !!s)
+      const mappedCourseIds = sectionsStore.courseSectionMappings
+        .filter(m => m.sectionId === section.id)
+        .map(m => m.courseId)
 
-    const mappedCourseIds = sectionsStore.courseSectionMappings
-      .filter(m => m.sectionId === section.id)
-      .map(m => m.courseId)
+      const currentCodeIds = classesStore.rawTeacherCourses
+        .filter(rc => rc.code === courseCode.value)
+        .map(rc => rc.courseId)
+      const extraCourseIds = mappedCourseIds.filter(id => !currentCodeIds.includes(id))
 
-    const primaryCourseId = Number(classId.value)
-    const extraCourseIds = mappedCourseIds.filter(id => id !== primaryCourseId)
-
-    additionalSubjects.value = teacherCourses.value
-      .filter(c => extraCourseIds.includes(c.id))
-      .map(c => c.name)
+      additionalSubjects.value = teacherCourses.value
+        .filter(c => extraCourseIds.includes(c.id))
+        .map(c => c.name)
+    }
   }
-}
+}, { immediate: true })
 
 // METHODS
 function toggleStudent(s: StudentViewModel) {
@@ -352,7 +369,25 @@ function downloadTemplate() {
   success('Template downloaded')
 }
 
-function saveClass() {
+function hideSectionDropdown() {
+  setTimeout(() => { showSectionDropdown.value = false }, 200)
+}
+
+function selectSection(sec: any) {
+  form.className = sec.name
+  showSectionDropdown.value = false
+  
+  const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
+    students.value.map(s => [s.username, s])
+  )
+
+  selectedStudents.value = (sec.studentUsernames || [])
+    .map((u: string) => byUsername[u])
+    .filter((s: StudentViewModel | undefined): s is StudentViewModel => !!s)
+}
+
+async function saveClass() {
+  if (isSaving.value) return
   if (!form.className) {
     error('Please enter a class name')
     return
@@ -365,63 +400,190 @@ function saveClass() {
     error('Please add at least one student before saving the class')
     return
   }
-  
-  const studentUsernames = selectedStudents.value.map(s => s.username)
-  
-  const selectedCourse = teacherCourses.value.find(c => c.name === form.subject)
-  const courseId = selectedCourse ? selectedCourse.id : Number(classId.value)
 
-  const extraCourseIds = teacherCourses.value
-    .filter(c => additionalSubjects.value.includes(c.name) && c.id !== courseId)
-    .map(c => c.id)
-  const targetCourseIds = [courseId, ...extraCourseIds].filter((id, idx, arr) => arr.indexOf(id) === idx)
+  isSaving.value = true
 
-  if (editingSectionId.value) {
-    sectionsStore.updateSection(editingSectionId.value, {
-      name: form.className,
-      students: studentUsernames.length,
-      studentUsernames,
-    })
+  try {
+    const studentUsernames = selectedStudents.value.map(s => s.username)
 
-    const existingMappings = sectionsStore.courseSectionMappings.filter(m => m.sectionId === editingSectionId.value)
-    existingMappings.forEach(m => {
-      if (!targetCourseIds.includes(m.courseId)) {
-        sectionsStore.removeSectionFromCourse(editingSectionId.value!, m.courseId)
+    const rawCourses = classesStore.rawTeacherCourses
+    const authStore = useAuthStore()
+    const currentUserId = authStore.currentUser?.id || 1
+
+    const resolveRawCourseId = async (subjectName: string, sectionName: string): Promise<number | null> => {
+      const exact = rawCourses.find(
+        rc => rc.name === subjectName && rc.section?.trim() === sectionName.trim()
+      )
+      if (exact) return exact.courseId
+
+      const fallback = rawCourses.find(rc => rc.name === subjectName)
+      if (!fallback) return null
+      
+      try {
+        const createPayload = {
+          name: fallback.name,
+          code: fallback.code,
+          category: fallback.category || fallback.description || 'Unknown',
+          section: sectionName,
+          instructorId: currentUserId,
+          status: fallback.status || 'Active',
+          createdBy: currentUserId
+        }
+        const res = await api.post('/Course', createPayload)
+        if (res.data && res.data.courseId) {
+          rawCourses.push({ ...fallback, ...createPayload, courseId: res.data.courseId } as any)
+          return res.data.courseId
+        }
+      } catch (e) {
+        console.error('Failed to create sub-course section record', e)
       }
-    })
 
-    targetCourseIds.forEach(cid => {
-      sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
-      sectionsStore.setSchedule(cid, editingSectionId.value!, {
-        scheduleDay: form.scheduleDay,
-        scheduleTime: form.scheduleTime || '00:00',
-        classroom: form.classroom,
-      })
-    })
+      return fallback.courseId
+    }
 
-    success('Class updated successfully!')
-  } else {
-    const newSectionId = sectionsStore.addSection({
-      name: form.className,
-      students: studentUsernames.length,
-      studentUsernames: studentUsernames
-    }, courseId)
-
-    targetCourseIds.forEach(cid => {
-      if (cid !== courseId) {
-        sectionsStore.addSectionToCourse(newSectionId, cid)
+    const targetCourseIds: number[] = []
+    for (const subjectName of selectedSubjects.value) {
+      const cid = await resolveRawCourseId(subjectName, form.className)
+      if (cid !== null && !targetCourseIds.includes(cid)) {
+        targetCourseIds.push(cid)
       }
-      sectionsStore.setSchedule(cid, newSectionId, {
-        scheduleDay: form.scheduleDay,
-        scheduleTime: form.scheduleTime || '00:00',
-        classroom: form.classroom,
+    }
+
+    if (targetCourseIds.length === 0) {
+      const fallbackEntry = rawCourses.find(rc => rc.code === courseCode.value)
+      if (fallbackEntry) {
+        const cid = await resolveRawCourseId(fallbackEntry.name, form.className)
+        if (cid !== null) targetCourseIds.push(cid)
+      }
+    }
+
+    const primaryCourseId = targetCourseIds[0] || 0
+
+    if (editingSectionId.value) {
+      sectionsStore.updateSection(editingSectionId.value, {
+        name: form.className,
+        students: studentUsernames.length,
+        studentUsernames,
       })
+
+      const existingMappings = sectionsStore.courseSectionMappings.filter(
+        m => m.sectionId === editingSectionId.value
+      )
+      existingMappings.forEach(m => {
+        if (!targetCourseIds.includes(m.courseId)) {
+          sectionsStore.removeSectionFromCourse(editingSectionId.value!, m.courseId)
+        }
+      })
+      targetCourseIds.forEach(cid => {
+        sectionsStore.addSectionToCourse(editingSectionId.value!, cid)
+      })
+    } else {
+      let targetSectionId: number
+      const existingSection = sectionsStore.allSections.find(
+        (s) => s.name.trim().toLowerCase() === form.className.trim().toLowerCase()
+      )
+
+      if (existingSection) {
+        targetSectionId = existingSection.id
+        sectionsStore.updateSection(targetSectionId, {
+          students: studentUsernames.length,
+          studentUsernames,
+        })
+        sectionsStore.addSectionToCourse(targetSectionId, primaryCourseId)
+      } else {
+        targetSectionId = sectionsStore.addSection({
+          name: form.className,
+          students: studentUsernames.length,
+          studentUsernames,
+        }, primaryCourseId)
+      }
+
+      targetCourseIds.forEach(cid => {
+        if (cid !== primaryCourseId) {
+          sectionsStore.addSectionToCourse(targetSectionId, cid)
+        }
+      })
+    }
+
+    let allUsers: any[] = []
+    try {
+      const userRes = await api.get('/User')
+      allUsers = userRes.data || []
+    } catch (fetchErr) {
+      console.error('Failed to fetch users for enrollment mapping:', fetchErr)
+    }
+
+    const studentIdToUserId = new Map<string, number>()
+    const emailToUserId = new Map<string, number>()
+
+    allUsers.forEach((u: any) => {
+      if (!u.userId) return
+      const studentNum: string = (u.student?.studentId || '').trim()
+      if (studentNum) studentIdToUserId.set(studentNum, u.userId)
+      if (u.email) emailToUserId.set(u.email.trim().toLowerCase(), u.userId)
     })
 
-    success('Class saved successfully!')
+    // authStore and currentUserId already declared at the top of the block
+
+    let enrolledCount = 0
+    let alreadyEnrolledCount = 0
+    let failedCount = 0
+
+    const enrollPromises = []
+
+    for (const cid of targetCourseIds) {
+      for (const s of selectedStudents.value) {
+        const userId = studentIdToUserId.get(s.username)
+          ?? emailToUserId.get(s.email.trim().toLowerCase())
+
+        if (!userId) {
+          console.warn('No userId found for student:', s.username, s.email)
+          failedCount++
+          continue
+        }
+
+        const payload = {
+          studentId: userId,
+          courseId: cid,
+          section: form.className,
+          studentSection: form.className,
+          enrolledBy: currentUserId,
+        }
+
+        enrollPromises.push(
+          api.post('/Enrollment', payload)
+            .then(() => { enrolledCount++ })
+            .catch((e: any) => {
+              const status = e?.response?.status
+              if (status === 400 || status === 409) {
+                alreadyEnrolledCount++
+              } else {
+                console.error('Enrollment failed for', s.username, 'in course', cid, e)
+                failedCount++
+              }
+            })
+        )
+      }
+    }
+
+    await Promise.all(enrollPromises)
+
+    if (failedCount === 0) {
+      const msg = editingSectionId.value
+        ? `Class updated! ${enrolledCount} student(s) enrolled${ alreadyEnrolledCount ? `, ${alreadyEnrolledCount} already enrolled` : '' }.`
+        : `Class saved! ${enrolledCount} student(s) enrolled${ alreadyEnrolledCount ? `, ${alreadyEnrolledCount} already enrolled` : '' }.`
+      success(msg)
+    } else {
+      error(`Class saved, but ${failedCount} enrollment(s) failed. Check console for details.`)
+    }
+
+    router.back()
+  } catch (err) {
+    console.error('Unexpected error in saveClass:', err)
+    error('An unexpected error occurred while saving the class.')
+  } finally {
+    isSaving.value = false
   }
-
-  router.back()
 }
 
 function goBack() {
@@ -438,6 +600,13 @@ function yearPillClass(year: YearLevel) {
   }
   return map[year]
 }
+
+onMounted(async () => {
+  await Promise.all([
+    studentsStore.fetchAllStudentsFromApi(),
+    sectionsStore.fetchSectionsFromApi()
+  ])
+})
 </script>
 
 <template>
@@ -455,9 +624,16 @@ function yearPillClass(year: YearLevel) {
               <button class="text-sm text-gray-500 hover:text-gray-700" @click="goBack">Back</button>
             </div>
             <div class="space-y-4">
-              <div>
+              <div class="relative">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
-                <input v-model="form.className" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. CS31A" />
+                <div class="relative">
+                  <input v-model="form.className" @focus="showSectionDropdown = true" @input="showSectionDropdown = true" @blur="hideSectionDropdown" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. CS31A" />
+                  <div v-if="showSectionDropdown && filteredSections.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-auto">
+                    <div v-for="sec in filteredSections" :key="sec.name" @mousedown.prevent="selectSection(sec)" class="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm">
+                      {{ sec.name }} ({{ sec.studentUsernames?.length || 0 }} students)
+                    </div>
+                  </div>
+                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Subjects</label>
@@ -533,26 +709,13 @@ function yearPillClass(year: YearLevel) {
                   </div>
                 </div>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Schedule</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <select v-model="form.scheduleDay" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option>Monday</option>
-                    <option>Tuesday</option>
-                    <option>Wednesday</option>
-                    <option>Thursday</option>
-                    <option>Friday</option>
-                  </select>
-                  <input v-model="form.scheduleTime" type="time" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Classroom</label>
-                <input v-model="form.classroom" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Room 205" />
-              </div>
-              <button @click="saveClass" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
-                <span>Save Class</span>
+              <button @click="saveClass" :disabled="isSaving" class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                <svg v-if="isSaving" class="animate-spin w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                <span>{{ isSaving ? 'Saving...' : 'Save Class' }}</span>
               </button>
             </div>
           </div>

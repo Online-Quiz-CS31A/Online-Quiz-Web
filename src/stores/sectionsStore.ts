@@ -5,56 +5,11 @@ import { useAuthStore } from './authStore'
 import api from '../services/api'
 
 export const useSectionsStore = defineStore('sections', () => {
-  const allSections = ref<ClassSection[]>([
-    {
-      id: 1,
-      name: 'CS31A',
-      students: 3,
-      studentUsernames: ['0212345678', '0221111111', '0222222222']  // Chitoge, Mika, Ken
-    },
-    {
-      id: 2,
-      name: 'IT11B',
-      students: 3,
-      studentUsernames: ['0223333333', '0224444444', '0225555555']  // Sofia, Liam, Emma
-    },
-    {
-      id: 3,
-      name: 'CS22A',
-      students: 3,
-      studentUsernames: ['0226666666', '0227777777', '0228888888']  // Noah, Olivia, James
-    },
-    {
-      id: 4,
-      name: 'IT22A',
-      students: 3,
-      studentUsernames: ['0229999999', '0231111111', '0232222222']  // Ava, Lucas, Isabella
-    },
-    {
-      id: 5,
-      name: 'CS33A',
-      students: 3,
-      studentUsernames: ['0233333333', '0234444444', '0235555555']  // Mason, Sophia, Ethan
-    },
-  ])
+  const allSections = ref<ClassSection[]>([])
 
-  const courseSectionMappings = ref<CourseSectionMapping[]>([
-    { courseId: 1, sectionId: 1 },
-    { courseId: 2, sectionId: 2 },
-    { courseId: 3, sectionId: 3 },
-    { courseId: 5, sectionId: 4 },
-    { courseId: 6, sectionId: 1 },
-    { courseId: 6, sectionId: 5 },
-  ])
+  const courseSectionMappings = ref<CourseSectionMapping[]>([])
 
-  const courseSectionSchedules = ref<CourseSectionSchedule[]>([
-    { courseId: 1, sectionId: 1, scheduleDay: 'Monday', scheduleTime: '15:00', classroom: 'Room 101' },
-    { courseId: 2, sectionId: 2, scheduleDay: 'Tuesday', scheduleTime: '10:00', classroom: 'Room 202' },
-    { courseId: 3, sectionId: 3, scheduleDay: 'Wednesday', scheduleTime: '13:00', classroom: 'Room 303' },
-    { courseId: 5, sectionId: 4, scheduleDay: 'Thursday', scheduleTime: '15:00', classroom: 'Room 404' },
-    { courseId: 6, sectionId: 1, scheduleDay: 'Tuesday', scheduleTime: '13:00', classroom: 'Room 105' },
-    { courseId: 6, sectionId: 5, scheduleDay: 'Friday', scheduleTime: '09:00', classroom: 'Room 505' },
-  ])
+  const courseSectionSchedules = ref<CourseSectionSchedule[]>([])
 
   const auth = useAuthStore()
   const isLoading = ref(false)
@@ -64,84 +19,45 @@ export const useSectionsStore = defineStore('sections', () => {
 
   function setSectionsFromApi(data: TeacherCourseDto[]) {
     try {
-      const grouped = new Map<string, TeacherCourseDto[]>()
-      data.forEach(c => {
-        if (!c.code) return
-        if (!grouped.has(c.code)) grouped.set(c.code, [])
-        grouped.get(c.code)!.push(c)
-      })
-
-      const newSections: ClassSection[] = []
+      const sectionMap = new Map<string, ClassSection>()
       const newMappings: CourseSectionMapping[] = []
 
-      for (const [code, items] of grouped) {
-        const parentId = items[0].courseId
+      data.forEach(item => {
+        if (!item.courseId) return
+        const sectionName = item.section?.trim()
+        if (!sectionName) return
 
-        for (const item of items) {
-          newSections.push({
+        if (!sectionMap.has(sectionName)) {
+          sectionMap.set(sectionName, {
             id: item.courseId,
-            name: item.section || item.name,
+            name: sectionName,
             students: item.students || 0,
             studentUsernames: []
           })
+        }
 
+        const sectionEntry = sectionMap.get(sectionName)!
+        const alreadyMapped = newMappings.some(
+          m => m.courseId === item.courseId && m.sectionId === sectionEntry.id
+        )
+        if (!alreadyMapped) {
           newMappings.push({
-            courseId: parentId,
-            sectionId: item.courseId
+            courseId: item.courseId,
+            sectionId: sectionEntry.id
           })
         }
-      }
+      })
 
-      allSections.value = newSections
+      allSections.value = Array.from(sectionMap.values())
       courseSectionMappings.value = newMappings
 
-      saveCourseSectionMappingsToStorage()
+
     } catch (e: any) {
       console.error('Failed to set sections from API data:', e)
     }
   }
 
-  function loadCourseSectionDataFromStorage() {
-    try {
-      const mappingsRaw = localStorage.getItem('courseSectionMappings')
-      if (mappingsRaw) {
-        const parsed = JSON.parse(mappingsRaw) as CourseSectionMapping[]
-        if (Array.isArray(parsed) && parsed.length) {
-          courseSectionMappings.value = parsed
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load course-section mappings from localStorage:', e)
-    }
 
-    try {
-      const schedulesRaw = localStorage.getItem('courseSectionSchedules')
-      if (schedulesRaw) {
-        const parsed = JSON.parse(schedulesRaw) as CourseSectionSchedule[]
-        if (Array.isArray(parsed) && parsed.length) {
-          courseSectionSchedules.value = parsed
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load course-section schedules from localStorage:', e)
-    }
-  }
-
-  function saveCourseSectionMappingsToStorage() {
-    try {
-      localStorage.setItem('courseSectionMappings', JSON.stringify(courseSectionMappings.value))
-    } catch (e) {
-      console.error('Failed to save course-section mappings to localStorage:', e)
-    }
-  }
-
-  function saveCourseSectionSchedulesToStorage() {
-    try {
-      localStorage.setItem('courseSectionSchedules', JSON.stringify(courseSectionSchedules.value))
-    } catch (e) {
-      console.error('Failed to save course-section schedules to localStorage:', e)
-    }
-  }
 
   function loadArchivedSectionsFromStorage() {
     try {
@@ -166,8 +82,64 @@ export const useSectionsStore = defineStore('sections', () => {
     }
   }
 
-  loadCourseSectionDataFromStorage()
-  loadArchivedSectionsFromStorage()
+  function saveCourseSectionMappingsToStorage() {}
+  function saveCourseSectionSchedulesToStorage() {}
+
+  async function fetchSectionsFromApi() {
+    isLoading.value = true
+    error.value = null
+    try {
+      localStorage.removeItem('courseSectionMappings')
+      localStorage.removeItem('courseSectionSchedules')
+      localStorage.removeItem('archivedSections')
+
+      allSections.value = []
+      courseSectionMappings.value = []
+      courseSectionSchedules.value = []
+
+      const response = await api.get('/User')
+      const allUsers = response.data || []
+
+      const sectionMap = new Map<string, ClassSection>()
+      const mappings: CourseSectionMapping[] = []
+
+      const studentUsers = allUsers.filter((u: any) => u.roleName === 'Student')
+
+      studentUsers.forEach((user: any) => {
+        const studentData = user.student || {}
+        const sectionName = studentData.section?.trim()
+        if (!sectionName) return
+
+        const sectionId = sectionName.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0)
+
+        if (!sectionMap.has(sectionName)) {
+          sectionMap.set(sectionName, {
+            id: sectionId,
+            name: sectionName,
+            students: 0,
+            studentUsernames: []
+          })
+        }
+
+        const section = sectionMap.get(sectionName)!
+        const studentId = studentData.studentId || user.email?.split('@')[0] || String(user.userId)
+
+        if (!section.studentUsernames.includes(studentId)) {
+          section.studentUsernames.push(studentId)
+          section.students = section.studentUsernames.length
+        }
+      })
+
+      allSections.value = Array.from(sectionMap.values())
+      return allSections.value.length
+    } catch (err: any) {
+      console.error('Failed to fetch sections from API:', err)
+      error.value = err.message || 'Failed to fetch sections'
+      return 0
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   function getSectionsByCourse(courseId: number): ClassSection[] {
     const sectionIds = courseSectionMappings.value
@@ -282,14 +254,14 @@ export const useSectionsStore = defineStore('sections', () => {
     } else {
       courseSectionSchedules.value.push({ courseId, sectionId, ...schedule })
     }
-    saveCourseSectionSchedulesToStorage()
+
   }
 
   function removeSchedule(courseId: number, sectionId: number) {
     courseSectionSchedules.value = courseSectionSchedules.value.filter(
       s => !(s.courseId === courseId && s.sectionId === sectionId)
     )
-    saveCourseSectionSchedulesToStorage()
+
   }
 
   return {
@@ -310,6 +282,7 @@ export const useSectionsStore = defineStore('sections', () => {
     setSchedule,
     removeSchedule,
     setSectionsFromApi,
+    fetchSectionsFromApi,
     isLoading,
     error,
   }
