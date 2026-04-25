@@ -1,64 +1,35 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
-import { useSectionsStore } from '@/stores/sectionsStore'
-import { useStudentsStore } from '@/stores/studentsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
-import { useAuthStore } from '@/stores/authStore'
-import type { Student } from '@/interfaces/interfaces'
+import * as courseService from '@/services/courseService'
+import type { ClassmateDto } from '@/services/types'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const StudentCourseQuizzesTab = defineAsyncComponent(() => import('@/components/student/StudentCourseQuizzesTab.vue'))
 const StudentCourseScoreTab = defineAsyncComponent(() => import('@/components/student/StudentCourseScoreTab.vue'))
 const StudentCoursePeopleTab = defineAsyncComponent(() => import('@/components/student/StudentCoursePeopleTab.vue'))
+import bg1 from '@/assets/image/bg1.webp'
+import bg2 from '@/assets/image/bg2.webp'
+import bg3 from '@/assets/image/bg3.webp'
+import bg4 from '@/assets/image/bg4.webp'
+import bg5 from '@/assets/image/bg5.webp'
 
-import bg1 from '@/assets/image/bg1.jpg'
-import bg2 from '@/assets/image/bg2.jpg'
-import bg3 from '@/assets/image/bg3.jpg'
-import bg4 from '@/assets/image/bg4.jpg'
-import bg5 from '@/assets/image/bg5.jpg'
-
-// TYPES
 type TabKey = 'quizzes' | 'score' | 'people'
 
-// CONSTANTS
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
-const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
-// REACTIVE
 const route = useRoute()
 const classesStore = useCoursesStore()
-const sectionsStore = useSectionsStore()
-const studentsStore = useStudentsStore()
 const quizzesStore = useQuizzesStore()
-const authStore = useAuthStore()
 
-// REF
 const activeTab = ref<TabKey>('quizzes')
+const classmates = ref<ClassmateDto[]>([])
+const isLoading = ref(true)
 
-// COMPUTED
 const courseId = computed(() => Number(route.params.id || 0))
 const currentCourse = computed(() => classesStore.allCourses.find(c => c.id === courseId.value) || null)
-const myUsername = computed(() => authStore.currentUser?.username || '')
-const courseSections = computed(() => sectionsStore.getSectionsByCourse(courseId.value))
-
-const mySection = computed(() => {
-  const sections = courseSections.value
-  const found = sections.find(s => (s.studentUsernames || []).includes(myUsername.value))
-  return found || sections[0]
-})
-
-const scheduleInfo = computed(() => {
-  if (!currentCourse.value || !mySection.value) return 'Schedule not set'
-  const sched = sectionsStore.getSchedule(currentCourse.value.id, mySection.value.id)
-  if (!sched) return 'Schedule not set'
-  const [hours, minutes] = sched.scheduleTime.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hours12 = hours % 12 || 12
-  const formattedTime = `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
-  return `${sched.scheduleDay}, ${formattedTime} - ${sched.classroom}`
-})
 
 const heroStyle = computed(() => {
   const id = currentCourse.value?.id || 0
@@ -72,38 +43,39 @@ const heroStyle = computed(() => {
   }
 })
 
-const students = computed<Student[]>(() => {
-  const sect = mySection.value
-  if (!sect) return []
-  const usernames = sect.studentUsernames || []
-  return usernames.map((username, i) => {
-    const profile = studentsStore.profiles[username]
-    if (!profile) {
-      return {
-        id: i + 1,
-        name: username,
-        email: `${username}@unknown.com`,
-        initials: username.substring(0, 2).toUpperCase(),
-        avatar: AVATAR_URL,
-      }
-    }
-    const fullName = `${profile.firstName} ${profile.lastName}`.trim()
-    return {
-      id: i + 1,
-      name: fullName,
-      email: profile.email,
-      initials: fullName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
-      avatar: profile.photoUrl || AVATAR_URL,
-    }
-  })
-})
+async function fetchClassmates() {
+  const cId = courseId.value
+  if (!cId) return
+  try {
+    classmates.value = await courseService.getCourseClassmates(cId)
+  } catch {
+    classmates.value = []
+  }
+}
 
-// WATCHERS
 watch(courseId, () => {
   activeTab.value = 'quizzes'
+  fetchClassmates()
 })
 
-// METHODS
+onMounted(async () => {
+  isLoading.value = true
+
+  try {
+    if (classesStore.allCourses.length === 0) {
+      await classesStore.fetchStudentCourses()
+    }
+
+    if (quizzesStore.myStudentQuizzes.length === 0) {
+      await quizzesStore.fetchStudentQuizzesAsync()
+    }
+
+    await fetchClassmates()
+  } finally {
+    isLoading.value = false
+  }
+})
+
 const getDeterministicIndex = (key: string) => {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -112,70 +84,223 @@ const getDeterministicIndex = (key: string) => {
   }
   return Math.abs(hash)
 }
-
 </script>
 
 <template>
   <div class="bg-white min-h-screen">
     <Header :breadcrumb="`Dashboard > Courses > ${currentCourse?.name || 'Course'}`" />
 
-    <div class="classroom-banner w-full flex items-end text-white" :style="heroStyle">
-      <div class="container mx-auto px-4 py-6">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-end">
-          <div>
-            <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ currentCourse?.name || 'Course' }}</h1>
-            <div class="mt-3 text-blue-100 text-sm flex items-center gap-2 mb-4">
-              <i class="fas fa-clock"></i>
-              <span>{{ scheduleInfo }}</span>
-            </div>
-            <div class="flex items-center space-x-3">
-              <div class="relative">
-                <div class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold ring-2 ring-white/20">
-                  {{ (currentCourse?.teacher || 'U').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase() }}
+    <!-- Loading State with Skeleton -->
+    <div v-if="isLoading">
+      <!-- Hero Skeleton -->
+      <div class="relative overflow-hidden bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 border-b border-gray-200">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <!-- Course Info Skeleton -->
+            <div class="flex-1">
+              <!-- Course Code Badge Skeleton -->
+              <div class="inline-flex items-center px-3 py-1 rounded-full bg-white/40 backdrop-blur-sm border border-white/30 mb-3">
+                <div class="h-3 w-16 bg-gray-300 rounded animate-pulse"></div>
+              </div>
+
+              <!-- Course Title Skeleton -->
+              <div class="mb-4">
+                <div class="h-10 w-80 bg-gray-300 rounded animate-pulse"></div>
+              </div>
+
+              <!-- Course Meta Info Skeleton -->
+              <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                  <div class="h-4 w-24 bg-gray-300 rounded animate-pulse"></div>
                 </div>
               </div>
-              <div class="leading-tight">
-                <div class="text-white font-medium">{{ currentCourse?.teacher }}</div>
-                <div class="text-blue-100 text-sm">{{ students.length }} students</div>
+            </div>
+
+            <!-- Teacher Info Card Skeleton -->
+            <div class="bg-white/20 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-xl w-full md:w-auto">
+              <div class="h-3 w-20 bg-gray-300 rounded mb-2 animate-pulse"></div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-gray-300 animate-pulse"></div>
+                <div>
+                  <div class="h-4 w-32 bg-gray-300 rounded mb-2 animate-pulse"></div>
+                  <div class="h-3 w-28 bg-gray-300 rounded animate-pulse"></div>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs Skeleton -->
+      <div class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex space-x-1">
+            <div class="px-6 py-4 border-b-2 border-blue-600">
+              <div class="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div class="px-6 py-4 border-b-2 border-transparent">
+              <div class="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div class="px-6 py-4 border-b-2 border-transparent">
+              <div class="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Skeleton - Matches Quiz Card Structure -->
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="space-y-3">
+          <div v-for="i in 4" :key="i" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div class="p-6">
+              <div class="flex items-start justify-between gap-4">
+                <!-- Quiz Info Skeleton -->
+                <div class="flex-1 min-w-0">
+                  <div class="h-5 w-64 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                  <div class="flex items-center gap-4">
+                    <div class="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
+                    <div class="h-5 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+
+                <!-- Score Display Skeleton -->
+                <div class="flex items-center gap-6">
+                  <!-- Percentage Circle Skeleton -->
+                  <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center animate-pulse">
+                    <div class="h-6 w-12 bg-gray-200 rounded"></div>
+                  </div>
+
+                  <!-- Points Skeleton -->
+                  <div class="text-right">
+                    <div class="h-3 w-12 bg-gray-200 rounded mb-1 animate-pulse"></div>
+                    <div class="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    <div class="h-2 w-10 bg-gray-200 rounded mt-1 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress Bar Skeleton -->
+            <div class="h-1 bg-gray-100">
+              <div class="h-full w-3/4 bg-gray-200 animate-pulse"></div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="container mx-auto px-4 py-8">
-      <div class="flex border-b border-blue-200 mb-8 space-x-2">
-        <button class="px-4 py-2 font-medium transition-colors cursor-pointer" :class="activeTab === 'quizzes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-blue-400 hover:text-blue-600'" @click="activeTab = 'quizzes'">Quizzes</button>
-        <button class="px-4 py-2 font-medium transition-colors cursor-pointer" :class="activeTab === 'score' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-blue-400 hover:text-blue-600'" @click="activeTab = 'score'">Score</button>
-        <button class="px-4 py-2 font-medium transition-colors cursor-pointer" :class="activeTab === 'people' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-blue-400 hover:text-blue-600'" @click="activeTab = 'people'">People</button>
+    <!-- Content -->
+    <div v-else>
+      <!-- Course Hero Section -->
+      <div class="relative overflow-hidden bg-white border-b border-gray-200">
+        <!-- Background Image with Overlay -->
+        <div class="absolute inset-0" :style="heroStyle">
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-800/85 to-blue-900/90"></div>
+        </div>
+
+        <!-- Content -->
+        <div class="relative container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <!-- Course Info -->
+            <div class="flex-1">
+              <!-- Course Code Badge -->
+              <div class="inline-flex items-center px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-3">
+                <span class="text-xs font-semibold text-white">{{ currentCourse?.code || 'COURSE' }}</span>
+              </div>
+
+              <!-- Course Title -->
+              <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg">
+                {{ currentCourse?.name || 'Course' }}
+              </h1>
+
+              <!-- Course Meta Info -->
+              <div class="flex flex-wrap items-center gap-4 text-sm text-white/90">
+                <!-- Students Count -->
+                <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                  <i class="fas fa-users"></i>
+                  <span>{{ currentCourse?.students ?? 0 }} students</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Teacher Info Card -->
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-xl">
+              <p class="text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">Instructor</p>
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg ring-2 ring-white/30">
+                  {{ (currentCourse?.teacher || 'U').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase() }}
+                </div>
+                <div>
+                  <p class="text-white font-semibold">{{ currentCourse?.teacher }}</p>
+                  <p class="text-white/70 text-sm">Course Instructor</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <StudentCourseQuizzesTab
-        v-show="activeTab === 'quizzes'"
-        :courseName="currentCourse?.name || ''"
-      />
+      <!-- Tabs Navigation -->
+      <div class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+          <nav class="flex space-x-1" aria-label="Tabs">
+            <button
+              @click="activeTab = 'quizzes'"
+              class="px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2"
+              :class="activeTab === 'quizzes'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="fas fa-clipboard-list mr-2"></i>
+              Quizzes
+            </button>
+            <button
+              @click="activeTab = 'score'"
+              class="px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2"
+              :class="activeTab === 'score'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="fas fa-chart-line mr-2"></i>
+              Score
+            </button>
+            <button
+              @click="activeTab = 'people'"
+              class="px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2"
+              :class="activeTab === 'people'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="fas fa-user-group mr-2"></i>
+              People
+            </button>
+          </nav>
+        </div>
+      </div>
 
-      <StudentCourseScoreTab
-        v-show="activeTab === 'score'"
-        :courseName="currentCourse?.name || ''"
-      />
+      <!-- Tab Content -->
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-      <StudentCoursePeopleTab
-        v-show="activeTab === 'people'"
-        :teacherName="currentCourse?.teacher || null"
-        :students="students"
-      />
+        <StudentCourseQuizzesTab
+          v-show="activeTab === 'quizzes'"
+          :courseName="currentCourse?.name || ''"
+        />
+
+        <StudentCourseScoreTab
+          v-show="activeTab === 'score'"
+          :courseName="currentCourse?.name || ''"
+        />
+
+        <StudentCoursePeopleTab
+          v-show="activeTab === 'people'"
+          :teacherName="currentCourse?.teacher || null"
+          :classmates="classmates"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.classroom-banner {
-  height: 250px;
-}
-
-@media (max-width: 768px) {
-  .classroom-banner { height: 180px; }
-}
+/* No additional styles needed - using pure Tailwind */
 </style>

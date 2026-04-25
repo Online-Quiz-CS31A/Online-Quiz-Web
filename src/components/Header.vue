@@ -161,35 +161,56 @@ function markAllAsRead() {
 
 <template>
   <header class="bg-white shadow-sm border-b border-gray-200">
-    <div class="px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center relative">
+    <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center relative" :class="breadcrumb ? 'justify-between' : 'justify-end'">
       <!-- Breadcrumb -->
-      <div class="flex items-center">
-        <h1 class="text-lg font-medium text-gray-500" v-if="breadcrumb">
+      <nav class="flex items-center" v-if="breadcrumb" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2">
           <template v-if="breadcrumbSegments.length">
-            <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
-              <span
+            <li v-for="(seg, idx) in breadcrumbSegments" :key="idx" class="flex items-center">
+              <!-- Clickable breadcrumb segment -->
+              <button
                 v-if="idx < breadcrumbSegments.length - 1"
                 @click="handleBreadcrumbClick(seg)"
-                class="cursor-pointer"
+                class="group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors duration-150 rounded-md px-2 py-1 hover:bg-indigo-50"
+                :title="`Go to ${seg}`"
               >
-                {{ seg }}
+                <i v-if="idx === 0" class="fas fa-home mr-1.5 text-xs"></i>
+                <span class="max-w-[150px] truncate">{{ seg }}</span>
+              </button>
+
+              <!-- Current/last breadcrumb segment -->
+              <span
+                v-else
+                class="flex items-center text-sm font-semibold text-gray-900 px-2 py-1"
+                :title="seg"
+              >
+                <span class="max-w-[200px] truncate">{{ seg }}</span>
               </span>
-              <span v-else>{{ seg }}</span>
-              <span v-if="idx < breadcrumbSegments.length - 1"> &gt; </span>
-            </template>
+
+              <!-- Separator -->
+              <svg
+                v-if="idx < breadcrumbSegments.length - 1"
+                class="flex-shrink-0 h-4 w-4 text-gray-400 mx-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+              >
+                <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+              </svg>
+            </li>
           </template>
           <template v-else>
-            {{ breadcrumb }}
+            <li class="text-sm font-semibold text-gray-900">{{ breadcrumb }}</li>
           </template>
-        </h1>
-      </div>
-      
+        </ol>
+      </nav>
+
       <!-- Center buttons for quiz creator -->
       <div
         v-if="showQuizCreatorControls && !props.archivedQuiz && !props.readOnlyResultsOnly"
         class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
       >
-        <button 
+        <button
           @click="emit('content')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -199,7 +220,7 @@ function markAllAsRead() {
         >
           Content
         </button>
-        <button 
+        <button
           @click="emit('assign')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -209,7 +230,7 @@ function markAllAsRead() {
         >
           Assign
         </button>
-        <button 
+        <button
           v-if="published"
           @click="emit('results')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
@@ -226,7 +247,7 @@ function markAllAsRead() {
         v-else-if="showQuizCreatorControls && props.readOnlyResultsOnly && !props.archivedQuiz && false"
         class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
       >
-        <button 
+        <button
           @click="emit('results')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -242,44 +263,44 @@ function markAllAsRead() {
       <div class="flex items-center space-x-4">
         <!-- Action buttons for quiz creator -->
         <div v-if="actionButtons" class="flex items-center space-x-2">
-          <button v-if="!props.archivedQuiz && !props.readOnlyResultsOnly" @click="emit('save')" 
+          <button v-if="!props.archivedQuiz && !props.readOnlyResultsOnly" @click="emit('save')"
                   :disabled="props.saving || props.publishing"
                   class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <i v-if="props.saving || (props.publishing && props.published)" class="fas fa-spinner fa-spin mr-2"></i>
             {{ (props.saving || (props.publishing && props.published)) ? 'Saving...' : 'Save' }}
           </button>
-          
+
           <button v-if="!published && !props.archivedQuiz && !props.readOnlyResultsOnly" @click="openPublishModal"
                   :disabled="props.saving || props.publishing"
                   class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <i v-if="props.publishing" class="fas fa-spinner fa-spin mr-2"></i>
             Publish
           </button>
-          
+
           <button v-if="published && !props.archivedQuiz && !props.readOnlyResultsOnly" @click="emit('preview')"
                   class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer">
             Preview
           </button>
         </div>
-        
+
         <!-- Notification bell -->
         <div v-if="showNotification" class="relative">
-          <button 
+          <button
             @click="toggleNotificationDropdown"
             class="p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer relative"
             :title="unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'No new notifications'"
           >
             <i class="fas fa-bell text-gray-600"></i>
-            <span 
-              v-if="unreadCount > 0" 
+            <span
+              v-if="unreadCount > 0"
               class="absolute top-0 right-0 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold"
             >
               {{ unreadCount > 9 ? '9+' : unreadCount }}
             </span>
           </button>
-          
+
           <!-- Notification Dropdown Component -->
-          <NotificationDropdown 
+          <NotificationDropdown
             :notifications="notificationsStore.notifications"
             :show="showNotificationDropdown"
             @close="closeNotificationDropdown"
@@ -287,10 +308,10 @@ function markAllAsRead() {
             @mark-all-as-read="markAllAsRead"
           />
         </div>
-        
+
         <!-- Profile dropdown -->
         <div class="relative">
-          <button @click="toggleProfileDropdown" 
+          <button @click="toggleProfileDropdown"
                   class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
             <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
               {{ initials }}
@@ -298,23 +319,23 @@ function markAllAsRead() {
             <span class="text-gray-700 hidden md:inline">{{ displayName }}</span>
             <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
           </button>
-          
+
           <!-- Dropdown menu -->
-          <div v-if="showProfileDropdown" 
+          <div v-if="showProfileDropdown"
                @click="closeProfileDropdown"
                class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
-            <button @click="viewProfile" 
+            <button @click="viewProfile"
                     class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center cursor-pointer">
               <i class="fas fa-user mr-3"></i>
               View Profile
             </button>
-            <button @click="settings" 
+            <button @click="settings"
                     class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center cursor-pointer">
               <i class="fas fa-cog mr-3"></i>
               Settings
             </button>
             <hr class="my-1">
-            <button @click="logout" 
+            <button @click="logout"
                     class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center cursor-pointer">
               <i class="fas fa-sign-out-alt mr-3"></i>
               Logout
@@ -323,12 +344,12 @@ function markAllAsRead() {
         </div>
       </div>
     </div>
-    
+
     <!-- Overlay for dropdowns -->
-    <div v-if="showProfileDropdown" 
+    <div v-if="showProfileDropdown"
          @click="closeProfileDropdown"
          class="fixed inset-0 z-40"></div>
-    <div v-if="showNotificationDropdown" 
+    <div v-if="showNotificationDropdown"
          @click="closeNotificationDropdown"
          class="fixed inset-0 z-40"></div>
 

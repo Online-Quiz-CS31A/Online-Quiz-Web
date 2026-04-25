@@ -8,11 +8,11 @@ import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
 import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import TeacherQuizSkeleton from '@/components/skeletons/TeacherQuizSkeleton.vue'
-import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
-import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
-import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
-import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.png'
-import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
+import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp'
+import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp'
+import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.webp'
+import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.webp'
+import quiz5 from '@/assets/image/quiz_bg/subtle-prism.webp'
 
 // TYPES
 interface Props {
@@ -54,22 +54,22 @@ const quizPendingUnarchive = ref<TeacherQuizItem | null>(null)
 const showDraftDeleteModal = ref(false)
 const showPublishedDeleteModal = ref(false)
 const showUnarchiveModal = ref(false)
- 
+
 // COMPUTED
 const filteredQuizzes = computed(() => {
   let filtered = [...props.quizzes]
-  
+
   if (statusFilter.value !== 'all') {
     filtered = filtered.filter(q => (q.status || 'published') === statusFilter.value)
   }
-  
+
   return filtered.sort((a, b) => {
     const aStatus = a.status || 'published'
     const bStatus = b.status || 'published'
-    
+
     if (aStatus === 'draft' && bStatus !== 'draft') return -1
     if (aStatus !== 'draft' && bStatus === 'draft') return 1
-    
+
     const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime()
     const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime()
     return bDate - aDate
@@ -209,25 +209,25 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
 
 const formatDueDate = (dateStr: string) => {
   if (!dateStr) return 'No due date'
-  
+
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return `Due: ${dateStr}`
-  
+
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
-  
+
   const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  
+
   if (targetDate.getTime() === today.getTime()) {
     return 'Due: Today'
   }
-  
+
   if (targetDate.getTime() === tomorrow.getTime()) {
     return 'Due: Tomorrow'
   }
-  
+
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
@@ -244,7 +244,7 @@ const formatDueDate = (dateStr: string) => {
       <h2 class="text-xl font-bold text-gray-800">Quizzes</h2>
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View All</button>
     </div>
-    
+
     <!-- Filter Buttons -->
     <div v-if="props.showFilters" class="flex gap-2 mb-4">
       <button
@@ -286,7 +286,7 @@ const formatDueDate = (dateStr: string) => {
     <div v-if="quizzesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <TeacherQuizSkeleton v-for="i in 3" :key="i" />
     </div>
-    
+
     <!-- Empty State -->
     <div v-else-if="filteredQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
@@ -302,10 +302,10 @@ const formatDueDate = (dateStr: string) => {
         You haven't created any quizzes yet. Start creating engaging assessments for your students.
       </p>
     </div>
-    
+
     <div v-else-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 cursor-pointer">
-      <div 
-        v-for="quiz in filteredQuizzes" 
+      <div
+        v-for="quiz in filteredQuizzes"
         :key="quiz.id"
         class="quiz-card rounded-xl shadow-md overflow-hidden"
         :class="[
@@ -318,7 +318,7 @@ const formatDueDate = (dateStr: string) => {
           <div class="flex justify-between items-start mb-3">
             <div class="flex items-center gap-2">
               <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">{{ formatDueDate(quiz.dueDate) }}</span>
-              <span 
+              <span
                 v-if="quiz.status === 'draft'"
                 class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-sm"
               >
@@ -384,8 +384,8 @@ const formatDueDate = (dateStr: string) => {
               {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }} submitted
             </span>
             <div class="flex-1 bg-gray-200 rounded-full h-1.5">
-              <div 
-                class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+              <div
+                class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                 :style="{ width: `${getSubmissionStats(quiz).percent}%` }"
               ></div>
             </div>
@@ -395,8 +395,8 @@ const formatDueDate = (dateStr: string) => {
     </div>
 
     <div v-else class="space-y-3">
-      <div 
-        v-for="quiz in filteredQuizzes" 
+      <div
+        v-for="quiz in filteredQuizzes"
         :key="quiz.id"
         class="rounded-lg border overflow-hidden cursor-pointer"
         :class="quiz.status === 'draft' ? 'border-slate-400 bg-slate-50 draft-card' : 'border-gray-200 bg-white'"
@@ -412,7 +412,7 @@ const formatDueDate = (dateStr: string) => {
               <div>
                 <div class="flex items-center gap-2 mb-1">
                   <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-500'">{{ formatDueDate(quiz.dueDate) }}</span>
-                  <span 
+                  <span
                     v-if="quiz.status === 'draft'"
                     class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full"
                   >

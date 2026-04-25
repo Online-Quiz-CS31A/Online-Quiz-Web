@@ -2,16 +2,16 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import bg1 from '@/assets/image/bg1.jpg'
-import bg2 from '@/assets/image/bg2.jpg'
-import bg3 from '@/assets/image/bg3.jpg'
-import bg4 from '@/assets/image/bg4.jpg'
-import bg5 from '@/assets/image/bg5.jpg'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 import ClassSectionCard from '@/components/teacher/ClassSectionCard.vue'
 import TeacherClassSkeleton from '@/components/skeletons/TeacherClassSkeleton.vue'
+import bg1 from '@/assets/image/bg1.webp'
+import bg2 from '@/assets/image/bg2.webp'
+import bg3 from '@/assets/image/bg3.webp'
+import bg4 from '@/assets/image/bg4.webp'
+import bg5 from '@/assets/image/bg5.webp'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const SectionDeleteModal = defineAsyncComponent(() => import('@/components/modals/SectionDeleteModal.vue'))
 
@@ -50,7 +50,7 @@ const sections = computed(() => {
 
   const allSections = []
   const seenIds = new Set<number>()
-  
+
   for (const cid of targetCourseIds) {
     const cidSections = sectionsStore.getSectionsByCourse(cid)
     for (const s of cidSections) {
@@ -85,7 +85,7 @@ const current = computed<ClassItem>(() => {
 
 const isCourseArchived = computed(() => current.value.status === 'Archived')
 
-const professorName = computed(() => current.value.teacher || '—') 
+const professorName = computed(() => current.value.teacher || '—')
 const totalClasses = computed(() => sections.value.length)
 const totalStudents = computed(() => sections.value.reduce((sum, s) => sum + s.students, 0))
 
@@ -177,7 +177,7 @@ function openDashboard(sectionId: number) {
 <template>
   <div class="bg-gray-50 min-h-screen">
     <Header :breadcrumb="breadcrumbText" />
-    
+
     <!-- Hero section -->
     <div class="relative">
       <div class="absolute inset-0 overflow-hidden">
@@ -248,7 +248,7 @@ function openDashboard(sectionId: number) {
             <span v-if="!isCourseArchived"> Click the "New Class" button above to get started!</span>
             <span v-else> This course is archived, so classes can no longer be created.</span>
           </p>
-          <button 
+          <button
             @click="openCreateClass"
             :disabled="isCourseArchived"
             :title="isCourseArchived ? `Can't edit archived course` : 'Create a new class'"

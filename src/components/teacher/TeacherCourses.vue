@@ -4,15 +4,17 @@ import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { useAuthStore } from '@/stores/authStore'
+import * as courseService from '@/services/courseService'
 import type { ClassItem } from '@/interfaces/interfaces'
 import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import TeacherCourseSkeleton from '@/components/skeletons/TeacherCourseSkeleton.vue'
-import bg1 from '@/assets/image/bg1.jpg'
-import bg2 from '@/assets/image/bg2.jpg'
-import bg3 from '@/assets/image/bg3.jpg'
-import bg4 from '@/assets/image/bg4.jpg'
-import bg5 from '@/assets/image/bg5.jpg'
+import bg1 from '@/assets/image/bg1.webp'
+import bg2 from '@/assets/image/bg2.webp'
+import bg3 from '@/assets/image/bg3.webp'
+import bg4 from '@/assets/image/bg4.webp'
+import bg5 from '@/assets/image/bg5.webp'
 
 // CONSTANTS
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
@@ -25,7 +27,7 @@ const props = withDefaults(defineProps<{ classes?: ClassItem[]; maxItems?: numbe
 })
 
 // EMITS
-const emit = defineEmits<{
+defineEmits<{
   (e: 'leave-class', classItem: ClassItem): void
   (e: 'view-all'): void
 }>()
@@ -152,14 +154,14 @@ const getSectionsForCourse = (classItem: ClassItem) => {
   const targetCourseIds = classesStore.rawTeacherCourses
     .filter(c => c.code === code)
     .map(c => c.courseId)
-    
+
   if (targetCourseIds.length === 0) {
     targetCourseIds.push(classItem.id)
   }
 
   const allSections = []
   const seenIds = new Set<number>()
-  
+
   for (const cid of targetCourseIds) {
     const cidSections = sectionsStore.getSectionsByCourse(cid)
     for (const s of cidSections) {
@@ -197,30 +199,74 @@ const fetchStudentCounts = async () => {
   // is too late because concurrent async calls can bypass the check
   if (hasFetchedCounts.value) return
   hasFetchedCounts.value = true
-  
+
   await new Promise(resolve => setTimeout(resolve, 100))
-  
-  const { useAdminStore } = await import('@/stores/adminStore')
-  const adminStore = useAdminStore()
-  
+
+  const authStore = useAuthStore()
+  const teacherId = authStore.currentUser?.id
+  if (!teacherId) {
+    console.error('No teacher ID found')
+    return
+  }
+
   const coursesToProcess = classes.value.filter(c => c.id)
-  if (!coursesToProcess.length) return
-  
+  if (!coursesToProcess.length) {
+    return
+  }
+
+  // Group classes by course code to avoid duplicate fetches
+  const processedCodes = new Set<string>()
+
   for (const classItem of coursesToProcess) {
-    const sections = getSectionsForCourse(classItem)
-    if (!sections.length) continue
-    
-    for (const section of sections) {
-      if (section.name) {
-        try {
-          const students = await adminStore.fetchStudentsBySection(section.name)
-          sectionsStore.updateSection(section.id, {
-            students: students.length
+    try {
+      const code = classItem.code
+
+      if (code && processedCodes.has(code)) {
+        continue
+      }
+
+      const courseIdsToFetch = code
+        ? classesStore.rawTeacherCourses
+            .filter(c => c.code === code)
+            .map(c => c.courseId)
+        : [classItem.id]
+
+      if (code) {
+        processedCodes.add(code)
+      }
+
+      // Fetch enrollments for all related courses
+      const allEnrollments = await Promise.all(
+        courseIdsToFetch.map(courseId =>
+          courseService.getCourseEnrollments(courseId, teacherId).catch(err => {
+            console.error(`Failed to fetch enrollments for course ${courseId}`, err)
+            return []
           })
-        } catch (e) {
-          console.error(`Failed to fetch students for section ${section.name}`, e)
+        )
+      )
+
+      // Flatten all enrollments and group by section
+      const sectionCounts: Record<string, number> = {}
+      allEnrollments.flat().forEach((enrollment: { section?: string; sectionName?: string }) => {
+        const sectionName = enrollment.section || enrollment.sectionName || ''
+        if (sectionName) {
+          sectionCounts[sectionName] = (sectionCounts[sectionName] || 0) + 1
+        }
+      })
+
+      // Update each section with its student count
+      const sections = getSectionsForCourse(classItem)
+
+      for (const section of sections) {
+        if (section.name) {
+          const count = sectionCounts[section.name] || 0
+          sectionsStore.updateSection(section.id, {
+            students: count
+          })
         }
       }
+    } catch (e) {
+      console.error(`Failed to fetch enrollments for course ${classItem.id}`, e)
     }
   }
 }
@@ -234,11 +280,11 @@ watch(classes, (newClasses) => {
 // LIFECYCLE
 onMounted(async () => {
   document.addEventListener('click', onDocClick)
-  
+
   if (classesStore.rawTeacherCourses.length === 0) {
     await classesStore.fetchTeacherCourses()
   }
-  
+
   if (classes.value.length > 0 && !hasFetchedCounts.value) {
     fetchStudentCounts()
   }
@@ -260,7 +306,7 @@ onBeforeUnmount(() => {
     <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <TeacherCourseSkeleton v-for="i in (props.maxItems || 3)" :key="i" />
     </div>
-    
+
     <!-- Empty State -->
     <div v-else-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
@@ -276,15 +322,15 @@ onBeforeUnmount(() => {
         You haven't created any courses yet. Create your first course to start teaching.
       </p>
     </div>
-    
+
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
-        v-for="classItem in displayedClasses" 
+      <div
+        v-for="classItem in displayedClasses"
         :key="classItem.id"
         class="class-card rounded-xl shadow-md overflow-hidden bg-white cursor-pointer"
         @click="handleEnterClass(classItem)"
       >
-        <div 
+        <div
           class="relative h-36 bg-center bg-cover"
           :style="getCoverStyle(classItem)"
         >
@@ -295,7 +341,7 @@ onBeforeUnmount(() => {
             <h3 class="mt-1 text-xl font-bold leading-snug line-clamp-2">{{ classItem.name }}</h3>
           </div>
           <div class="absolute right-2 top-2 actions-menu">
-            <button 
+            <button
               @click.stop="toggleMenu(classItem.id)"
               class="text-white hover:text-white p-1 cursor-pointer"
               aria-label="More options"
@@ -303,18 +349,18 @@ onBeforeUnmount(() => {
             >
               <i class="fas fa-ellipsis-vertical"></i>
             </button>
-            <div 
-              v-if="menuOpenForId === classItem.id" 
+            <div
+              v-if="menuOpenForId === classItem.id"
               class="absolute right-0 top-7 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20"
             >
               <template v-if="props.mode === 'archived'">
-                <button 
+                <button
                   @click.stop="handleEnterClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
                   View
                 </button>
-                <button 
+                <button
                   @click.stop="handleUnarchiveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
                 >
@@ -322,14 +368,14 @@ onBeforeUnmount(() => {
                 </button>
               </template>
               <template v-else>
-                <button 
+                <button
                   @click.stop="handleEditClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
-                  Edit 
+                  Edit
                 </button>
-                
-                <button 
+
+                <button
                   @click.stop="handleLeaveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
                 >
@@ -341,7 +387,7 @@ onBeforeUnmount(() => {
 
           <div class="absolute left-4 bottom-3 text-white min-w-0">
             <div class="flex items-center space-x-2">
-              <div 
+              <div
                 class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-white ring-2 ring-white/20 shadow-sm"
                 :style="getAvatarStyle(classItem.teacher)"
               >

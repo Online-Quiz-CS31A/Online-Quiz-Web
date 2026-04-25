@@ -104,19 +104,19 @@ const fetchDropdownData = async () => {
   try {
     const response = await api.get('/user/paged?pageNumber=1&pageSize=1000')
     const allUsers = response.data.items || []
-    
+
     const uniqueDepartments = new Set<string>()
     allUsers
       .filter((u: any) => u.roleName === 'Teacher' && u.teacher?.department)
       .forEach((u: any) => uniqueDepartments.add(u.teacher.department))
     departments.value = Array.from(uniqueDepartments).sort()
-    
+
     const uniqueYears = new Set<string>()
     allUsers
       .filter((u: any) => u.roleName === 'Student' && u.student?.yearLevel)
       .forEach((u: any) => uniqueYears.add(u.student.yearLevel.toString()))
     years.value = Array.from(uniqueYears).sort()
-    
+
     const uniqueCourses = new Set<string>()
     allUsers
       .filter((u: any) => u.roleName === 'Student' && u.student?.course)
@@ -161,21 +161,21 @@ const onImport = async (e: Event) => {
   } else {
     records = parseCSV(text)
   }
-  
+
   for (const r of records) {
     const role = normalizeRole(r.role || r.type || r.userrole || '')
     const newUser = {
       email: r.email || '',
       name: r.name || r.fullname || '',
       password: genPassword(),
-      roleId: role === 'Student' ? 3 : role === 'Teacher' ? 2 : 1, 
+      roleId: role === 'Student' ? 3 : role === 'Teacher' ? 2 : 1,
       studentId: r.studentId || genUsernameByRole(role),
       yearLevel: Number(r.year) || 1,
       section: r.section || 'A',
       course: r.course || 'CS',
       department: r.department || 'General',
       contactNumber: '0000000000',
-      createdBy: 1 
+      createdBy: 1
     }
     await adminStore.createUser(newUser)
   }
@@ -232,7 +232,7 @@ const openEdit = (u: AdminUser) => {
   originalRole.value = u.role
   Object.assign(form, {
     id: u.id,
-    fullName: u.name, 
+    fullName: u.name,
     email: u.email,
     role: u.role,
     status: u.status,
@@ -273,7 +273,7 @@ const validateForm = (): boolean => {
   if (!form.email || !form.email.trim()) errors.email = 'Email is required.'
   else if (!gmailRegex.test(form.email.trim())) errors.email = 'Only Gmail addresses (@gmail.com) are accepted.'
   if (!form.role) errors.role = 'Role is required.'
-  
+
   if (form.role === 'Student') {
     if (!form.course || !form.course.trim()) errors.course = 'Course is required for students.'
   }
@@ -315,7 +315,6 @@ const saveUser = async () => {
     success = await adminStore.updateUser(form.id, userData)
   } else {
     const generatedPassword = genPassword()
-    console.log('Generated password for new user:', generatedPassword)
 
     const userData = {
       email: form.email,
@@ -333,11 +332,8 @@ const saveUser = async () => {
       createdBy: 1
     }
     success = await adminStore.createUser(userData)
-    console.log('Create user result:', success)
 
-    console.log('Sending password email to:', form.email)
     const emailSent = await sendPasswordEmail(form.email, form.fullName, generatedPassword)
-    console.log('Email send result:', emailSent)
     if (!emailSent) {
       console.warn('Password email could not be sent.')
     }
@@ -493,7 +489,7 @@ onMounted(() => {
       @import="onImport"
       @clear-filters="clearFilters"
     />
-    
+
     <!-- User table -->
     <div class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-gray-200">
       <SkeletonTable v-if="adminStore.isLoading" :rows="10" :columns="6" />
@@ -573,14 +569,14 @@ onMounted(() => {
         </table>
       </div>
     </div>
-    
+
     <!-- Pagination -->
     <AdminPagination
       v-model:current-page="currentPage"
       :total-items="totalItems"
       :page-size="pageSize"
     />
-    
+
     <AdminUserAddModal
       v-if="showModal && !isEditing"
       :open="true"

@@ -4,11 +4,19 @@
  */
 
 // Base API client
-export { apiClient, API_BASE_URL } from './api'
-export type { ApiResponse, ApiError } from './api'
+export { default as api } from './api'
 
 // Authentication service
 export * from './authService'
 
-// User service  
+// User service
 export * from './userService'
+
+// Course service
+export * from './courseService'
+
+// Quiz service
+export * from './quizService'
+
+// Service types
+export * from './types'

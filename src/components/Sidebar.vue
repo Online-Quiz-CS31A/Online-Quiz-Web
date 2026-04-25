@@ -100,12 +100,12 @@ function colorDotClass(color?: string) {
 
 function navigateToQuizCreator() {
   quizzesStore.resetCurrentQuiz()
-  
+
   let classId = '1'
   if (myClasses.value.length > 0) {
     classId = String(myClasses.value[0].id)
   }
-  
+
   router.push({ name: 'quiz-builder', params: { id: classId } })
 }
 
@@ -118,21 +118,19 @@ function closeImportModal() {
 }
 
 async function handleImport(file: File) {
-  console.log('Importing file:', file.name)
-  
   closeImportModal()
-  
+
   try {
     const text = await file.text()
     const lines = text.split('\n').filter(line => line.trim())
-    
+
     const questions: ImportedQuestion[] = []
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(',').map(c => c.trim())
       if (cols.length < 2) continue
-      
+
       const [type, question, points, optA, optB, optC, optD, correct, required] = cols
-      
+
       const questionData: any = {
         id: Date.now() + i,
         type: type || 'short-answer',
@@ -140,7 +138,7 @@ async function handleImport(file: File) {
         points: parseInt(points) || 1,
         required: required?.toLowerCase() === 'yes'
       }
-      
+
       if (type === 'multiple-choice') {
         questionData.options = [optA, optB, optC, optD].filter(Boolean)
         questionData.correctAnswer = correct || 'A'
@@ -148,16 +146,16 @@ async function handleImport(file: File) {
         questionData.options = ['True', 'False']
         questionData.correctAnswer = correct || 'A'
       }
-      
+
       questions.push(questionData)
     }
-    
+
     let classIdParam = route.params.id as string | number | undefined
     if (!classIdParam && myClasses.value.length > 0) {
       classIdParam = myClasses.value[0].id as unknown as string | number
     }
     const classId = String(classIdParam ?? '1')
-    
+
     setTimeout(() => {
       router.push({
         name: 'quiz-builder',
@@ -172,168 +170,203 @@ async function handleImport(file: File) {
 </script>
 
 <template>
-  <div 
+  <div
     :class="[
-      'sidebar w-64 bg-white shadow-lg fixed h-full overflow-y-auto z-40',
+      'sidebar w-64 bg-white border-r border-gray-200 fixed h-full overflow-y-auto z-40',
       { 'active': isActive }
     ]"
   >
-    
-    <div class="p-4">
+    <!-- Logo/Brand Section -->
+    <div class="p-6 border-b border-gray-100">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+          <img src="/src/assets/image/ACLC.webp" alt="ACLC Logo" class="w-full h-full object-contain" />
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-gray-900">ACLC Online Quiz</h1>
+          <p class="text-xs text-gray-500">{{ isTeacher ? 'Teacher' : 'Student' }} Portal</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="p-4">
+      <!-- Main Navigation -->
       <div class="mb-6">
-        <h2 class="text-xs uppercase font-semibold text-gray-500 mb-2"></h2>
-        <ul>
-          <li class="mb-1">
-            <button @click="$emit('nav-home')" class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" :class="(isHomeActive || activeSection === 'home') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'">
-              <i class="fas fa-home mr-3"></i>
-              <span>Home</span>
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Menu</p>
+        <ul class="space-y-1">
+          <li>
+            <button
+              @click="$emit('nav-home')"
+              class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="(isHomeActive || activeSection === 'home')
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
+            >
+              <i class="fas fa-home w-5"></i>
+              <span class="ml-3">Home</span>
             </button>
           </li>
-          <li class="mb-1">
-            <button 
+
+          <li>
+            <button
               @click="classesOpen = !classesOpen"
-              class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer"
-              :class="isCoursesActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'"
+              class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="isCoursesActive
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
             >
-              <i class="fas fa-book-open mr-3"></i>
-              <span>My Courses</span>
-              <i 
-                class="fas fa-chevron-down ml-auto transition-transform duration-200"
+              <i class="fas fa-book-open w-5"></i>
+              <span class="ml-3 flex-1 text-left">My Courses</span>
+              <i
+                class="fas fa-chevron-down text-xs transition-transform duration-200"
                 :class="classesOpen ? 'rotate-180' : ''"
               ></i>
             </button>
-            <ul v-show="classesOpen" class="mt-1 ml-6">
-              <li v-for="cls in myClasses" :key="cls.id" class="mb-1">
+            <ul v-show="classesOpen" class="mt-1 ml-8 space-y-1">
+              <li v-for="cls in myClasses" :key="cls.id">
                 <RouterLink
                   v-if="isTeacher"
                   :to="{ name: 'teacher-class', params: { code: cls.code } }"
-                  class="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700"
+                  class="flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
-                  <span class="w-4 h-4 rounded-full mr-3" :class="colorDotClass(cls.color)"></span>
-                  <span>{{ cls.name }}</span>
+                  <span class="w-2 h-2 rounded-full mr-3 flex-shrink-0" :class="colorDotClass(cls.color)"></span>
+                  <span class="truncate">{{ cls.name }}</span>
                 </RouterLink>
                 <RouterLink
                   v-else
                   :to="{ name: 'student-course-dashboard', params: { id: cls.id } }"
-                  class="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700"
+                  class="flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
-                  <span class="w-4 h-4 rounded-full mr-3" :class="colorDotClass(cls.color)"></span>
-                  <span>{{ cls.name }}</span>
+                  <span class="w-2 h-2 rounded-full mr-3 flex-shrink-0" :class="colorDotClass(cls.color)"></span>
+                  <span class="truncate">{{ cls.name }}</span>
                 </RouterLink>
               </li>
             </ul>
           </li>
-          <li class="mb-1">
-            <button @click="$emit('nav-quizzes')" class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" :class="isQuizzesActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'">
-              <i class="fas fa-clipboard-list mr-3"></i>
-              <span>Quizzes</span>
-            </button>
-          </li>
-          <li class="mb-1">
-            <button @click="$emit('nav-calendar')" class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" :class="isCalendarActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'">
-              <i class="fas fa-calendar-alt mr-3"></i>
-              <span>Calendar</span>
-            </button>
-          </li>
-          <li class="mb-1" v-if="isTeacher">
-            <button 
-              @click="archivedOpen = !archivedOpen"
-              class="w-full flex items-center p-2 rounded-md text-left cursor-pointer" 
-              :class="isArchivedActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'"
+
+          <li>
+            <button
+              @click="$emit('nav-quizzes')"
+              class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="isQuizzesActive
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
             >
-              <i class="fas fa-box-archive mr-3"></i>
-              <span>Archived</span>
-              <i 
-                class="fas fa-chevron-down ml-auto transition-transform duration-200"
+              <i class="fas fa-clipboard-list w-5"></i>
+              <span class="ml-3">Quizzes</span>
+            </button>
+          </li>
+
+          <li>
+            <button
+              @click="$emit('nav-calendar')"
+              class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="isCalendarActive
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
+            >
+              <i class="fas fa-calendar-alt w-5"></i>
+              <span class="ml-3">Calendar</span>
+            </button>
+          </li>
+
+          <li v-if="isTeacher">
+            <button
+              @click="archivedOpen = !archivedOpen"
+              class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="isArchivedActive
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
+            >
+              <i class="fas fa-box-archive w-5"></i>
+              <span class="ml-3 flex-1 text-left">Archived</span>
+              <i
+                class="fas fa-chevron-down text-xs transition-transform duration-200"
                 :class="archivedOpen ? 'rotate-180' : ''"
               ></i>
             </button>
-            <ul v-show="archivedOpen" class="mt-1 ml-6">
-              <li class="mb-1">
+            <ul v-show="archivedOpen" class="mt-1 ml-8 space-y-1">
+              <li>
                 <button
                   @click="archivedQuizzesOpen = !archivedQuizzesOpen; $emit('nav-archived-quizzes')"
-                  class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                  class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
-                  <i class="fas fa-clipboard-list mr-3"></i>
-                  <span>Quizzes</span>
-                  <i 
-                    class="fas fa-chevron-down ml-auto transition-transform duration-200"
+                  <i class="fas fa-clipboard-list w-4"></i>
+                  <span class="ml-3 flex-1 text-left">Quizzes</span>
+                  <i
+                    class="fas fa-chevron-down text-xs transition-transform duration-200"
                     :class="archivedQuizzesOpen ? 'rotate-180' : ''"
                   ></i>
                 </button>
-                <ul v-show="archivedQuizzesOpen" class="mt-1 ml-6">
-                  <li class="mb-1">
-                    <button 
+                <ul v-show="archivedQuizzesOpen" class="mt-1 ml-6 space-y-1">
+                  <li>
+                    <button
                       @click="$emit('nav-archived-quizzes-published')"
-                      class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                      class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                     >
-                      <i class="fas fa-circle-check mr-3"></i>
-                      <span>Published</span>
+                      <i class="fas fa-circle-check w-4 text-xs"></i>
+                      <span class="ml-3">Published</span>
                     </button>
                   </li>
-                  <li class="mb-1">
-                    <button 
+                  <li>
+                    <button
                       @click="$emit('nav-archived-quizzes-draft')"
-                      class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                      class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                     >
-                      <i class="fas fa-file-pen mr-3"></i>
-                      <span>Draft</span>
+                      <i class="fas fa-file-pen w-4 text-xs"></i>
+                      <span class="ml-3">Draft</span>
                     </button>
                   </li>
                 </ul>
               </li>
-              <li class="mb-1">
-                <button 
+              <li>
+                <button
                   @click="$emit('nav-archived-classes')"
-                  class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                  class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
-                  <i class="fas fa-users mr-3"></i>
-                  <span>Classes</span>
+                  <i class="fas fa-users w-4"></i>
+                  <span class="ml-3">Classes</span>
                 </button>
               </li>
-              <li class="mb-1">
-                <button 
+              <li>
+                <button
                   @click="$emit('nav-archived-courses')"
-                  class="w-full flex items-center p-2 rounded-md text-gray-700 cursor-pointer hover:bg-gray-100"
+                  class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
-                  <i class="fas fa-book-open mr-3"></i>
-                  <span>Courses</span>
+                  <i class="fas fa-book-open w-4"></i>
+                  <span class="ml-3">Courses</span>
                 </button>
               </li>
             </ul>
           </li>
         </ul>
       </div>
-      
-      <!-- Teacher actions -->
-      <div class="mb-6" v-if="isTeacher">
-        <button 
-          @click="navigateToQuizCreator"
-          class="w-full mb-2 bg-white border border-2 border-blue-600 text-blue-600 hover:bg-blue-700 hover:text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors cursor-pointer"
-        >
-          <i class="fas fa-plus mr-2 "></i> Create Quiz
-        </button>
-        <button 
-          @click="openImportModal"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors cursor-pointer"
-        >
-          <i class="fas fa-upload mr-2"></i> Import Questions
-        </button>
-      </div>
 
-      <!-- Student actions -->
-      <div class="mb-6" v-else-if="isStudent">
-        <button 
-          @click="$emit('join-class')"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors"
-        >
-          <i class="fas fa-user-plus mr-2"></i> Join Class
-        </button>
+      <!-- Teacher Actions -->
+      <div v-if="isTeacher" class="pt-4 border-t border-gray-100">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Actions</p>
+        <div class="space-y-2">
+          <button
+            @click="navigateToQuizCreator"
+            class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2.5 px-4 rounded-lg flex items-center justify-center text-sm font-medium shadow-sm hover:shadow transition-all duration-200"
+          >
+            <i class="fas fa-plus mr-2"></i>
+            <span>Create Quiz</span>
+          </button>
+          <button
+            @click="openImportModal"
+            class="w-full bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 py-2.5 px-4 rounded-lg flex items-center justify-center text-sm font-medium transition-all duration-200"
+          >
+            <i class="fas fa-upload mr-2"></i>
+            <span>Import Questions</span>
+          </button>
+        </div>
       </div>
-    </div>
-    
+    </nav>
+
     <!-- Import Questions Modal -->
-    <ImportQuestionsModal 
+    <ImportQuestionsModal
       :open="showImportModal"
       @close="closeImportModal"
       @import="handleImport"

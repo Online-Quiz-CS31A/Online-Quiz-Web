@@ -3,19 +3,23 @@ import { defineStore } from 'pinia'
 import type { ClassItem, TeacherCourseDto } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useSectionsStore } from './sectionsStore'
-import api from '../services/api'
+import * as courseService from '../services/courseService'
+import type { StudentCourseDto } from '../services/types'
 
 export const useCoursesStore = defineStore('classes', () => {
-
-
+  // State
   const rawTeacherCourses = ref<TeacherCourseDto[]>([])
   const allCourses = ref<ClassItem[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-
+  // Helper function (placeholder for future implementation)
   function saveCoursesToStorage() {}
 
+  /**
+   * Fetch teacher courses from API
+   * Retrieves courses, enrollments, and processes sections
+   */
   async function fetchTeacherCourses() {
     const auth = useAuthStore()
     const user = auth.currentUser
@@ -28,29 +32,29 @@ export const useCoursesStore = defineStore('classes', () => {
     if (hasExisting) {
       return
     }
-    
+
     isLoading.value = true
-    
     error.value = null
 
     try {
-      const response = await api.get<TeacherCourseDto[]>(`/Course/teacher/${user.id}`)
-      const dtoCourses = response.data || []
-      
+      // Fetch teacher courses from service
+      const dtoCourses = await courseService.getTeacherCourses(user.id)
+
       const sectionsStore = useSectionsStore()
-      
       await sectionsStore.fetchSectionsFromApi()
-      
+
+      // Fetch enrollments for each course
       const enrollmentResults = await Promise.all(dtoCourses.map(async (course) => {
         try {
-          const enrollResponse = await api.get<any[]>(`/Course/${course.courseId}/enrollments?teacherId=${user.id}`)
-          return { courseId: course.courseId, enrollments: enrollResponse.data }
+          const enrollments = await courseService.getCourseEnrollments(course.courseId, user.id!)
+          return { courseId: course.courseId, enrollments }
         } catch (e) {
           console.error(`Failed to fetch enrollments for course ${course.courseId}`, e)
           return { courseId: course.courseId, enrollments: [] }
         }
       }))
 
+      // Process enrollments and update sections
       for (const res of enrollmentResults) {
         const course = dtoCourses.find(c => c.courseId === res.courseId)
         if (!course) continue
@@ -96,6 +100,7 @@ export const useCoursesStore = defineStore('classes', () => {
 
       rawTeacherCourses.value = dtoCourses
 
+      // Group courses by code
       const grouped = new Map<string, TeacherCourseDto[]>()
       dtoCourses.forEach(c => {
         if (!c.code) return
@@ -103,8 +108,9 @@ export const useCoursesStore = defineStore('classes', () => {
         grouped.get(c.code)!.push(c)
       })
 
+      // Map to ClassItem format
       const mapped: ClassItem[] = []
-      for (const [code, items] of grouped) {
+      for (const [, items] of grouped) {
         const first = items[0]
         const totalStudents = items.reduce((sum, item) => sum + (item.students || 0), 0)
 
@@ -123,14 +129,17 @@ export const useCoursesStore = defineStore('classes', () => {
 
       allCourses.value = mapped
       saveCoursesToStorage()
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to fetch teacher courses from API:', e)
-      error.value = e?.message || 'Failed to load courses'
+      error.value = e instanceof Error ? e.message : 'Failed to load courses'
     } finally {
       isLoading.value = false
     }
   }
 
+  /**
+   * Fetch student courses from API
+   */
   async function fetchStudentCourses() {
     const auth = useAuthStore()
     const user = auth.currentUser
@@ -143,8 +152,8 @@ export const useCoursesStore = defineStore('classes', () => {
     error.value = null
 
     try {
-      const response = await api.get<any[]>(`/Course/student/${user.id}`)
-      const courses = response.data || []
+      // Fetch student courses from service
+      const courses: StudentCourseDto[] = await courseService.getStudentCourses(user.id)
 
       const mapped: ClassItem[] = courses.map(c => ({
         id: c.courseId,
@@ -152,7 +161,7 @@ export const useCoursesStore = defineStore('classes', () => {
         name: c.name,
         teacher: c.instructorName || c.instructorUsername || 'Teacher',
         description: c.category || '',
-        students: 0,
+        students: c.enrollmentCount ?? 0,
         color: 'blue',
         status: (c.status === 'Active' || c.status === 'Archived') ? c.status : 'Active',
         studentUsernames: []
@@ -160,14 +169,15 @@ export const useCoursesStore = defineStore('classes', () => {
 
       allCourses.value = mapped
       saveCoursesToStorage()
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to fetch student courses from API:', e)
-      error.value = e?.message || 'Failed to load courses'
+      error.value = e instanceof Error ? e.message : 'Failed to load courses'
     } finally {
       isLoading.value = false
     }
   }
 
+  // Computed properties
   const allCoursesWithCounts = computed<ClassItem[]>(() => {
     const sectionsStore = useSectionsStore()
     return allCourses.value.map(course => {
@@ -176,13 +186,12 @@ export const useCoursesStore = defineStore('classes', () => {
       return {
         ...course,
         teacher: course.teacher,
-        students: studentCount,
+        students: sections.length > 0 ? studentCount : course.students,
       }
     })
   })
 
   const auth = useAuthStore()
-
 
   const myClasses = computed<ClassItem[]>(() => {
     const user = auth.currentUser
@@ -219,6 +228,7 @@ export const useCoursesStore = defineStore('classes', () => {
     return Array.from(subjects)
   })
 
+  // Actions
   function addClass(newClass: Omit<ClassItem, 'id'>) {
     const last = allCourses.value.length ? allCourses.value[allCourses.value.length - 1] : undefined
     const nextId = ((last?.id) || 0) + 1
@@ -245,12 +255,17 @@ export const useCoursesStore = defineStore('classes', () => {
   }
 
   return {
+    // State
     allCourses: allCoursesWithCounts,
     isLoading,
     error,
+    rawTeacherCourses,
+
+    // Computed
     myClasses,
     mySubjects,
-    rawTeacherCourses,
+
+    // Actions
     addClass,
     archiveCourse,
     unarchiveCourse,

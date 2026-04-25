@@ -9,7 +9,6 @@ const router = useRouter()
 // REFS
 const showPassword = ref(false)
 const isLoading = ref(false)
-const errorMessage = ref('')
 
 // REACTIVE
 const store = useAuthStore()
@@ -20,23 +19,61 @@ const form = reactive({
   rememberMe: false
 })
 
+const errors = reactive({
+  email: '',
+  password: ''
+})
+
 // METHODS
+const validateEmail = (): boolean => {
+  errors.email = ''
+
+  if (!form.email.trim()) {
+    errors.email = 'Please enter your email address'
+    return false
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailPattern.test(form.email)) {
+    errors.email = 'Please enter a valid email address'
+    return false
+  }
+
+  return true
+}
+
+const validatePassword = (): boolean => {
+  errors.password = ''
+
+  if (!form.password) {
+    errors.password = 'Please enter your password'
+    return false
+  }
+
+  if (form.password.length < 6) {
+    errors.password = 'Password must be at least 6 characters long'
+    return false
+  }
+
+  return true
+}
+
 const handleLogin = async () => {
+  // Validate all fields
+  const isEmailValid = validateEmail()
+  const isPasswordValid = validatePassword()
+
+  if (!isEmailValid || !isPasswordValid) {
+    return
+  }
+
   isLoading.value = true
-  errorMessage.value = ''
 
   try {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const isEmail = emailPattern.test(form.email)
-    if (!isEmail) {
-      errorMessage.value = 'Please enter a valid email address.'
-      isLoading.value = false
-      return
-    }
-
     const result = await store.login(form.email, form.password)
     if (!result.success) {
-      errorMessage.value = result.message || 'Invalid email or password'
+      // Show user-friendly error message
+      errors.email = 'Unable to sign in. Please check your email and password.'
       return
     }
 
@@ -51,10 +88,19 @@ const handleLogin = async () => {
     }
   } catch (error) {
     console.error('Login error:', error)
-    errorMessage.value = 'An unexpected error occurred. Please try again.'
+    // Show user-friendly error message
+    errors.email = 'Something went wrong. Please try again in a moment.'
   } finally {
     isLoading.value = false
   }
+}
+
+const clearEmailError = () => {
+  errors.email = ''
+}
+
+const clearPasswordError = () => {
+  errors.password = ''
 }
 </script>
 
@@ -80,7 +126,7 @@ const handleLogin = async () => {
         <div class="mb-8">
           <div class="w-20 h-20 bg-white bg-opacity-20 rounded-[50%] flex items-center justify-center mb-6 backdrop-blur-sm">
             <!-- <font-awesome-icon icon="graduation-cap" class="w-10 h-10 text-white" /> -->
-            <img src="/src/assets/image/ACLC.png"/>
+            <img src="/src/assets/image/ACLC.webp"/>
           </div>
           <h1 class="text-4xl font-bold mb-2">ACLC College of Mandaue</h1>
           <p class="text-xl text-blue-100 font-medium">Online Quiz System</p>
@@ -128,49 +174,66 @@ const handleLogin = async () => {
           <p class="text-gray-600">Enter your credentials to access your account</p>
         </div>
 
-        <!-- Error Alert -->
-        <div v-if="errorMessage" class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
-          {{ errorMessage }}
-        </div>
-
         <!-- Login Form -->
-        <form @submit.prevent="handleLogin" class="space-y-6">
+        <form @submit.prevent="handleLogin" class="space-y-6" novalidate>
           <!-- Email Field -->
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <font-awesome-icon icon="envelope" class="h-5 w-5 text-gray-400" />
+          <div>
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <font-awesome-icon icon="envelope" :class="['h-5 w-5', errors.email ? 'text-red-400' : 'text-gray-400']" />
+              </div>
+              <input
+                id="email"
+                v-model="form.email"
+                type="text"
+                @blur="validateEmail"
+                @input="clearEmailError"
+                :class="[
+                  'w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition duration-200',
+                  errors.email
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
+                ]"
+                placeholder="Enter your email address"
+              />
             </div>
-            <input
-              id="email"
-              v-model="form.email"
-              type="text"
-              required
-              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-              placeholder="Enter your email address"
-            />
+            <p v-if="errors.email" class="mt-1 text-sm text-red-600">
+              {{ errors.email }}
+            </p>
           </div>
 
           <!-- Password Field -->
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <font-awesome-icon icon="lock" class="h-5 w-5 text-gray-400" />
+          <div>
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <font-awesome-icon icon="lock" :class="['h-5 w-5', errors.password ? 'text-red-400' : 'text-gray-400']" />
+              </div>
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                @blur="validatePassword"
+                @input="clearPasswordError"
+                :class="[
+                  'w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition duration-200',
+                  errors.password
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
+                ]"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition duration-200"
+              >
+                <font-awesome-icon v-if="!showPassword" icon="eye" class="h-5 w-5 cursor-pointer" />
+                <font-awesome-icon v-else icon="eye-slash" class="h-5 w-5 cursor-pointer" />
+              </button>
             </div>
-            <input
-              id="password"
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              required
-              class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-              placeholder="Enter your password"
-            />
-            <button
-              type="button"
-              @click="showPassword = !showPassword"
-              class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition duration-200"
-            >
-              <font-awesome-icon v-if="!showPassword" icon="eye" class="h-5 w-5 cursor-pointer" />
-              <font-awesome-icon v-else icon="eye-slash" class="h-5 w-5 cursor-pointer" />
-            </button>
+            <p v-if="errors.password" class="mt-1 text-sm text-red-600">
+              {{ errors.password }}
+            </p>
           </div>
 
           <!-- Remember Me & Forgot Password -->
@@ -205,15 +268,14 @@ const handleLogin = async () => {
         <!-- Support Link -->
         <div class="mt-8 text-center">
           <p class="text-sm text-gray-600">
-            Need help? Contact your instructor or
-            <a href="#" class="text-blue-600 hover:text-blue-500 font-medium transition duration-200">IT Support</a>
+            Need help? Contact School Administration or your Instructor.
           </p>
         </div>
 
         <!-- Footer -->
         <div class="mt-8 text-center">
           <p class="text-xs text-gray-500">
-            © 2025 ACLC College of Mandaue. All rights reserved.
+            © 2026 ACLC College of Mandaue. All rights reserved.
           </p>
         </div>
       </div>

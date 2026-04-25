@@ -17,7 +17,7 @@ const router = useRouter()
 
 // REFS
 const query = ref('')
-const statusFilter = ref<'all' | 'draft' | 'published'>('all')
+const statusFilter = ref<'all' | 'draft' | 'published' | 'answered' | 'unanswered'>('all')
 
 // LIFECYCLE
 onMounted(async () => {
@@ -38,6 +38,22 @@ function addQuiz() {
 // COMPUTED
 const isTeacher = computed(() => auth.userRole === 'teacher')
 
+const filterOptions = computed(() => {
+  if (isTeacher.value) {
+    return [
+      { label: 'All', value: 'all' },
+      { label: 'Drafts', value: 'draft' },
+      { label: 'Published', value: 'published' }
+    ]
+  } else {
+    return [
+      { label: 'All', value: 'all' },
+      { label: 'Answered', value: 'answered' },
+      { label: 'Unanswered', value: 'unanswered' }
+    ]
+  }
+})
+
 const quizzes = computed<(TeacherQuizItem | StudentQuizItem)[]>(() => {
   if (isTeacher.value) {
     return quizzesStore.myTeacherQuizzes.filter(q => !(q as any).archived)
@@ -48,14 +64,34 @@ const quizzes = computed<(TeacherQuizItem | StudentQuizItem)[]>(() => {
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   let list = quizzes.value || []
-  
-  if (statusFilter.value !== 'all' && isTeacher.value) {
-    list = list.filter((qz) => {
-      const teacherQuiz = qz as TeacherQuizItem
-      return (teacherQuiz.status || 'published') === statusFilter.value
-    })
+
+  // Apply status filter
+  if (statusFilter.value !== 'all') {
+    if (isTeacher.value) {
+      list = list.filter((qz) => {
+        const teacherQuiz = qz as TeacherQuizItem
+        return (teacherQuiz.status || 'published') === statusFilter.value
+      })
+    } else {
+      // Student filters
+      list = list.filter((qz) => {
+        const studentQuiz = qz as StudentQuizItem
+        // Check backend-backed submitted quiz IDs first (authoritative), then fallback to localStorage
+        const hasSubmitted = quizzesStore.hasSubmittedAttempt(studentQuiz.id)
+        const history = quizzesStore.getQuizAttemptHistory(studentQuiz.id)
+        const isAnswered = hasSubmitted || history.length > 0
+
+        if (statusFilter.value === 'answered') {
+          return isAnswered
+        } else if (statusFilter.value === 'unanswered') {
+          return !isAnswered
+        }
+        return true
+      })
+    }
   }
-  
+
+  // Apply search filter
   if (!q) return list
   return list.filter((qz) =>
     (qz.title || '').toLowerCase().includes(q) ||
@@ -75,25 +111,21 @@ const filtered = computed(() => {
     <SearchFilterBar
       :model-value="query"
       :filter="statusFilter"
-      :options="[
-        { label: 'All', value: 'all' },
-        { label: 'Drafts', value: 'draft' },
-        { label: 'Published', value: 'published' }
-      ]"
+      :options="filterOptions"
       placeholder="Search by title, subject, class, or due date..."
       :action-label="isTeacher ? 'Add Quiz' : undefined"
       no-border
       @update:modelValue="(v: string) => (query = v)"
-      @update:filter="(v: string) => (statusFilter = v as 'all' | 'draft' | 'published')"
+      @update:filter="(v: string) => (statusFilter = v as 'all' | 'draft' | 'published' | 'answered' | 'unanswered')"
       @action="addQuiz"
     />
 
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-header="true" :show-filters="false" />
     <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-header="true" />
 
-    <div v-if="filtered.length === 0 && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">
-      <span v-if="query">No quizzes found for "{{ query }}".</span>
-      <span v-else>No quizzes found.</span>
+    <!-- Only show this message when there's a search query with no results -->
+    <div v-if="filtered.length === 0 && query && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">
+      <span>No quizzes found for "{{ query }}".</span>
     </div>
   </div>
 </template>

@@ -106,12 +106,15 @@ export interface TeacherQuizItem {
   total: number
   color: string
   status?: 'draft' | 'published'
-  questions?: any[]
+  questions?: QuizQuestion[]
   createdAt?: string
   updatedAt?: string
   ownerUsername?: string
   archived?: boolean
   timeLimit?: string
+  assignedSections?: string[]
+  maxAttempts?: number
+  quizIdsGroup?: number[]
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS
@@ -126,6 +129,8 @@ export interface StudentQuizItem {
   status: string
   color: string
   maxAttempts?: number
+  courseCode?: string
+  courseSection?: string
 }
 
 // ADMIN COURSE CATALOG & DETAILS INTERFACES
@@ -174,7 +179,7 @@ export interface Activity {
   id: number
   title: string
   status: string
-  icon: any
+  icon: string
   user: string
   date: string
   timeAgo: string
@@ -213,6 +218,7 @@ export interface MatchingPair {
 
 export interface QuizQuestion {
   id: number
+  questionId?: number
   type: string
   text: string
   points: number
@@ -272,7 +278,7 @@ export interface QuizAttemptHistory {
   totalPoints: number
   percentage: number
   completedAt: string
-  answers: Record<number, any>
+  answers: Record<number, number | string | string[] | Record<number, number> | null>
   durationSeconds?: number
 }
 
@@ -367,7 +373,7 @@ export interface ScoreReviewQuestion {
   question: string
   options: string[]
   correctAnswer: number
-  userAnswer: any
+  userAnswer: number | string | string[] | Record<number, number> | null
   isCorrect: boolean
   points: number
   questionType?: string
