@@ -40,10 +40,8 @@ export async function getStudentCourses(studentId: number) {
   return response.data || []
 }
 
-export async function getCourseClassmates(courseId: number, studentId: number) {
-  const response = await api.get<ClassmateDto[]>(`/Course/${courseId}/classmates`, {
-    params: { studentId }
-  })
+export async function getCourseClassmates(courseId: number) {
+  const response = await api.get<ClassmateDto[]>(`/Course/${courseId}/classmates`)
   return response.data || []
 }
 

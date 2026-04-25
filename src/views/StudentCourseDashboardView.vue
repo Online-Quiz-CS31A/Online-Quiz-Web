@@ -44,10 +44,9 @@ const heroStyle = computed(() => {
 
 async function fetchClassmates() {
   const cId = courseId.value
-  const userId = authStore.currentUser?.id
-  if (!cId || !userId) return
+  if (!cId) return
   try {
-    classmates.value = await courseService.getCourseClassmates(cId, userId)
+    classmates.value = await courseService.getCourseClassmates(cId)
   } catch {
     classmates.value = []
   }
