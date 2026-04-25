@@ -14,3 +14,6 @@ export * from './userService'
 
 // Course service
 export * from './courseService'
+
+// Quiz service
+export * from './quizService'

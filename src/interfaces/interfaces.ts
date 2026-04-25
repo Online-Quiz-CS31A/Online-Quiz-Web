@@ -106,12 +106,15 @@ export interface TeacherQuizItem {
   total: number
   color: string
   status?: 'draft' | 'published'
-  questions?: any[]
+  questions?: QuizQuestion[]
   createdAt?: string
   updatedAt?: string
   ownerUsername?: string
   archived?: boolean
   timeLimit?: string
+  assignedSections?: string[]
+  maxAttempts?: number
+  quizIdsGroup?: number[]
 }
 
 // QUIZ LIST ITEMS FOR STUDENTS
