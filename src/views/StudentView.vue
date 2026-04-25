@@ -13,8 +13,8 @@ const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQu
 // REFS
 const sidebarActive = ref(false)
 const showJoinClass = ref(false)
-const showFindQuizzes = ref(false)
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
+const isLoadingQuizzes = ref(true)
 
 // REACTIVE
 const quizzesStore = useQuizzesStore()
@@ -68,7 +68,9 @@ const handleClickOutside = (e: Event) => {
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   await coursesStore.fetchStudentCourses()
+  isLoadingQuizzes.value = true
   await quizzesStore.fetchStudentQuizzesAsync()
+  isLoadingQuizzes.value = false
 })
 
 onUnmounted(() => {
@@ -86,8 +88,8 @@ onUnmounted(() => {
     </div>
 
     <!-- Shared Sidebar (role-aware) -->
-    <Sidebar 
-      :isActive="sidebarActive" 
+    <Sidebar
+      :isActive="sidebarActive"
       :activeSection="currentSection"
       @close="closeSidebar"
       @join-class="showJoinClassModal"
@@ -107,7 +109,7 @@ onUnmounted(() => {
           <!-- Classes Section (limit to top 3 on home) -->
           <StudentClasses :max-items="3" @view-all="navigateToCourses" />
           <!-- Quizzes Section -->
-          <StudentUpcomingQuizzes :quizzes="upcomingQuizzes.slice(0, 3)" @view-all="navigateToQuizzes" />
+          <StudentUpcomingQuizzes :quizzes="upcomingQuizzes.slice(0, 3)" :is-loading="isLoadingQuizzes" @view-all="navigateToQuizzes" />
         </div>
         <ViewAllQuizzes v-else-if="currentSection === 'quizzes'" />
         <SchoolCalendar v-else-if="currentSection === 'calendar'" />

@@ -32,6 +32,7 @@ const authStore = useAuthStore()
 // REFS
 const menuOpenForId = ref<number | null>(null)
 const router = useRouter()
+const isLoading = ref(false)
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -154,9 +155,11 @@ const getStudentCount = (courseId: number) => {
 }
 
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', onDocClick)
-  classesStore.fetchStudentCourses()
+  isLoading.value = true
+  await classesStore.fetchStudentCourses()
+  isLoading.value = false
 })
 
 onBeforeUnmount(() => {
@@ -171,8 +174,25 @@ onBeforeUnmount(() => {
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="i in (props.maxItems || 3)" :key="i" class="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+        <div class="h-40 bg-gray-200"></div>
+        <div class="p-4 space-y-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+            <div class="flex-1 space-y-2">
+              <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+          <div class="h-10 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Empty State -->
-    <div v-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+    <div v-else-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
         <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
           <i class="fas fa-graduation-cap text-4xl text-blue-400"></i>
@@ -285,5 +305,17 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 </style>
 

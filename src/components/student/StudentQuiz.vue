@@ -9,6 +9,7 @@ interface Props {
   quizzes?: StudentQuiz[]
   hideHeader?: boolean
   viewMode?: 'cards' | 'rows'
+  isLoading?: boolean
 }
 
 // CONSTANTS - Lazy load images
@@ -25,6 +26,7 @@ const router = useRouter()
 const props = withDefaults(defineProps<Props>(), {
   hideHeader: false,
   viewMode: 'cards',
+  isLoading: false,
 })
 
 // EMITS
@@ -121,8 +123,29 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="props.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="i in 3" :key="i" class="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+        <div class="h-32 bg-gray-200"></div>
+        <div class="p-4 space-y-3">
+          <div class="flex items-center space-x-2">
+            <div class="w-4 h-4 bg-gray-200 rounded"></div>
+            <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <div class="w-4 h-4 bg-gray-200 rounded"></div>
+            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+          </div>
+          <div class="flex items-center justify-between pt-2">
+            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Empty State -->
-    <div v-if="displayedQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
+    <div v-else-if="displayedQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
         <div class="w-24 h-24 bg-gradient-to-br from-purple-50 to-pink-100 rounded-full flex items-center justify-center">
           <i class="fas fa-file-lines text-4xl text-purple-400"></i>
@@ -260,7 +283,6 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
   </div>
 </template>
 
-
 <style scoped>
 .quiz-card {
   transition: all 0.3s ease;
@@ -268,5 +290,18 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
 
 .quiz-card:hover {
   box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>
