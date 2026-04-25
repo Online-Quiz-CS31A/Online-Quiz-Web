@@ -76,8 +76,10 @@ const filtered = computed(() => {
       // Student filters
       list = list.filter((qz) => {
         const studentQuiz = qz as StudentQuizItem
+        // Check backend-backed submitted quiz IDs first (authoritative), then fallback to localStorage
+        const hasSubmitted = quizzesStore.hasSubmittedAttempt(studentQuiz.id)
         const history = quizzesStore.getQuizAttemptHistory(studentQuiz.id)
-        const isAnswered = history.length > 0
+        const isAnswered = hasSubmitted || history.length > 0
 
         if (statusFilter.value === 'answered') {
           return isAnswered

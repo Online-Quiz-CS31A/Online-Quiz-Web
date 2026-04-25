@@ -353,6 +353,12 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
     await submitAttempt()
     quizzesStore.saveAttemptToHistory()
+
+    // Mark quiz as submitted in backend-backed store
+    if (quizzesStore.currentAttempt.quizId) {
+      quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+    }
+
     router.push({ name: 'quiz-score' })
   }
 

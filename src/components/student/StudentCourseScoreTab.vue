@@ -26,13 +26,16 @@ const myScores = computed<MyScoreItem[]>(() => {
     } else {
       const questions = quizzesStore.getStudentQuizQuestions(q.id)
       total = questions.reduce(
-        (sum: number, qq: any) => sum + (typeof qq.points === 'number' ? qq.points : 0),
+        (sum: number, qq: { points?: number }) => sum + (typeof qq.points === 'number' ? qq.points : 0),
         0
       )
     }
 
     const percent = total > 0 ? Math.round((score / total) * 100) : 0
-    const status: 'Answered' | 'Unanswered' = history.length > 0 ? 'Answered' : 'Unanswered'
+
+    // Check backend-backed submitted quiz IDs first (authoritative), then fallback to localStorage
+    const hasSubmitted = quizzesStore.hasSubmittedAttempt(q.id) || history.length > 0
+    const status: 'Answered' | 'Unanswered' = hasSubmitted ? 'Answered' : 'Unanswered'
 
     return {
       title: q.title,

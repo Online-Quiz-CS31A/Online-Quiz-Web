@@ -161,6 +161,11 @@ const submitQuiz = async () => {
     quizzesStore.currentAttempt.isOngoing = false
     quizzesStore.saveAttemptToHistory()
 
+    // Mark quiz as submitted in backend-backed store
+    if (quizzesStore.currentAttempt.quizId) {
+      quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+    }
+
     router.push({ name: 'quiz-score' })
   } catch (error) {
     console.error('Failed to submit quiz:', error)
@@ -191,6 +196,11 @@ const confirmSubmit = async () => {
     quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
     quizzesStore.currentAttempt.isOngoing = false
     quizzesStore.saveAttemptToHistory()
+
+    // Mark quiz as submitted in backend-backed store
+    if (quizzesStore.currentAttempt.quizId) {
+      quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+    }
 
     router.push({ name: 'quiz-score' })
   } catch (error) {

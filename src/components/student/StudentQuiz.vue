@@ -107,6 +107,11 @@ const toggleDone = (quizId: number) => {
 }
 
 const isAnswered = (quizId: number) => {
+  // Check backend-backed submitted quiz IDs first (authoritative)
+  if (quizzesStore.hasSubmittedAttempt(quizId)) {
+    return true
+  }
+  // Fallback to localStorage for backwards compatibility
   const history = quizzesStore.getQuizAttemptHistory(quizId)
   return history.length > 0
 }

@@ -42,6 +42,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   const quizDoneMap = ref<Record<string, boolean>>({})
   const quizzesVersion = ref(0)
   const archivedSeedQuizIds = ref<number[]>([])
+  const submittedQuizIds = ref<Set<number>>(new Set())
   let quizDoneLoaded = false
   let attemptHistoryLoaded = false
 
@@ -84,6 +85,24 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     const coursesStoreLocal = useCoursesStore()
     const courses = coursesStoreLocal.allCourses.filter(c => c.status !== 'Archived')
+
+    // Fetch submitted attempts from backend to determine quiz status
+    try {
+      const api = await import('../services/api')
+      const attemptsResponse = await api.default.get(`/Attempt/student/${user.id}`)
+      if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
+        const newSubmittedIds = new Set<number>()
+        attemptsResponse.data.forEach((attempt: { quizId: number; submittedAt: string | null }) => {
+          if (attempt.submittedAt) {
+            newSubmittedIds.add(attempt.quizId)
+          }
+        })
+        submittedQuizIds.value = newSubmittedIds
+        console.log('Loaded submitted quiz IDs from backend:', Array.from(newSubmittedIds))
+      }
+    } catch (error) {
+      console.error('Failed to fetch student attempts:', error)
+    }
 
     const results = await Promise.all(
       courses.map(async (course) => {
@@ -1380,6 +1399,14 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     console.log('Set quiz questions for score view:', quizId, 'questions count:', questions.length)
   }
 
+  function hasSubmittedAttempt(quizId: number): boolean {
+    return submittedQuizIds.value.has(quizId)
+  }
+
+  function markQuizAsSubmitted(quizId: number) {
+    submittedQuizIds.value.add(quizId)
+  }
+
   async function fetchTeacherQuizzes() {
     const authLocal = useAuthStore()
     const user = authLocal.currentUser
@@ -1548,6 +1575,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     fetchQuizDetail,
     fetchStudentQuizzesAsync,
     mapApiQuestionToFrontend,
-    setQuizQuestionsForScore
+    setQuizQuestionsForScore,
+    hasSubmittedAttempt,
+    markQuizAsSubmitted
   }
 })
