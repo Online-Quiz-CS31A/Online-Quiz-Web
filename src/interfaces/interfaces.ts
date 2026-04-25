@@ -218,6 +218,7 @@ export interface MatchingPair {
 
 export interface QuizQuestion {
   id: number
+  questionId?: number
   type: string
   text: string
   points: number

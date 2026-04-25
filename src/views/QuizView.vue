@@ -276,7 +276,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
           if (answersResponse.data && Array.isArray(answersResponse.data)) {
             answersResponse.data.forEach((answer: AnswerResponse) => {
               const questionIndex = questions.value.findIndex((q: QuizQuestion) =>
-                q.id === answer.questionId
+                (q.questionId || q.id) === answer.questionId
               )
 
               if (questionIndex >= 0) {

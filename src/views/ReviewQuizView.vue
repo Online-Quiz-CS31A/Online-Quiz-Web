@@ -250,7 +250,7 @@ const fetchQuizQuestions = async () => {
         if (answersResponse.data && Array.isArray(answersResponse.data)) {
           answersResponse.data.forEach((answer: AnswerResponse) => {
             const questionIndex = quizQuestions.value.findIndex((q: QuizQuestion) =>
-              q.id === answer.questionId
+              (q.questionId || q.id) === answer.questionId
             )
 
             if (questionIndex >= 0) {
