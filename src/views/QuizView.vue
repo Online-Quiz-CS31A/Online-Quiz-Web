@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
-import type { QuizQuestion } from '@/interfaces/interfaces'
+import type { QuizQuestion, QuestionOption } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
@@ -16,13 +16,42 @@ const attemptId = ref<number | null>(null)
 const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
 const questions = ref<QuizQuestion[]>(quizStateQuestions)
 const quizTitle = ref(history.state?.quizTitle || 'Quiz')
-const quizSubject = ref(history.state?.quizSubject || 'Quiz')
 const hasValidQuestions = computed(() => questions.value.length > 0)
-  
-  // REFS
-  const initialQuestionIndex = typeof (history.state as any)?.questionIndex === 'number'
-    ? (history.state as any).questionIndex
-    : 0
+
+// TYPE DEFINITIONS
+interface HistoryState {
+  questionIndex?: number
+  quizId?: number
+  questions?: QuizQuestion[]
+  quizTitle?: string
+}
+
+interface AttemptResponse {
+  attemptId: number
+  quizId: number
+  startedAt: string
+  submittedAt: string | null
+  score?: number
+}
+
+interface AnswerResponse {
+  questionId: number
+  choiceId: number | null
+  textAnswer: string | null
+}
+
+interface QuestionResponse {
+  questionId?: number
+  id?: number
+  type?: string
+  options?: QuestionOption[]
+  choices?: { choiceId: number; body?: string; text?: string }[]
+}
+
+// REFS
+const initialQuestionIndex = typeof (history.state as HistoryState)?.questionIndex === 'number'
+  ? (history.state as HistoryState).questionIndex
+  : 0
   const currentQuestion = ref(initialQuestionIndex)
   const selectedOption = ref<number | null>(null)
   const textAnswer = ref('')
@@ -32,13 +61,13 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const durationSeconds = ref(0)
-  
+
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
   const progress = computed(() => {
     return ((currentQuestion.value + 1) / questions.value.length) * 100
   })
-  
+
   // METHODS
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600)
@@ -46,12 +75,12 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     const secs = seconds % 60
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
-  
+
   const selectOption = async (optionIndex: number) => {
     selectedOption.value = optionIndex
     quizzesStore.setAnswer(currentQuestion.value, optionIndex)
     quizzesStore.markAnswered(currentQuestion.value)
-    
+
     await saveAnswerToBackend(currentQuestion.value, optionIndex)
   }
 
@@ -106,7 +135,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       clearAnswers()
       return
     }
-    
+
     if (q.type === 'multiple-choice' || q.type === 'true-false') {
       selectedOption.value = typeof answer === 'number' ? answer : null
     } else if (q.type === 'text') {
@@ -115,7 +144,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       if (Array.isArray(answer)) {
         enumerationAnswers.value = answer
       } else {
-        const items = ((q as any)?.items || []) as string[]
+        const items = (q.items || []) as string[]
         enumerationAnswers.value = Array(items.length).fill('')
       }
     } else if (q.type === 'matching') {
@@ -126,21 +155,21 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       clearAnswers()
     }
   }
-  
+
   const nextQuestion = () => {
     if (currentQuestion.value < questions.value.length - 1) {
       currentQuestion.value++
       loadCurrentQuestionAnswers()
     }
   }
-  
+
   const previousQuestion = () => {
     if (currentQuestion.value > 0) {
       currentQuestion.value--
       loadCurrentQuestionAnswers()
     }
   }
-  
+
   const goToQuestion = (questionIndex: number) => {
     currentQuestion.value = questionIndex
     loadCurrentQuestionAnswers()
@@ -169,27 +198,35 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     }
   }
 
-  const saveAnswerToBackend = async (questionIndex: number, answer: any) => {
+  const saveAnswerToBackend = async (questionIndex: number, answer: number | string | string[] | Record<number, number> | null) => {
     try {
       if (!attemptId.value || !authStore.currentUser?.id) return
 
       const question = questions.value[questionIndex]
       if (!question) return
 
-      const questionId = (question as any).questionId || (question as any).id
+      const questionId = question.id
+      const qType = (question.type || '').toLowerCase()
 
       let choiceId = null
-      if (typeof answer === 'number' && Array.isArray((question as any).choices)) {
-        const choices = (question as any).choices
-        if (answer >= 0 && answer < choices.length) {
-          choiceId = choices[answer].choiceId
+      let textAnswer = null
+
+      if (typeof answer === 'number' && (qType === 'multiple-choice' || qType === 'true-false' || qType === 'single' || qType === 'multiple')) {
+        const choices = question.options
+        if (Array.isArray(choices) && answer >= 0 && answer < choices.length) {
+          choiceId = (choices[answer] as { choiceId?: number }).choiceId || null
         }
+      } else if (qType === 'text' || qType === 'essay') {
+        textAnswer = typeof answer === 'string' ? answer : null
+      } else if (answer !== null && answer !== undefined) {
+        textAnswer = JSON.stringify(answer)
       }
 
       await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
         attemptId: attemptId.value,
         questionId: questionId,
-        choiceId: choiceId
+        choiceId: choiceId,
+        textAnswer: textAnswer
       })
 
       console.log('Answer saved for question', questionIndex)
@@ -203,7 +240,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       if (!attemptId.value || !authStore.currentUser?.id) return
 
       const scoreDetails = quizzesStore.calculateScore()
-      const startTime = quizzesStore.currentAttempt.startAtISO 
+      const startTime = quizzesStore.currentAttempt.startAtISO
         ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
         : Date.now()
       const timeSpent = Math.floor((Date.now() - startTime) / 1000)
@@ -215,7 +252,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
 
       quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
       quizzesStore.currentAttempt.isOngoing = false
-      
+
       console.log('Attempt submitted successfully')
     } catch (error) {
       console.error('Failed to submit attempt:', error)
@@ -228,32 +265,59 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       if (!userId || !quizId.value) return
 
       const response = await api.get(`/Attempt/student/${userId}`)
-      
+
       if (response.data && Array.isArray(response.data)) {
-        const ongoingAttempt = response.data.find((attempt: any) => 
+        const ongoingAttempt = response.data.find((attempt: AttemptResponse) =>
           attempt.quizId === quizId.value && !attempt.submittedAt
         )
 
         if (ongoingAttempt) {
           attemptId.value = ongoingAttempt.attemptId
-          
+
           const answersResponse = await api.get(`/Answer/attempt/${attemptId.value}?userId=${userId}`)
-          
+
           if (answersResponse.data && Array.isArray(answersResponse.data)) {
-            answersResponse.data.forEach((answer: any) => {
-              const questionIndex = questions.value.findIndex((q: any) => 
-                (q.questionId || q.id) === answer.questionId
+            answersResponse.data.forEach((answer: AnswerResponse) => {
+              const questionIndex = questions.value.findIndex((q: QuizQuestion) =>
+                q.id === answer.questionId
               )
-              
+
               if (questionIndex >= 0) {
                 const question = questions.value[questionIndex]
-                if (answer.choiceId && Array.isArray((question as any).choices)) {
-                  const choiceIndex = (question as any).choices.findIndex((c: any) => 
-                    c.choiceId === answer.choiceId
+                const qType = (question.type || '').toLowerCase()
+                if (answer.choiceId != null && Array.isArray(question.options)) {
+                  const choiceIndex = question.options.findIndex((c: QuestionOption) =>
+                    (c as { choiceId?: number }).choiceId === answer.choiceId
                   )
                   if (choiceIndex >= 0) {
                     quizzesStore.setAnswer(questionIndex, choiceIndex)
                     quizzesStore.markAnswered(questionIndex)
+                  }
+                } else if (answer.textAnswer) {
+                  if (qType === 'text' || qType === 'essay') {
+                    quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                    quizzesStore.markAnswered(questionIndex)
+                  } else {
+                    try {
+                      const parsed = JSON.parse(answer.textAnswer)
+                      if (qType === 'enumeration' && Array.isArray(parsed)) {
+                        quizzesStore.setEnumerationAnswer(questionIndex, parsed)
+                        quizzesStore.markAnswered(questionIndex)
+                      } else if (qType === 'matching' && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        const map: Record<number, number> = {}
+                        Object.entries(parsed).forEach(([k, v]) => { map[Number(k)] = Number(v) })
+                        quizzesStore.setMatchingAnswer(questionIndex, map)
+                        quizzesStore.markAnswered(questionIndex)
+                      } else if (qType === 'fill-blank' && Array.isArray(parsed)) {
+                        quizzesStore.setFillBlankAnswer(questionIndex, parsed)
+                        quizzesStore.markAnswered(questionIndex)
+                      }
+                    } catch {
+                      if (qType === 'text' || qType === 'essay') {
+                        quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                        quizzesStore.markAnswered(questionIndex)
+                      }
+                    }
                   }
                 }
               }
@@ -264,20 +328,20 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
           return true
         }
       }
-      
+
       return false
     } catch (error) {
       console.error('Failed to load attempt from backend:', error)
       return false
     }
   }
-  
+
   const finishQuiz = async () => {
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
       timerInterval.value = null
     }
-    
+
     router.push({ name: 'quiz-review' })
   }
 
@@ -286,11 +350,12 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       clearInterval(timerInterval.value)
       timerInterval.value = null
     }
-    
+
     await submitAttempt()
+    quizzesStore.saveAttemptToHistory()
     router.push({ name: 'quiz-score' })
   }
-  
+
   const parseTimeLimitToSeconds = (tl: string | undefined): number => {
     if (!tl) return 0
     const s = tl.trim().toLowerCase()
@@ -307,7 +372,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
   }
 
   const initDuration = () => {
-    
+
     if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
       durationSeconds.value = quizzesStore.currentAttempt.durationSeconds
       timer.value = quizzesStore.getRemainingSeconds()
@@ -330,7 +395,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       const answer = attempt.answers[index]
       const q = questions.value[index]
       if (!q) return
-      
+
       if (q.type === 'multiple-choice' || q.type === 'true-false') {
         if (typeof answer === 'number') {
           selectedOption.value = answer
@@ -361,14 +426,14 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       if (timer.value > 0) {
         timer.value--
         if (timer.value === 0) {
-          clearInterval(timerInterval.value as any)
+          if (timerInterval.value) clearInterval(timerInterval.value)
           timerInterval.value = null
           autoSubmitOnTimeout()
         }
       }
     }, 1000)
   }
-  
+
   // LIFECYCLE
   onMounted(async () => {
     if (questions.value.length === 0 && quizId.value != null) {
@@ -376,14 +441,14 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       if (authLocal.currentUser?.id) {
         const detail = await quizzesStore.fetchQuizDetail(quizId.value, authLocal.currentUser.id)
         if (detail && Array.isArray(detail.questions)) {
-          questions.value = detail.questions.map((q: any) => quizzesStore.mapApiQuestionToFrontend(q))
+          questions.value = detail.questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
           quizzesStore.currentAttempt.questionsLength = questions.value.length
         }
       }
     }
 
     const hasOngoingAttempt = await loadAttemptFromBackend()
-    
+
     if (!hasOngoingAttempt) {
       await startAttemptInBackend()
     }
@@ -397,7 +462,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       startTimer()
     }
   })
-  
+
   onUnmounted(() => {
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
@@ -409,7 +474,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
     <div class="min-h-screen">
       <Header :breadcrumb="breadcrumb" />
       <div class="max-w-6xl mx-auto p-4 mt-8">
-      
+
       <!-- No Questions Available -->
       <div v-if="!hasValidQuestions" class="flex items-center justify-center min-h-[400px]">
         <div class="text-center">
@@ -433,7 +498,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
                 {{ formatTime(timer) }}
               </div>
             </div>
-            
+
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
               <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
@@ -445,37 +510,37 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
                 />
               </div>
             </div>
-            
+
             <!-- Multiple Choice / True-False -->
             <div v-if="['multiple-choice', 'true-false', 'Single', 'Multiple'].includes(questions[currentQuestion].type)" class="space-y-3">
-              <div 
-                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])" 
+              <div
+                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])"
                 :key="index"
                 :class="[
                   'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
-                  selectedOption === index 
-                    ? 'bg-[#C9E4F6] border-[#7B90DF]' 
+                  selectedOption === index
+                    ? 'bg-[#C9E4F6] border-[#7B90DF]'
                     : 'bg-[#F4F7F9] border-[#7B90DF] hover:bg-gray-100'
                 ]"
                 @click="selectOption(index)"
               >
                 <div class="mr-4 flex items-center justify-center w-8 h-8">
-                  <div 
+                  <div
                     :class="[
                       'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
-                      selectedOption === index 
-                        ? 'bg-[#8B9EE3] border-[#7B90DF] text-[#C9E4F6]' 
+                      selectedOption === index
+                        ? 'bg-[#8B9EE3] border-[#7B90DF] text-[#C9E4F6]'
                         : 'bg-[#F4F7F9] border-[#7B90DF] text-black'
                     ]"
                   >
-                    <i 
-                      v-if="selectedOption === index" 
+                    <i
+                      v-if="selectedOption === index"
                       class="fas fa-check text-xs"
                     ></i>
                     <span v-else>{{ String.fromCharCode(65 + index) }}</span>
                   </div>
                 </div>
-                <span 
+                <span
                   :class="[
                     'text-base font-medium',
                     selectedOption === index ? 'text-[#4866DA]' : 'text-gray-800'
@@ -569,25 +634,25 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
               </div>
             </div>
           </div>
-          
+
           <!-- Navigation buttons below quiz container -->
           <div class="flex gap-3 justify-center mt-6">
-            <button 
+            <button
               class="px-8 py-2 bg-[#F4F7F9] text-black border border-[#7B90DF] rounded-xl font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
               @click="previousQuestion"
               :disabled="currentQuestion === 0"
             >
               Previous
             </button>
-            <button 
+            <button
               v-if="currentQuestion < questions.length - 1"
               class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
               @click="nextQuestion"
             >
               Next
             </button>
-            
-            <button 
+
+            <button
               v-else
               class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
               @click="finishQuiz"
@@ -596,22 +661,22 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
             </button>
           </div>
         </div>
-  
+
         <!-- Right Panel-->
         <div class="col-span-1">
           <div class="bg-[#F4F7F9] rounded-xl shadow-sm p-4">
             <div class="mb-4">
               <p class="text-sm text-gray-600 mb-2 text-right font-medium">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
               <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-                <div 
-                  class="h-full bg-[#4285f4] rounded-full transition-all duration-300" 
+                <div
+                  class="h-full bg-[#4285f4] rounded-full transition-all duration-300"
                   :style="{ width: progress + '%' }"
                 ></div>
               </div>
             </div>
             <div class="grid grid-cols-5 gap-3">
-              <button 
-                v-for="questionIndex in questions.length" 
+              <button
+                v-for="questionIndex in questions.length"
                 :key="questionIndex"
                 :class="[
                   'w-10 h-10 border-2 rounded-lg font-semibold text-sm cursor-pointer transition-all',
@@ -629,7 +694,7 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
 
             <!-- Finish Attempt Button -->
             <div class="mt-6 pt-4 border-t border-gray-300">
-              <button 
+              <button
                 @click="finishQuiz"
                 class="w-full px-4 py-2 bg-white border border-[#7B90DF] text-[#4285f4] rounded-xl font-medium hover:bg-[#F4F7F9] transition-all flex items-center justify-center gap-2"
               >
@@ -643,6 +708,5 @@ const hasValidQuestions = computed(() => questions.value.length > 0)
       </div>
     </div>
   </template>
-  
 
-  
+

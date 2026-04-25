@@ -12,11 +12,44 @@ const router = useRouter()
 const quizzesStore = useQuizzesStore()
 const authStore = useAuthStore()
 
+// TYPE DEFINITIONS
+interface AttemptResponse {
+  attemptId: number
+  quizId: number
+  startedAt: string
+  submittedAt: string
+  score?: number
+}
+
+interface AnswerResponse {
+  questionId: number
+  choiceId: number | null
+  textAnswer: string | null
+}
+
+interface QuestionResponse {
+  questionId?: number
+  id?: number
+  type?: string
+  options?: { text: string }[]
+  choices?: { choiceId: number; body?: string; text?: string }[]
+}
+
 // REFS
 const currentQuestion = ref(0)
 const isLoading = ref(true)
-const attemptData = ref<any>(null)
-const quizData = ref<any>(null)
+const attemptData = ref<{
+  attemptId: number
+  quizId: number
+  startedAt: string
+  submittedAt: string
+  score?: number
+} | null>(null)
+const quizData = ref<{
+  title: string
+  course?: { name: string }
+  questions?: unknown[]
+} | null>(null)
 
 // COMPUTED
 const questions = computed(() => {
@@ -41,8 +74,6 @@ const scoreDetails = computed(() => quizzesStore.calculateScore())
 const score = computed(() => {
   return `${scoreDetails.value.score}/${scoreDetails.value.totalPoints}`
 })
-
-const correctCount = computed(() => questions.value.filter(q => q.isCorrect).length)
 
 const startedAtText = computed(() => {
   if (attemptData.value?.startedAt) {
@@ -79,7 +110,7 @@ const previousQuestion = () => {
 
 const finishReview = () => {
   quizzesStore.clearAttemptStorage()
-  
+
   const quizId = quizzesStore.currentAttempt.quizId
   if (quizId) {
     router.push({ name: 'student-prequiz', params: { quizId: quizId.toString() } })
@@ -91,16 +122,16 @@ const finishReview = () => {
 const getQuestionButtonClass = (index: number) => {
   const question = questions.value[index]
   if (!question) return 'border-[#7B90DF] bg-[#F4F7F9] text-gray-800'
-  
+
   const isActive = currentQuestion.value === index
-  
+
   if (isActive) {
-    return question.isCorrect 
+    return question.isCorrect
       ? 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
       : 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
   }
-  
-  return question.isCorrect 
+
+  return question.isCorrect
     ? 'border-[#4ade80] bg-[#86efac] text-green-800 hover:bg-green-300'
     : 'border-[#f87171] bg-[#fca5a5] text-red-800 hover:bg-red-300'
 }
@@ -108,10 +139,10 @@ const getQuestionButtonClass = (index: number) => {
 const getOptionClass = (optionIndex: number) => {
   const question = currentQuestionData.value
   if (!question) return 'bg-[#F4F7F9] border-[#7B90DF]'
-  
+
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
-  
+
   if (isUserAnswer && isCorrectAnswer) {
     return 'bg-[#86efac] border-[#4ade80]'
   }
@@ -121,17 +152,17 @@ const getOptionClass = (optionIndex: number) => {
   if (isCorrectAnswer) {
     return 'bg-[#F4F7F9] border-[#4ade80]'
   }
-  
+
   return 'bg-[#F4F7F9] border-[#7B90DF]'
 }
 
 const getOptionIconClass = (optionIndex: number) => {
   const question = currentQuestionData.value
   if (!question) return 'bg-[#F4F7F9] border-[#7B90DF] text-black'
-  
+
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
-  
+
   if (isCorrectAnswer && isUserAnswer) {
     return 'bg-[#4ade80] border-[#4ade80] text-white'
   }
@@ -140,26 +171,26 @@ const getOptionIconClass = (optionIndex: number) => {
   } else if (isUserAnswer) {
     return 'bg-[#f87171] border-[#f87171] text-white'
   }
-  
+
   return 'bg-[#F4F7F9] border-[#7B90DF] text-black'
 }
 
 const showIcon = (optionIndex: number) => {
   const question = currentQuestionData.value
   if (!question) return false
-  
+
   const isUserAnswer = question.userAnswer === optionIndex
   const isCorrectAnswer = question.correctAnswer === optionIndex
-  
+
   return isUserAnswer || isCorrectAnswer
 }
 
 const getIconType = (optionIndex: number) => {
   const question = currentQuestionData.value
   if (!question) return 'times'
-  
+
   const isCorrectAnswer = question.correctAnswer === optionIndex
-  
+
   return isCorrectAnswer ? 'check' : 'times'
 }
 
@@ -169,7 +200,7 @@ const isCorrectOption = (optionIndex: number) => {
   return question.correctAnswer === optionIndex
 }
 
-const isShortAnswerCorrect = (answer: any) => {
+const isShortAnswerCorrect = (answer: string | string[] | number | null | undefined) => {
   if (!answer) return false
   const text = String(answer).trim()
   if (!text) return false
@@ -213,7 +244,7 @@ const getQuestionScore = (index: number) => {
     total = basePoints * items.length
 
     const userItems: string[] = Array.isArray(q.userAnswer)
-      ? (q.userAnswer as any[]).map(v => (v != null ? String(v) : ''))
+      ? (q.userAnswer as (string | number | null)[]).map(v => (v != null ? String(v) : ''))
       : []
 
     const normalize = (text: string) => text.trim().toLowerCase()
@@ -266,7 +297,7 @@ const isEnumerationItemCorrect = (itemIndex: number) => {
 
   const items = q.options
   const userItems: string[] = Array.isArray(q.userAnswer)
-    ? (q.userAnswer as any[]).map(v => (v != null ? String(v) : ''))
+    ? (q.userAnswer as (string | number | null)[]).map(v => (v != null ? String(v) : ''))
     : []
 
   const normalize = (text: string) => text.trim().toLowerCase()
@@ -297,16 +328,16 @@ const loadScoreData = async () => {
 
     const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
     console.log('Attempts response:', attemptsResponse.data)
-    
+
     if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
-      const submittedAttempts = attemptsResponse.data.filter((attempt: any) => 
+      const submittedAttempts = attemptsResponse.data.filter((attempt: AttemptResponse) =>
         attempt.quizId === quizId && attempt.submittedAt
       )
-      
+
       console.log('Submitted attempts for this quiz:', submittedAttempts)
-      
+
       if (submittedAttempts.length > 0) {
-        submittedAttempts.sort((a: any, b: any) => 
+        submittedAttempts.sort((a: AttemptResponse, b: AttemptResponse) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
         )
         attemptData.value = submittedAttempts[0]
@@ -320,13 +351,13 @@ const loadScoreData = async () => {
 
         if (quizResponse.data) {
           quizData.value = quizResponse.data
-          
+
           const questions = quizResponse.data.questions || []
           console.log('Raw questions from API:', questions)
-          
-          const mappedQuestions = questions.map((q: any) => quizzesStore.mapApiQuestionToFrontend(q))
+
+          const mappedQuestions = questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
           console.log('Mapped questions:', mappedQuestions)
-          
+
           const username = authStore.currentUser?.username
           if (username) {
             quizzesStore.setQuizQuestionsForScore(
@@ -336,40 +367,65 @@ const loadScoreData = async () => {
               username
             )
           }
-          
+
           if (mappedQuestions.length > 0) {
             quizzesStore.currentAttempt.questionsLength = mappedQuestions.length
           }
 
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
           console.log('Answers response:', answersResponse.data)
-          
+
           if (answersResponse.data && Array.isArray(answersResponse.data)) {
-            answersResponse.data.forEach((answer: any) => {
-              const questionIndex = mappedQuestions.findIndex((q: any) => 
+            answersResponse.data.forEach((answer: AnswerResponse) => {
+              const questionIndex = mappedQuestions.findIndex((q: QuestionResponse) =>
                 (q.questionId || q.id) === answer.questionId
               )
-              
+
               console.log('Mapping answer for questionId:', answer.questionId, 'to index:', questionIndex)
-              
+
               if (questionIndex >= 0) {
-                const question = mappedQuestions[questionIndex]
-                
-                if (answer.choiceId && Array.isArray((question as any).options)) {
-                  const choiceIndex = (question as any).options.findIndex((opt: any) => {
-                    const choices = (question as any).choices || []
-                    const matchingChoice = choices.find((c: any) => c.choiceId === answer.choiceId)
+                const question = mappedQuestions[questionIndex] as QuestionResponse
+                const qType = (question.type || '').toLowerCase()
+
+                if (answer.choiceId != null && Array.isArray(question.options)) {
+                  const choiceIndex = question.options.findIndex((opt: { text: string }) => {
+                    const choices = question.choices || []
+                    const matchingChoice = choices.find((c: { choiceId: number; body?: string; text?: string }) => c.choiceId === answer.choiceId)
                     if (matchingChoice) {
                       return opt.text === matchingChoice.body || opt.text === matchingChoice.text
                     }
                     return false
                   })
-                  
+
                   console.log('Found choice index:', choiceIndex, 'for choiceId:', answer.choiceId)
-                  
+
                   if (choiceIndex >= 0) {
                     quizzesStore.setAnswer(questionIndex, choiceIndex)
                     quizzesStore.markAnswered(questionIndex)
+                  }
+                } else if (answer.textAnswer) {
+                  if (qType === 'text' || qType === 'essay') {
+                    quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                    quizzesStore.markAnswered(questionIndex)
+                  } else {
+                    try {
+                      const parsed = JSON.parse(answer.textAnswer)
+                      if (qType === 'enumeration' && Array.isArray(parsed)) {
+                        quizzesStore.setEnumerationAnswer(questionIndex, parsed)
+                        quizzesStore.markAnswered(questionIndex)
+                      } else if (qType === 'matching' && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        const map: Record<number, number> = {}
+                        Object.entries(parsed).forEach(([k, v]) => { map[Number(k)] = Number(v) })
+                        quizzesStore.setMatchingAnswer(questionIndex, map)
+                        quizzesStore.markAnswered(questionIndex)
+                      } else if ((qType === 'fill-blank' || qType === 'fillblank' || qType === 'fill_blank') && Array.isArray(parsed)) {
+                        quizzesStore.setFillBlankAnswer(questionIndex, parsed)
+                        quizzesStore.markAnswered(questionIndex)
+                      }
+                    } catch {
+                      quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                      quizzesStore.markAnswered(questionIndex)
+                    }
                   }
                 }
               }
@@ -381,7 +437,7 @@ const loadScoreData = async () => {
           quizzesStore.currentAttempt.startAtISO = attemptData.value.startedAt
           quizzesStore.currentAttempt.endAtISO = attemptData.value.submittedAt
           quizzesStore.currentAttempt.isOngoing = false
-          
+
           console.log('Final store state:', {
             questionsLength: quizzesStore.currentAttempt.questionsLength,
             answers: quizzesStore.currentAttempt.answers,
@@ -408,7 +464,7 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen">
     <Header :breadcrumb="breadcrumb" />
-    
+
     <div class="max-w-6xl mx-auto p-4 mt-8">
       <!-- Quiz Header Info -->
       <div class="mb-6 flex items-start gap-6">
@@ -458,12 +514,12 @@ onMounted(async () => {
               <p class="text-gray-600">Loading quiz results...</p>
             </div>
           </div>
-          
+
           <!-- No Data State -->
           <div v-else-if="!currentQuestionData" class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] text-center">
             <p class="text-gray-600">No quiz data available. Please complete a quiz first.</p>
           </div>
-          
+
           <!-- Question Display -->
           <div v-else class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
             <div class="mb-6">
@@ -478,39 +534,39 @@ onMounted(async () => {
               </div>
               <p class="text-base text-gray-700 leading-relaxed mb-6">{{ currentQuestionData.question }}</p>
             </div>
-            
+
             <div class="space-y-3">
               <!-- Multiple Choice / True-False Rendering -->
               <template v-if="currentQuestionData.questionType === 'multiple-choice' || currentQuestionData.questionType === 'true-false' || !currentQuestionData.questionType">
-                <div 
-                  v-for="(option, index) in currentQuestionData.options" 
+                <div
+                  v-for="(option, index) in currentQuestionData.options"
                   :key="index"
                   :class="[
                     'relative flex items-center p-2 rounded-xl transition-all border-1',
                     getOptionClass(index)
                   ]"
                 >
-                  <div 
-                    v-if="isCorrectOption(index) && currentQuestionData.userAnswer !== index" 
+                  <div
+                    v-if="isCorrectOption(index) && currentQuestionData.userAnswer !== index"
                     class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
                   >
                     Correct
                   </div>
                   <div class="mr-4 flex items-center justify-center w-8 h-8">
-                    <div 
+                    <div
                       :class="[
                         'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
                         getOptionIconClass(index)
                       ]"
                     >
-                      <i 
-                        v-if="showIcon(index)" 
+                      <i
+                        v-if="showIcon(index)"
                         :class="['fas', `fa-${getIconType(index)}`,'text-xs']"
                       ></i>
                       <span v-else>{{ String.fromCharCode(65 + index) }}</span>
                     </div>
                   </div>
-                  <span 
+                  <span
                     :class="[
                       'text-base font-medium',
                       currentQuestionData.userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
@@ -599,7 +655,7 @@ onMounted(async () => {
                       : 'bg-[#fca5a5] border-[#f87171]'
                   ]"
                 >
-                
+
                   <div class="mr-4 flex items-center justify-center w-8 h-8">
                     <div
                       :class="[
@@ -619,7 +675,7 @@ onMounted(async () => {
                     </div>
                   </div>
 
-                  
+
                   <span class="text-base font-medium text-gray-800">
                     {{
                       currentQuestionData.userAnswer &&
@@ -769,17 +825,17 @@ onMounted(async () => {
               </template>
             </div>
           </div>
-          
+
           <!-- Navigation buttons below quiz container -->
           <div class="flex gap-3 justify-center mt-6">
-            <button 
+            <button
               class="px-8 py-2 bg-[#F4F7F9] text-black border border-[#7B90DF] rounded-xl font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
               @click="previousQuestion"
               :disabled="currentQuestion === 0"
             >
               Previous
             </button>
-            <button 
+            <button
               class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
               @click="nextQuestion"
               :disabled="currentQuestion === questions.length - 1"
@@ -796,8 +852,8 @@ onMounted(async () => {
               <p class="text-sm font-medium text-gray-600 text-right">Question {{ currentQuestion + 1 }} of {{ questions.length }}</p>
             </div>
             <div class="grid grid-cols-5 gap-3">
-              <button 
-                v-for="(question, index) in questions" 
+              <button
+                v-for="(question, index) in questions"
                 :key="index"
                 :class="[
                   'w-10 h-10 border-2 rounded-lg font-semibold text-sm cursor-pointer transition-all',
@@ -808,10 +864,10 @@ onMounted(async () => {
                 {{ index + 1 }}
               </button>
             </div>
-            
+
             <!-- Finish Review Button -->
             <div class="mt-6 pt-4 border-t border-gray-300">
-              <button 
+              <button
                 @click="finishReview"
                 class="w-full px-4 py-2 bg-white border border-[#7B90DF] text-[#4285f4] rounded-xl font-medium hover:bg-[#F4F7F9] transition-all flex items-center justify-center gap-2"
               >
