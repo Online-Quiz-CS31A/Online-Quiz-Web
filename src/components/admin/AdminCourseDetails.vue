@@ -3,6 +3,7 @@ import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { Clock, BookOpen, Users, Book, ChevronDown, Edit2, Mail, FileText, Plus, Search, X, Trash2 } from 'lucide-vue-next'
 import type { Course, CourseInstructor, AdminQuiz, AdminUser } from '@/interfaces/interfaces'
 import { useAdminStore } from '@/stores/adminStore'
+import { formatDueDate } from '@/utils/dateFormatter'
 import api from '@/services/api'
 
 // PROPS
@@ -63,9 +64,9 @@ const groupedInstructors = computed(() => {
 
 const quizzesByInstructor = computed<Record<number, AdminQuiz[]>>(() => {
   const result: Record<number, AdminQuiz[]> = {}
-  
+
   for (const gi of groupedInstructors.value) {
-    result[gi.teacherId] = [] 
+    result[gi.teacherId] = []
   }
 
   for (const quiz of courseQuizzes.value) {
@@ -76,7 +77,7 @@ const quizzesByInstructor = computed<Record<number, AdminQuiz[]>>(() => {
       result[quiz.instructorId].push(quiz)
     }
   }
-  
+
   return result
 })
 
@@ -115,7 +116,7 @@ const loadQuizzes = async () => {
       title: q.title,
       dueDate: q.dueDate ? new Date(q.dueDate).toLocaleDateString() : 'No due date',
       status: q.status || (q.isPublished ? 'Active' : 'Draft'),
-      instructorId: q.teacherId || q.ownerId 
+      instructorId: q.teacherId || q.ownerId
     }))
   } catch (e) {
     console.error('Failed to load quizzes', e)
@@ -197,13 +198,13 @@ const assignTeacher = async (teacher: AdminUser) => {
       name: props.course.title,
       code: props.course.code,
       category: props.course.subjectCode,
-      section: 'A', 
+      section: 'A',
       instructorId: teacher.id,
       status: props.course.status,
       createdBy: 1
     }
     const success = await adminStore.createCourse(createPayload)
-    
+
     if (success) {
       localInstructors.value.push({ teacherId: teacher.id, section: 'A', students: 0 })
       showAddTeacherModal.value = false
@@ -242,34 +243,34 @@ const isSavingSections = ref(false)
 const saveManageMode = async () => {
   if (isSavingSections.value) return
   isSavingSections.value = true
-  
+
   try {
     const existingCourses = adminStore.courses.filter(c => c.code === props.course.code)
-    
+
     const newPairs: Array<{ instructorId: number; section: string }> = []
     for (const a of manageForm.assignments) {
       for (const sec of a.sections) {
         newPairs.push({ instructorId: a.teacherId, section: sec })
       }
     }
-    
+
     const usedExistingIds = new Set<number>()
     const promises = []
     const newLocalInstructors: any[] = []
-    
+
     for (const newPair of newPairs) {
-      const matchingExisting = existingCourses.find(ec => 
-        ec.instructors?.[0]?.teacherId === newPair.instructorId && 
-        ec.instructors?.[0]?.section === newPair.section && 
+      const matchingExisting = existingCourses.find(ec =>
+        ec.instructors?.[0]?.teacherId === newPair.instructorId &&
+        ec.instructors?.[0]?.section === newPair.section &&
         !usedExistingIds.has(ec.id)
       )
-      
+
       if (matchingExisting) {
         usedExistingIds.add(matchingExisting.id)
-        newLocalInstructors.push({ 
-          teacherId: newPair.instructorId, 
-          section: newPair.section, 
-          students: matchingExisting.instructors?.[0]?.students || 0 
+        newLocalInstructors.push({
+          teacherId: newPair.instructorId,
+          section: newPair.section,
+          students: matchingExisting.instructors?.[0]?.students || 0
         })
       } else {
         const createPayload = {
@@ -285,15 +286,15 @@ const saveManageMode = async () => {
         newLocalInstructors.push({ teacherId: newPair.instructorId, section: newPair.section, students: 0 })
       }
     }
-    
+
     for (const existing of existingCourses) {
       if (!usedExistingIds.has(existing.id)) {
         promises.push(adminStore.deleteCourse(existing.id))
       }
     }
-    
+
     await Promise.all(promises)
-    
+
     localInstructors.value = newLocalInstructors
     isManageMode.value = false
   } catch (e) {
@@ -311,7 +312,7 @@ const saveSettings = async () => {
       ...props.course,
       name: detailsForm.title,
       status: detailsForm.status,
-      category: detailsForm.subjectCode, 
+      category: detailsForm.subjectCode,
       units: detailsForm.units,
       description: detailsForm.description
     })
@@ -424,7 +425,7 @@ onMounted(() => {
              </button>
           </div>
         </div>
-        
+
         <!-- Standard Display Mode -->
         <div v-if="!isManageMode" class="space-y-6">
           <div v-if="groupedInstructors.length === 0" class="text-center py-12 text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-xl">
@@ -516,16 +517,16 @@ onMounted(() => {
                 </div>
               </div>
               <button @click="removeTeacherFromManage(idx)" title="Remove instructor from course" class="text-gray-400 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors flex items-center text-sm font-medium border border-transparent hover:border-red-100">
-                <Trash2 class="w-4 h-4 mr-1"/> Remove 
+                <Trash2 class="w-4 h-4 mr-1"/> Remove
               </button>
             </div>
-            
+
             <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
               <label class="block text-sm font-semibold text-gray-700 mb-3 flex justify-between items-center">
                 Select Sections
                 <span v-if="allSections.length === 0" class="text-xs text-gray-400 font-normal">Loading...</span>
               </label>
-              
+
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-48 overflow-y-auto pr-2">
                 <label v-for="sec in allSections" :key="sec" :class="[
                   'flex items-center p-2.5 bg-white border rounded-lg cursor-pointer transition-all hover:shadow-sm',
@@ -571,7 +572,7 @@ onMounted(() => {
               class="px-6 py-4 flex items-center justify-between">
               <div>
                 <h4 class="text-sm font-medium text-gray-900">{{ q.title }}</h4>
-                <p class="text-xs text-gray-500">Due: {{ q.dueDate }}</p>
+                <p class="text-xs text-gray-500">Due: {{ formatDueDate(q.dueDate) }}</p>
               </div>
               <div class="flex items-center gap-4">
                 <span :class="[

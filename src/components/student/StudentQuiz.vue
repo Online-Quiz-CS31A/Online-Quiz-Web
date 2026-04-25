@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { StudentQuiz } from '@/interfaces/interfaces'
+import { formatDueDate } from '@/utils/dateFormatter'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.webp'
@@ -202,7 +203,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <span class="font-medium">Due:</span>
-            <span class="ml-1">{{ quiz.dueDate }}</span>
+            <span class="ml-1">{{ formatDueDate(quiz.dueDate) }}</span>
           </div>
 
           <!-- Time limit -->
@@ -254,7 +255,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
           <div class="flex-1 p-4 flex items-center">
             <div class="flex items-start justify-between w-full">
               <div>
-                <div class="text-xs text-gray-500 mb-1">Due: {{ quiz.dueDate }}</div>
+                <div class="text-xs text-gray-500 mb-1">Due: {{ formatDueDate(quiz.dueDate) }}</div>
                 <div class="text-base font-semibold text-gray-900 mb-1">{{ quiz.title }}</div>
 
                 <div class="mt-3 flex items-center gap-4 text-xs text-gray-600">
