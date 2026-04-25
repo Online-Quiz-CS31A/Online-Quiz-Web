@@ -1,6 +1,6 @@
 import api from './api'
 import type { TeacherCourseDto } from '@/interfaces/interfaces'
-import type { CourseEnrollment, StudentCourseDto } from './types'
+import type { CourseEnrollment, StudentCourseDto, ClassmateDto } from './types'
 
 /**
  * Course Service
@@ -37,6 +37,13 @@ export async function getCourseEnrollments(courseId: number, teacherId: number) 
  */
 export async function getStudentCourses(studentId: number) {
   const response = await api.get<StudentCourseDto[]>(`/Course/student/${studentId}`)
+  return response.data || []
+}
+
+export async function getCourseClassmates(courseId: number, studentId: number) {
+  const response = await api.get<ClassmateDto[]>(`/Course/${courseId}/classmates`, {
+    params: { studentId }
+  })
   return response.data || []
 }
 
@@ -95,6 +102,7 @@ export default {
   getTeacherCourses,
   getCourseEnrollments,
   getStudentCourses,
+  getCourseClassmates,
   createCourse,
   updateCourse,
   archiveCourse,

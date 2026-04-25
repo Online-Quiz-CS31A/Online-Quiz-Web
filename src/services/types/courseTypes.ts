@@ -22,3 +22,10 @@ export interface StudentCourseDto {
   sectionCount?: number
   quizCount?: number
 }
+
+export interface ClassmateDto {
+  userId: number
+  fullName?: string
+  email?: string
+  studentSection?: string
+}

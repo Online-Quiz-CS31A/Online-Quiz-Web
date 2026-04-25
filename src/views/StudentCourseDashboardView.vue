@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
-import { useSectionsStore } from '@/stores/sectionsStore'
-import { useStudentsStore } from '@/stores/studentsStore'
 import { useAuthStore } from '@/stores/authStore'
-import type { Student } from '@/interfaces/interfaces'
+import * as courseService from '@/services/courseService'
+import type { ClassmateDto } from '@/services/types'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const StudentCourseQuizzesTab = defineAsyncComponent(() => import('@/components/student/StudentCourseQuizzesTab.vue'))
 const StudentCourseScoreTab = defineAsyncComponent(() => import('@/components/student/StudentCourseScoreTab.vue'))
@@ -20,26 +19,16 @@ import bg5 from '@/assets/image/bg5.webp'
 type TabKey = 'quizzes' | 'score' | 'people'
 
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
-const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
 const route = useRoute()
 const classesStore = useCoursesStore()
-const sectionsStore = useSectionsStore()
-const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 
 const activeTab = ref<TabKey>('quizzes')
+const classmates = ref<ClassmateDto[]>([])
 
 const courseId = computed(() => Number(route.params.id || 0))
 const currentCourse = computed(() => classesStore.allCourses.find(c => c.id === courseId.value) || null)
-const myUsername = computed(() => authStore.currentUser?.username || '')
-const courseSections = computed(() => sectionsStore.getSectionsByCourse(courseId.value))
-
-const mySection = computed(() => {
-  const sections = courseSections.value
-  const found = sections.find(s => (s.studentUsernames || []).includes(myUsername.value))
-  return found || sections[0]
-})
 
 const heroStyle = computed(() => {
   const id = currentCourse.value?.id || 0
@@ -53,38 +42,26 @@ const heroStyle = computed(() => {
   }
 })
 
-const students = computed<Student[]>(() => {
-  const sect = mySection.value
-  if (!sect) return []
-  const usernames = sect.studentUsernames || []
-  return usernames.map((username, i) => {
-    const profile = studentsStore.profiles[username]
-    if (!profile) {
-      return {
-        id: i + 1,
-        name: username,
-        email: `${username}@unknown.com`,
-        initials: username.substring(0, 2).toUpperCase(),
-        avatar: AVATAR_URL,
-      }
-    }
-    const fullName = `${profile.firstName} ${profile.lastName}`.trim()
-    return {
-      id: i + 1,
-      name: fullName,
-      email: profile.email,
-      initials: fullName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
-      avatar: profile.photoUrl || AVATAR_URL,
-    }
-  })
-})
+async function fetchClassmates() {
+  const cId = courseId.value
+  const userId = authStore.currentUser?.id
+  if (!cId || !userId) return
+  try {
+    classmates.value = await courseService.getCourseClassmates(cId, userId)
+  } catch {
+    classmates.value = []
+  }
+}
 
-// WATCHERS
 watch(courseId, () => {
   activeTab.value = 'quizzes'
+  fetchClassmates()
 })
 
-// METHODS
+onMounted(() => {
+  fetchClassmates()
+})
+
 const getDeterministicIndex = (key: string) => {
   let hash = 0
   for (let i = 0; i < key.length; i++) {
@@ -93,7 +70,6 @@ const getDeterministicIndex = (key: string) => {
   }
   return Math.abs(hash)
 }
-
 </script>
 
 <template>
@@ -203,7 +179,7 @@ const getDeterministicIndex = (key: string) => {
       <StudentCoursePeopleTab
         v-show="activeTab === 'people'"
         :teacherName="currentCourse?.teacher || null"
-        :students="students"
+        :classmates="classmates"
       />
     </div>
   </div>
