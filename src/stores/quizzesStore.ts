@@ -91,7 +91,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     try {
       const api = await import('../services/api')
       const attemptsResponse = await api.default.get(`/Attempt/student/${user.id}`)
-      console.log('Attempts API response:', attemptsResponse.data)
 
       if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
         const newSubmittedIds = new Set<number>()

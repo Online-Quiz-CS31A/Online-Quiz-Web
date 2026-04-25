@@ -118,7 +118,6 @@ const loadAttemptHistory = async () => {
       )
 
       attemptHistory.value = quizAttempts
-      console.log('Loaded attempt history:', quizAttempts)
     }
   } catch (error) {
     console.error('Failed to load attempt history:', error)

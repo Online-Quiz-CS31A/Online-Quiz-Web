@@ -191,7 +191,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         quizzesStore.currentAttempt.quizTitle = response.data.quizTitle || quizTitle.value
         quizzesStore.currentAttempt.startAtISO = response.data.startedAt
         quizzesStore.currentAttempt.isOngoing = true
-        console.log('Attempt started:', attemptId.value)
       }
     } catch (error) {
       console.error('Failed to start attempt:', error)
@@ -229,7 +228,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         textAnswer: textAnswer
       })
 
-      console.log('Answer saved for question', questionIndex)
     } catch (error) {
       console.error('Failed to save answer:', error)
     }
@@ -253,7 +251,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
       quizzesStore.currentAttempt.isOngoing = false
 
-      console.log('Attempt submitted successfully')
     } catch (error) {
       console.error('Failed to submit attempt:', error)
     }
@@ -324,7 +321,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
             })
           }
 
-          console.log('Loaded ongoing attempt:', attemptId.value)
           return true
         }
       }

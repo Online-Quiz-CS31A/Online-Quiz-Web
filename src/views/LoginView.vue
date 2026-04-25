@@ -72,13 +72,6 @@ const handleLogin = async () => {
   try {
     const result = await store.login(form.email, form.password)
     if (!result.success) {
-      // Log the technical error for debugging
-      console.error('Login failed:', {
-        email: form.email,
-        message: result.message,
-        timestamp: new Date().toISOString()
-      })
-
       // Show user-friendly error message
       errors.email = 'Unable to sign in. Please check your email and password.'
       return
@@ -94,15 +87,7 @@ const handleLogin = async () => {
       router.push({ name: 'login' })
     }
   } catch (error) {
-    // Log the technical error with full details for debugging
-    console.error('Login error:', {
-      error,
-      email: form.email,
-      timestamp: new Date().toISOString(),
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
-
+    console.error('Login error:', error)
     // Show user-friendly error message
     errors.email = 'Something went wrong. Please try again in a moment.'
   } finally {

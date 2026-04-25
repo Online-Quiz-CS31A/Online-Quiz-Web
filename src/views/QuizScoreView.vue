@@ -318,8 +318,6 @@ const loadScoreData = async () => {
     const userId = authStore.currentUser?.id
     const quizId = quizzesStore.currentAttempt.quizId
 
-    console.log('Loading score data for quizId:', quizId, 'userId:', userId)
-
     if (!userId || !quizId) {
       console.error('Missing userId or quizId')
       isLoading.value = false
@@ -327,36 +325,28 @@ const loadScoreData = async () => {
     }
 
     const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
-    console.log('Attempts response:', attemptsResponse.data)
 
     if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
       const submittedAttempts = attemptsResponse.data.filter((attempt: AttemptResponse) =>
         attempt.quizId === quizId && attempt.submittedAt
       )
 
-      console.log('Submitted attempts for this quiz:', submittedAttempts)
-
       if (submittedAttempts.length > 0) {
         submittedAttempts.sort((a: AttemptResponse, b: AttemptResponse) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
         )
         attemptData.value = submittedAttempts[0]
-        console.log('Using attempt:', attemptData.value)
 
         const quizResponse = await api.get(`/Quiz/${quizId}`, {
           params: { userId }
         })
 
-        console.log('Quiz response:', quizResponse.data)
-
         if (quizResponse.data) {
           quizData.value = quizResponse.data
 
           const questions = quizResponse.data.questions || []
-          console.log('Raw questions from API:', questions)
 
           const mappedQuestions = questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
-          console.log('Mapped questions:', mappedQuestions)
 
           const username = authStore.currentUser?.username
           if (username) {
@@ -373,15 +363,12 @@ const loadScoreData = async () => {
           }
 
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
-          console.log('Answers response:', answersResponse.data)
 
           if (answersResponse.data && Array.isArray(answersResponse.data)) {
             answersResponse.data.forEach((answer: AnswerResponse) => {
               const questionIndex = mappedQuestions.findIndex((q: QuestionResponse) =>
                 (q.questionId || q.id) === answer.questionId
               )
-
-              console.log('Mapping answer for questionId:', answer.questionId, 'to index:', questionIndex)
 
               if (questionIndex >= 0) {
                 const question = mappedQuestions[questionIndex] as QuestionResponse
@@ -396,8 +383,6 @@ const loadScoreData = async () => {
                     }
                     return false
                   })
-
-                  console.log('Found choice index:', choiceIndex, 'for choiceId:', answer.choiceId)
 
                   if (choiceIndex >= 0) {
                     quizzesStore.setAnswer(questionIndex, choiceIndex)
@@ -437,12 +422,6 @@ const loadScoreData = async () => {
           quizzesStore.currentAttempt.startAtISO = attemptData.value.startedAt
           quizzesStore.currentAttempt.endAtISO = attemptData.value.submittedAt
           quizzesStore.currentAttempt.isOngoing = false
-
-          console.log('Final store state:', {
-            questionsLength: quizzesStore.currentAttempt.questionsLength,
-            answers: quizzesStore.currentAttempt.answers,
-            answeredSet: Array.from(quizzesStore.currentAttempt.answeredSet)
-          })
         }
       } else {
         console.warn('No submitted attempts found for this quiz')

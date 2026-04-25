@@ -118,8 +118,6 @@ function closeImportModal() {
 }
 
 async function handleImport(file: File) {
-  console.log('Importing file:', file.name)
-
   closeImportModal()
 
   try {

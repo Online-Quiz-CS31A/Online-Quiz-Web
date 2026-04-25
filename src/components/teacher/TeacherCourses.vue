@@ -211,39 +211,29 @@ const fetchStudentCounts = async () => {
 
   const coursesToProcess = classes.value.filter(c => c.id)
   if (!coursesToProcess.length) {
-    console.log('No courses to process')
     return
   }
-
-  console.log('Fetching student counts for courses:', coursesToProcess.map(c => ({ id: c.id, name: c.name })))
 
   for (const classItem of coursesToProcess) {
     try {
       // Fetch enrollments for this course
-      console.log(`Fetching enrollments for course ${classItem.id} (${classItem.name})`)
       const enrollments = await courseService.getCourseEnrollments(classItem.id, teacherId)
-      console.log(`Enrollments for course ${classItem.id}:`, enrollments)
 
       // Group enrollments by section
       const sectionCounts: Record<string, number> = {}
       enrollments.forEach((enrollment: { section?: string; sectionName?: string }) => {
         const sectionName = enrollment.section || enrollment.sectionName || ''
-        console.log(`Processing enrollment - section: "${sectionName}"`, enrollment)
         if (sectionName) {
           sectionCounts[sectionName] = (sectionCounts[sectionName] || 0) + 1
         }
       })
 
-      console.log(`Section counts for course ${classItem.id}:`, sectionCounts)
-
       // Update each section with its student count
       const sections = getSectionsForCourse(classItem)
-      console.log(`Sections for course ${classItem.id}:`, sections.map(s => ({ id: s.id, name: s.name })))
 
       for (const section of sections) {
         if (section.name) {
           const count = sectionCounts[section.name] || 0
-          console.log(`Updating section ${section.id} (${section.name}) with count: ${count}`)
           sectionsStore.updateSection(section.id, {
             students: count
           })
@@ -253,8 +243,6 @@ const fetchStudentCounts = async () => {
       console.error(`Failed to fetch enrollments for course ${classItem.id}`, e)
     }
   }
-
-  console.log('Finished fetching student counts')
 }
 
 watch(classes, (newClasses) => {
