@@ -121,9 +121,9 @@ const filtered = computed(() => {
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-header="true" :show-filters="false" />
     <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-header="true" />
 
-    <div v-if="filtered.length === 0 && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">
-      <span v-if="query">No quizzes found for "{{ query }}".</span>
-      <span v-else>No quizzes found.</span>
+    <!-- Only show this message when there's a search query with no results -->
+    <div v-if="filtered.length === 0 && query && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">
+      <span>No quizzes found for "{{ query }}".</span>
     </div>
   </div>
 </template>
