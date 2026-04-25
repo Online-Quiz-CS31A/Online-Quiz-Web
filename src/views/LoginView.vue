@@ -205,15 +205,14 @@ const handleLogin = async () => {
         <!-- Support Link -->
         <div class="mt-8 text-center">
           <p class="text-sm text-gray-600">
-            Need help? Contact your instructor or
-            <a href="#" class="text-blue-600 hover:text-blue-500 font-medium transition duration-200">IT Support</a>
+            Need help? Contact School Administration or your Instructor.
           </p>
         </div>
 
         <!-- Footer -->
         <div class="mt-8 text-center">
           <p class="text-xs text-gray-500">
-            © 2025 ACLC College of Mandaue. All rights reserved.
+            © 2026 ACLC College of Mandaue. All rights reserved.
           </p>
         </div>
       </div>
