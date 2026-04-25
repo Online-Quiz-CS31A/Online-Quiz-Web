@@ -1,27 +1,11 @@
 import api from './api'
 import type { TeacherCourseDto } from '@/interfaces/interfaces'
+import type { CourseEnrollment, StudentCourseDto } from './types'
 
 /**
  * Course Service
  * Handles all API calls related to courses
  */
-
-export interface CourseEnrollment {
-  section?: string
-  studentSection?: string
-  courseSection?: string
-  [key: string]: unknown
-}
-
-export interface StudentCourseDto {
-  courseId: number
-  code: string
-  name: string
-  instructorName?: string
-  instructorUsername?: string
-  status: string
-  category?: string
-}
 
 /**
  * Fetch all courses for a specific teacher

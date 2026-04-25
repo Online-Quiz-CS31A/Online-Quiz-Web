@@ -4,7 +4,7 @@ import type { ClassItem, TeacherCourseDto } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
 import { useSectionsStore } from './sectionsStore'
 import * as courseService from '../services/courseService'
-import type { StudentCourseDto } from '../services/courseService'
+import type { StudentCourseDto } from '../services/types'
 
 export const useCoursesStore = defineStore('classes', () => {
   // State

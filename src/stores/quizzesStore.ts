@@ -4,7 +4,7 @@ import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, Qu
 import { useAuthStore } from './authStore'
 import { useCoursesStore } from './coursesStore'
 import * as quizService from '../services/quizService'
-import type { QuizPayload, StudentQuizDto } from '../services/quizService'
+import type { QuizPayload, StudentQuizDto } from '../services/types'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
   const isLoading = ref(false)
