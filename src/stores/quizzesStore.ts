@@ -5,6 +5,7 @@ import { useAuthStore } from './authStore'
 import { useCoursesStore } from './coursesStore'
 import * as quizService from '../services/quizService'
 import type { QuizPayload, StudentQuizDto } from '../services/types'
+import api from '../services/api'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
   const isLoading = ref(false)
@@ -89,8 +90,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     // Fetch submitted attempts from backend to determine quiz status
     try {
-      const api = await import('../services/api')
-      const attemptsResponse = await api.default.get(`/Attempt/student/${user.id}`)
+      const attemptsResponse = await api.get(`/Attempt/student/${user.id}`)
 
       if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
         const newSubmittedIds = new Set<number>()
@@ -127,8 +127,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     // Fetch student's enrolled sections to get section information
     const studentSections: Record<number, string> = {}
     try {
-      const api = await import('../services/api')
-      const enrollmentsResponse = await api.default.get(`/Enrollment/student/${user.id}`)
+      const enrollmentsResponse = await api.get(`/Enrollment/student/${user.id}`)
       if (enrollmentsResponse.data && Array.isArray(enrollmentsResponse.data)) {
         // Map courseId to section name
         enrollmentsResponse.data.forEach((enrollment: { courseId: number; section?: string; sectionName?: string }) => {
