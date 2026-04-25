@@ -8,15 +8,14 @@ import type { ClassItem } from '@/interfaces/interfaces'
 import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import TeacherCourseSkeleton from '@/components/skeletons/TeacherCourseSkeleton.vue'
+import bg1 from '@/assets/image/bg1.webp'
+import bg2 from '@/assets/image/bg2.webp'
+import bg3 from '@/assets/image/bg3.webp'
+import bg4 from '@/assets/image/bg4.webp'
+import bg5 from '@/assets/image/bg5.webp'
 
-// CONSTANTS - Lazy load images
-const coverImages = [
-  '/src/assets/image/bg1.webp',
-  '/src/assets/image/bg2.webp',
-  '/src/assets/image/bg3.webp',
-  '/src/assets/image/bg4.webp',
-  '/src/assets/image/bg5.webp'
-]
+// CONSTANTS
+const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const router = useRouter()
 
 // PROPS

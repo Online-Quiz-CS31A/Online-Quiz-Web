@@ -2,21 +2,16 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-
-// CONSTANTS - Lazy load images
-const coverImages = [
-  '/src/assets/image/bg1.webp',
-  '/src/assets/image/bg2.webp',
-  '/src/assets/image/bg3.webp',
-  '/src/assets/image/bg4.webp',
-  '/src/assets/image/bg5.webp'
-]
-
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import type { ClassItem, ClassSection } from '@/interfaces/interfaces'
 import ClassSectionCard from '@/components/teacher/ClassSectionCard.vue'
 import TeacherClassSkeleton from '@/components/skeletons/TeacherClassSkeleton.vue'
+import bg1 from '@/assets/image/bg1.webp'
+import bg2 from '@/assets/image/bg2.webp'
+import bg3 from '@/assets/image/bg3.webp'
+import bg4 from '@/assets/image/bg4.webp'
+import bg5 from '@/assets/image/bg5.webp'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
 const SectionDeleteModal = defineAsyncComponent(() => import('@/components/modals/SectionDeleteModal.vue'))
 

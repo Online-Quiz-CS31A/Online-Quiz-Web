@@ -5,15 +5,14 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useAuthStore } from '@/stores/authStore'
 import type { ClassItem } from '@/interfaces/interfaces'
+import bg1 from '@/assets/image/bg1.webp'
+import bg2 from '@/assets/image/bg2.webp'
+import bg3 from '@/assets/image/bg3.webp'
+import bg4 from '@/assets/image/bg4.webp'
+import bg5 from '@/assets/image/bg5.webp'
 
-// CONSTANTS - Lazy load images
-const coverImages = [
-  '/src/assets/image/bg1.webp',
-  '/src/assets/image/bg2.webp',
-  '/src/assets/image/bg3.webp',
-  '/src/assets/image/bg4.webp',
-  '/src/assets/image/bg5.webp'
-]
+// CONSTANTS
+const coverImages = [bg1, bg2, bg3, bg4, bg5]
 
 // PROPS
 const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
@@ -157,9 +156,12 @@ const getStudentCount = (courseId: number) => {
 // LIFECYCLE
 onMounted(async () => {
   document.addEventListener('click', onDocClick)
-  isLoading.value = true
-  await classesStore.fetchStudentCourses()
-  isLoading.value = false
+  // Only show loading and fetch if we don't have data yet
+  if (classesStore.myClasses.length === 0) {
+    isLoading.value = true
+    await classesStore.fetchStudentCourses()
+    isLoading.value = false
+  }
 })
 
 onBeforeUnmount(() => {

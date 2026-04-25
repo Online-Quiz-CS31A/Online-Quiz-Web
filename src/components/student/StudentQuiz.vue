@@ -3,6 +3,11 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { StudentQuiz } from '@/interfaces/interfaces'
+import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp'
+import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp'
+import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.webp'
+import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.webp'
+import quiz5 from '@/assets/image/quiz_bg/subtle-prism.webp'
 
 // TYPES
 interface Props {
@@ -12,14 +17,8 @@ interface Props {
   isLoading?: boolean
 }
 
-// CONSTANTS - Lazy load images
-const coverImages = [
-  '/src/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp',
-  '/src/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp',
-  '/src/assets/image/quiz_bg/liquid-cheese.webp',
-  '/src/assets/image/quiz_bg/radiant-gradient.webp',
-  '/src/assets/image/quiz_bg/subtle-prism.webp'
-]
+// CONSTANTS
+const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
 const router = useRouter()
 
 // PROPS

@@ -8,15 +8,11 @@ import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
 import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import TeacherQuizSkeleton from '@/components/skeletons/TeacherQuizSkeleton.vue'
-
-// CONSTANTS - Lazy load images
-const coverImages = [
-  '/src/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp',
-  '/src/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp',
-  '/src/assets/image/quiz_bg/liquid-cheese.webp',
-  '/src/assets/image/quiz_bg/radiant-gradient.webp',
-  '/src/assets/image/quiz_bg/subtle-prism.webp'
-]
+import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp'
+import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp'
+import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.webp'
+import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.webp'
+import quiz5 from '@/assets/image/quiz_bg/subtle-prism.webp'
 
 // TYPES
 interface Props {
