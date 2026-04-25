@@ -5,7 +5,6 @@ import { useRoute } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useStudentsStore } from '@/stores/studentsStore'
-import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import type { Student } from '@/interfaces/interfaces'
 const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
@@ -30,7 +29,6 @@ const route = useRoute()
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const studentsStore = useStudentsStore()
-const quizzesStore = useQuizzesStore()
 const authStore = useAuthStore()
 
 // REF
@@ -118,24 +116,54 @@ const getDeterministicIndex = (key: string) => {
   <div class="bg-white min-h-screen">
     <Header :breadcrumb="`Dashboard > Courses > ${currentCourse?.name || 'Course'}`" />
 
-    <div class="classroom-banner w-full flex items-end text-white" :style="heroStyle">
-      <div class="container mx-auto px-4 py-6">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-end">
-          <div>
-            <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ currentCourse?.name || 'Course' }}</h1>
-            <div class="mt-3 text-blue-100 text-sm flex items-center gap-2 mb-4">
-              <i class="fas fa-clock"></i>
-              <span>{{ scheduleInfo }}</span>
+    <!-- Course Hero Section -->
+    <div class="relative overflow-hidden bg-white border-b border-gray-200">
+      <!-- Background Image with Overlay -->
+      <div class="absolute inset-0" :style="heroStyle">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-800/85 to-blue-900/90"></div>
+      </div>
+
+      <!-- Content -->
+      <div class="relative container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <!-- Course Info -->
+          <div class="flex-1">
+            <!-- Course Code Badge -->
+            <div class="inline-flex items-center px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-3">
+              <span class="text-xs font-semibold text-white">{{ currentCourse?.code || 'COURSE' }}</span>
             </div>
-            <div class="flex items-center space-x-3">
-              <div class="relative">
-                <div class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold ring-2 ring-white/20">
-                  {{ (currentCourse?.teacher || 'U').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase() }}
-                </div>
+
+            <!-- Course Title -->
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg">
+              {{ currentCourse?.name || 'Course' }}
+            </h1>
+
+            <!-- Course Meta Info -->
+            <div class="flex flex-wrap items-center gap-4 text-sm text-white/90">
+              <!-- Schedule -->
+              <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                <i class="fas fa-clock"></i>
+                <span>{{ scheduleInfo }}</span>
               </div>
-              <div class="leading-tight">
-                <div class="text-white font-medium">{{ currentCourse?.teacher }}</div>
-                <div class="text-blue-100 text-sm">{{ students.length }} students</div>
+
+              <!-- Students Count -->
+              <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                <i class="fas fa-users"></i>
+                <span>{{ students.length }} students</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teacher Info Card -->
+          <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-xl">
+            <p class="text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">Instructor</p>
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg ring-2 ring-white/30">
+                {{ (currentCourse?.teacher || 'U').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase() }}
+              </div>
+              <div>
+                <p class="text-white font-semibold">{{ currentCourse?.teacher }}</p>
+                <p class="text-white/70 text-sm">Course Instructor</p>
               </div>
             </div>
           </div>
@@ -143,12 +171,46 @@ const getDeterministicIndex = (key: string) => {
       </div>
     </div>
 
-    <div class="container mx-auto px-4 py-8">
-      <div class="flex border-b border-blue-200 mb-8 space-x-2">
-        <button class="px-4 py-2 font-medium transition-colors cursor-pointer" :class="activeTab === 'quizzes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-blue-400 hover:text-blue-600'" @click="activeTab = 'quizzes'">Quizzes</button>
-        <button class="px-4 py-2 font-medium transition-colors cursor-pointer" :class="activeTab === 'score' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-blue-400 hover:text-blue-600'" @click="activeTab = 'score'">Score</button>
-        <button class="px-4 py-2 font-medium transition-colors cursor-pointer" :class="activeTab === 'people' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-blue-400 hover:text-blue-600'" @click="activeTab = 'people'">People</button>
+    <!-- Tabs Navigation -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <nav class="flex space-x-1" aria-label="Tabs">
+          <button
+            @click="activeTab = 'quizzes'"
+            class="px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2"
+            :class="activeTab === 'quizzes'
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'"
+          >
+            <i class="fas fa-clipboard-list mr-2"></i>
+            Quizzes
+          </button>
+          <button
+            @click="activeTab = 'score'"
+            class="px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2"
+            :class="activeTab === 'score'
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'"
+          >
+            <i class="fas fa-chart-line mr-2"></i>
+            Score
+          </button>
+          <button
+            @click="activeTab = 'people'"
+            class="px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2"
+            :class="activeTab === 'people'
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'"
+          >
+            <i class="fas fa-user-group mr-2"></i>
+            People
+          </button>
+        </nav>
       </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       <StudentCourseQuizzesTab
         v-show="activeTab === 'quizzes'"
@@ -170,11 +232,5 @@ const getDeterministicIndex = (key: string) => {
 </template>
 
 <style scoped>
-.classroom-banner {
-  height: 250px;
-}
-
-@media (max-width: 768px) {
-  .classroom-banner { height: 180px; }
-}
+/* No additional styles needed - using pure Tailwind */
 </style>
