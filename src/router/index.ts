@@ -163,7 +163,7 @@ const router = createRouter({
     {
       path: '/teacher/create-quiz',
       name: 'create-quiz-root',
-      redirect: (to) => {
+      redirect: () => {
         return { name: 'quiz-builder', params: { id: '1' } }
       }
     },
@@ -174,7 +174,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
   const userRole = authStore.userRole
