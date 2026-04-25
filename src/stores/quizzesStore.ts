@@ -98,10 +98,26 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           }
         })
         submittedQuizIds.value = newSubmittedIds
-        console.log('Loaded submitted quiz IDs from backend:', Array.from(newSubmittedIds))
       }
     } catch (error) {
       console.error('Failed to fetch student attempts:', error)
+    }
+
+    // Fetch student's enrolled sections to get section information
+    const studentSections: Record<number, string> = {}
+    try {
+      const api = await import('../services/api')
+      const enrollmentsResponse = await api.default.get(`/Enrollment/student/${user.id}`)
+      if (enrollmentsResponse.data && Array.isArray(enrollmentsResponse.data)) {
+        // Map courseId to section name
+        enrollmentsResponse.data.forEach((enrollment: { courseId: number; section?: string; sectionName?: string }) => {
+          // The section is a direct string property, not nested
+          const sectionName = enrollment.section || enrollment.sectionName || ''
+          studentSections[enrollment.courseId] = sectionName
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch student enrollments:', error)
     }
 
     const results = await Promise.all(
@@ -113,6 +129,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           const arr = Array.isArray(quizzesData) ? quizzesData : []
           return arr.map((quiz: StudentQuizDto) => {
             if (!quiz) return null
+
+            // Get section from student's enrollment or from quiz data
+            const sectionName = studentSections[course.id] ||
+                               quiz.sectionName ||
+                               (quiz.section && quiz.section.name) ||
+                               ''
+
             return {
               id: quiz.quizId || quiz.id || 0,
               subject: course.name,
@@ -123,7 +146,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
               timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
               status: 'Not Started',
               color: 'blue',
-              maxAttempts: quiz.maxAttempts || 3
+              maxAttempts: quiz.maxAttempts || 3,
+              courseCode: course.code || '',
+              courseSection: sectionName
             }
           }).filter(Boolean) as StudentQuizItem[]
         } catch (e) {
@@ -1395,8 +1420,6 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     } else {
       teacherQuizzesByUser.value[username].push(tempQuiz)
     }
-
-    console.log('Set quiz questions for score view:', quizId, 'questions count:', questions.length)
   }
 
   function hasSubmittedAttempt(quizId: number): boolean {

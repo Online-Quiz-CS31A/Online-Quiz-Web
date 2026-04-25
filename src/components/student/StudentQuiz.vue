@@ -202,22 +202,40 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
 
         <!-- Card body -->
         <div class="p-4 space-y-3">
+          <!-- Course info -->
+          <div class="bg-blue-50 rounded-lg px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              <div class="flex-1 min-w-0">
+                <div class="text-base leading-relaxed">
+                  <span class="font-semibold text-blue-700">{{ quiz.courseCode }}</span>
+                  <span class="text-gray-700"> - {{ quiz.subject }}</span>
+                  <span v-if="quiz.courseSection" class="text-gray-500 text-sm ml-2">
+                    ({{ quiz.courseSection }})
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Due date -->
           <div class="flex items-center text-sm text-gray-600">
-            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 mr-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span class="font-medium">Due:</span>
-            <span class="ml-1">{{ formatDueDate(quiz.dueDate) }}</span>
+            <span class="font-medium text-gray-700">Due:</span>
+            <span class="ml-1.5">{{ formatDueDate(quiz.dueDate) }}</span>
           </div>
 
           <!-- Time limit -->
           <div class="flex items-center text-sm text-gray-600">
-            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 mr-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span class="font-medium">Time:</span>
-            <span class="ml-1">{{ quiz.timeLimit }}</span>
+            <span class="font-medium text-gray-700">Time:</span>
+            <span class="ml-1.5">{{ quiz.timeLimit }}</span>
           </div>
 
           <!-- Action button -->
@@ -226,7 +244,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
               @click.stop="toggleDone(quiz.id)"
               class="text-sm font-medium transition-colors"
               :class="isDone(quiz.id)
-                ? 'text-green-600 cursor-default flex items-center'
+                ? 'text-gray-500 cursor-default flex items-center'
                 : 'text-gray-500 hover:text-blue-600'"
             >
               <svg v-if="isDone(quiz.id)" class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -252,33 +270,65 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
       <div
         v-for="quiz in displayedQuizzes"
         :key="quiz.id"
-        class="rounded-lg border border-gray-200 bg-white overflow-hidden cursor-pointer"
+        class="rounded-lg border border-gray-200 bg-white overflow-hidden cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all duration-300"
         @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
       >
-        <div class="flex items-stretch min-h-[120px]">
+        <div class="flex items-stretch min-h-[140px]">
           <div class="hidden md:block w-48 bg-cover bg-center" :style="getCoverStyle(quiz)"></div>
-          <div class="flex-1 p-4 flex items-center">
-            <div class="flex items-start justify-between w-full">
-              <div>
-                <div class="text-xs text-gray-500 mb-1">Due: {{ formatDueDate(quiz.dueDate) }}</div>
-                <div class="text-base font-semibold text-gray-900 mb-1">{{ quiz.title }}</div>
+          <div class="flex-1 p-5 flex items-center">
+            <div class="flex items-start justify-between w-full gap-4">
+              <div class="flex-1">
+                <!-- Course info -->
+                <div class="bg-blue-50 rounded-lg px-4 py-2.5 mb-3 inline-flex items-center gap-2.5">
+                  <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  <div class="text-base leading-relaxed">
+                    <span class="font-semibold text-blue-700">{{ quiz.courseCode }}</span>
+                    <span class="text-gray-700"> - {{ quiz.subject }}</span>
+                    <span v-if="quiz.courseSection" class="text-gray-500 text-sm ml-2">
+                      ({{ quiz.courseSection }})
+                    </span>
+                  </div>
+                </div>
 
-                <div class="mt-3 flex items-center gap-4 text-xs text-gray-600">
-                  <span>Time: {{ quiz.timeLimit }}</span>
-                  <span>
-                    Status:
-                    <span class="font-medium" :class="getStatusClass(quiz.id)">
+                <!-- Quiz title -->
+                <div class="text-lg font-semibold text-gray-900 mb-3">{{ quiz.title }}</div>
+
+                <!-- Meta info -->
+                <div class="flex items-center gap-6 text-sm text-gray-600">
+                  <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span class="font-medium">Due:</span>
+                    <span class="ml-1">{{ formatDueDate(quiz.dueDate) }}</span>
+                  </div>
+                  <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="font-medium">Time:</span>
+                    <span class="ml-1">{{ quiz.timeLimit }}</span>
+                  </div>
+                  <div class="flex items-center">
+                    <span class="font-medium">Status:</span>
+                    <span class="ml-1.5 font-medium" :class="getStatusClass(quiz.id)">
                       {{ getStatusLabel(quiz.id) }}
                     </span>
-                  </span>
+                  </div>
                 </div>
               </div>
-              <div class="ml-3">
+
+              <!-- Action button -->
+              <div class="flex flex-col gap-2">
                 <button
                   @click.stop="toggleDone(quiz.id)"
-                  class="px-3 py-1.5 rounded-md text-sm"
-                  :class="isDone(quiz.id) ? 'bg-green-100 text-green-700 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'"
-                >{{ isDone(quiz.id) ? 'Done' : 'Mark as done' }}</button>
+                  class="px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                  :class="isDone(quiz.id) ? 'bg-gray-100 text-gray-600 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'"
+                >
+                  {{ isDone(quiz.id) ? 'Completed' : 'Mark as done' }}
+                </button>
               </div>
             </div>
           </div>
