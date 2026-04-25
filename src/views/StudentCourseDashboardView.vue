@@ -17,24 +17,19 @@ import bg3 from '@/assets/image/bg3.webp'
 import bg4 from '@/assets/image/bg4.webp'
 import bg5 from '@/assets/image/bg5.webp'
 
-// TYPES
 type TabKey = 'quizzes' | 'score' | 'people'
 
-// CONSTANTS
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const AVATAR_URL = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
-// REACTIVE
 const route = useRoute()
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 
-// REF
 const activeTab = ref<TabKey>('quizzes')
 
-// COMPUTED
 const courseId = computed(() => Number(route.params.id || 0))
 const currentCourse = computed(() => classesStore.allCourses.find(c => c.id === courseId.value) || null)
 const myUsername = computed(() => authStore.currentUser?.username || '')
@@ -44,17 +39,6 @@ const mySection = computed(() => {
   const sections = courseSections.value
   const found = sections.find(s => (s.studentUsernames || []).includes(myUsername.value))
   return found || sections[0]
-})
-
-const scheduleInfo = computed(() => {
-  if (!currentCourse.value || !mySection.value) return 'Schedule not set'
-  const sched = sectionsStore.getSchedule(currentCourse.value.id, mySection.value.id)
-  if (!sched) return 'Schedule not set'
-  const [hours, minutes] = sched.scheduleTime.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hours12 = hours % 12 || 12
-  const formattedTime = `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
-  return `${sched.scheduleDay}, ${formattedTime} - ${sched.classroom}`
 })
 
 const heroStyle = computed(() => {
@@ -140,16 +124,10 @@ const getDeterministicIndex = (key: string) => {
 
             <!-- Course Meta Info -->
             <div class="flex flex-wrap items-center gap-4 text-sm text-white/90">
-              <!-- Schedule -->
-              <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-                <i class="fas fa-clock"></i>
-                <span>{{ scheduleInfo }}</span>
-              </div>
-
               <!-- Students Count -->
               <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg">
                 <i class="fas fa-users"></i>
-                <span>{{ students.length }} students</span>
+                <span>{{ currentCourse?.students ?? 0 }} students</span>
               </div>
             </div>
           </div>
