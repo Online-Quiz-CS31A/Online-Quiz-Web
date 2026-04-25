@@ -8,14 +8,15 @@ import type { ClassItem } from '@/interfaces/interfaces'
 import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import TeacherCourseSkeleton from '@/components/skeletons/TeacherCourseSkeleton.vue'
-import bg1 from '@/assets/image/bg1.jpg'
-import bg2 from '@/assets/image/bg2.jpg'
-import bg3 from '@/assets/image/bg3.jpg'
-import bg4 from '@/assets/image/bg4.jpg'
-import bg5 from '@/assets/image/bg5.jpg'
 
-// CONSTANTS
-const coverImages = [bg1, bg2, bg3, bg4, bg5]
+// CONSTANTS - Lazy load images
+const coverImages = [
+  '/src/assets/image/bg1.webp',
+  '/src/assets/image/bg2.webp',
+  '/src/assets/image/bg3.webp',
+  '/src/assets/image/bg4.webp',
+  '/src/assets/image/bg5.webp'
+]
 const router = useRouter()
 
 // PROPS
@@ -152,14 +153,14 @@ const getSectionsForCourse = (classItem: ClassItem) => {
   const targetCourseIds = classesStore.rawTeacherCourses
     .filter(c => c.code === code)
     .map(c => c.courseId)
-    
+
   if (targetCourseIds.length === 0) {
     targetCourseIds.push(classItem.id)
   }
 
   const allSections = []
   const seenIds = new Set<number>()
-  
+
   for (const cid of targetCourseIds) {
     const cidSections = sectionsStore.getSectionsByCourse(cid)
     for (const s of cidSections) {
@@ -197,19 +198,19 @@ const fetchStudentCounts = async () => {
   // is too late because concurrent async calls can bypass the check
   if (hasFetchedCounts.value) return
   hasFetchedCounts.value = true
-  
+
   await new Promise(resolve => setTimeout(resolve, 100))
-  
+
   const { useAdminStore } = await import('@/stores/adminStore')
   const adminStore = useAdminStore()
-  
+
   const coursesToProcess = classes.value.filter(c => c.id)
   if (!coursesToProcess.length) return
-  
+
   for (const classItem of coursesToProcess) {
     const sections = getSectionsForCourse(classItem)
     if (!sections.length) continue
-    
+
     for (const section of sections) {
       if (section.name) {
         try {
@@ -234,11 +235,11 @@ watch(classes, (newClasses) => {
 // LIFECYCLE
 onMounted(async () => {
   document.addEventListener('click', onDocClick)
-  
+
   if (classesStore.rawTeacherCourses.length === 0) {
     await classesStore.fetchTeacherCourses()
   }
-  
+
   if (classes.value.length > 0 && !hasFetchedCounts.value) {
     fetchStudentCounts()
   }
@@ -260,7 +261,7 @@ onBeforeUnmount(() => {
     <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <TeacherCourseSkeleton v-for="i in (props.maxItems || 3)" :key="i" />
     </div>
-    
+
     <!-- Empty State -->
     <div v-else-if="displayedClasses.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
@@ -276,15 +277,15 @@ onBeforeUnmount(() => {
         You haven't created any courses yet. Create your first course to start teaching.
       </p>
     </div>
-    
+
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
-        v-for="classItem in displayedClasses" 
+      <div
+        v-for="classItem in displayedClasses"
         :key="classItem.id"
         class="class-card rounded-xl shadow-md overflow-hidden bg-white cursor-pointer"
         @click="handleEnterClass(classItem)"
       >
-        <div 
+        <div
           class="relative h-36 bg-center bg-cover"
           :style="getCoverStyle(classItem)"
         >
@@ -295,7 +296,7 @@ onBeforeUnmount(() => {
             <h3 class="mt-1 text-xl font-bold leading-snug line-clamp-2">{{ classItem.name }}</h3>
           </div>
           <div class="absolute right-2 top-2 actions-menu">
-            <button 
+            <button
               @click.stop="toggleMenu(classItem.id)"
               class="text-white hover:text-white p-1 cursor-pointer"
               aria-label="More options"
@@ -303,18 +304,18 @@ onBeforeUnmount(() => {
             >
               <i class="fas fa-ellipsis-vertical"></i>
             </button>
-            <div 
-              v-if="menuOpenForId === classItem.id" 
+            <div
+              v-if="menuOpenForId === classItem.id"
               class="absolute right-0 top-7 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20"
             >
               <template v-if="props.mode === 'archived'">
-                <button 
+                <button
                   @click.stop="handleEnterClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
                   View
                 </button>
-                <button 
+                <button
                   @click.stop="handleUnarchiveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
                 >
@@ -322,14 +323,14 @@ onBeforeUnmount(() => {
                 </button>
               </template>
               <template v-else>
-                <button 
+                <button
                   @click.stop="handleEditClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
-                  Edit 
+                  Edit
                 </button>
-                
-                <button 
+
+                <button
                   @click.stop="handleLeaveClass(classItem)"
                   class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
                 >
@@ -341,7 +342,7 @@ onBeforeUnmount(() => {
 
           <div class="absolute left-4 bottom-3 text-white min-w-0">
             <div class="flex items-center space-x-2">
-              <div 
+              <div
                 class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-white ring-2 ring-white/20 shadow-sm"
                 :style="getAvatarStyle(classItem.teacher)"
               >

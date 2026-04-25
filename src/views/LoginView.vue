@@ -141,7 +141,7 @@ const clearPasswordError = () => {
         <div class="mb-8">
           <div class="w-20 h-20 bg-white bg-opacity-20 rounded-[50%] flex items-center justify-center mb-6 backdrop-blur-sm">
             <!-- <font-awesome-icon icon="graduation-cap" class="w-10 h-10 text-white" /> -->
-            <img src="/src/assets/image/ACLC.png"/>
+            <img src="/src/assets/image/ACLC.webp"/>
           </div>
           <h1 class="text-4xl font-bold mb-2">ACLC College of Mandaue</h1>
           <p class="text-xl text-blue-100 font-medium">Online Quiz System</p>

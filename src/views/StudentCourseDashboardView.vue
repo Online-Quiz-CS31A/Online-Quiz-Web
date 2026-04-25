@@ -13,11 +13,14 @@ const StudentCourseQuizzesTab = defineAsyncComponent(() => import('@/components/
 const StudentCourseScoreTab = defineAsyncComponent(() => import('@/components/student/StudentCourseScoreTab.vue'))
 const StudentCoursePeopleTab = defineAsyncComponent(() => import('@/components/student/StudentCoursePeopleTab.vue'))
 
-import bg1 from '@/assets/image/bg1.jpg'
-import bg2 from '@/assets/image/bg2.jpg'
-import bg3 from '@/assets/image/bg3.jpg'
-import bg4 from '@/assets/image/bg4.jpg'
-import bg5 from '@/assets/image/bg5.jpg'
+// CONSTANTS - Lazy load images
+const coverImages = [
+  '/src/assets/image/bg1.webp',
+  '/src/assets/image/bg2.webp',
+  '/src/assets/image/bg3.webp',
+  '/src/assets/image/bg4.webp',
+  '/src/assets/image/bg5.webp'
+]
 
 // TYPES
 type TabKey = 'quizzes' | 'score' | 'people'
