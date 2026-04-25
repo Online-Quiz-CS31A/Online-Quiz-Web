@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { StudentQuiz } from '@/interfaces/interfaces'
-import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.png'
-import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.png'
-import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.png'
-import quiz4 from '@/assets/image/quiz_bg/radiant-gradient.png'
-import quiz5 from '@/assets/image/quiz_bg/subtle-prism.png'
 
 // TYPES
 interface Props {
@@ -16,8 +11,14 @@ interface Props {
   viewMode?: 'cards' | 'rows'
 }
 
-// CONSTANTS
-const coverImages = [quiz1, quiz2, quiz3, quiz4, quiz5]
+// CONSTANTS - Lazy load images
+const coverImages = [
+  '/src/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp',
+  '/src/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp',
+  '/src/assets/image/quiz_bg/liquid-cheese.webp',
+  '/src/assets/image/quiz_bg/radiant-gradient.webp',
+  '/src/assets/image/quiz_bg/subtle-prism.webp'
+]
 const router = useRouter()
 
 // PROPS
@@ -54,8 +55,44 @@ const getDeterministicIndex = (key: string) => {
 }
 
 const getCoverStyle = (quiz: StudentQuiz) => {
-  const index = getDeterministicIndex(`${quiz.id}-${quiz.title}`)
-  const url = coverImages[index % coverImages.length]
+  // Try to match quiz title/course to appropriate background
+  const quizTitle = quiz.title.toLowerCase()
+  const courseName = (quiz.courseName || '').toLowerCase()
+
+  let imageIndex = 0
+
+  // Computer Science / Programming quizzes
+  if (quizTitle.includes('programming') ||
+      quizTitle.includes('automata') ||
+      quizTitle.includes('algorithm') ||
+      quizTitle.includes('code') ||
+      quizTitle.includes('software') ||
+      courseName.includes('programming') ||
+      courseName.includes('automata') ||
+      courseName.includes('cs')) {
+    imageIndex = 3 // radiant-gradient - tech theme
+  }
+  // Math / Science quizzes
+  else if (quizTitle.includes('math') ||
+           quizTitle.includes('calculus') ||
+           quizTitle.includes('physics') ||
+           courseName.includes('math') ||
+           courseName.includes('science')) {
+    imageIndex = 4 // subtle-prism
+  }
+  // Practice / Test quizzes
+  else if (quizTitle.includes('practice') ||
+           quizTitle.includes('test') ||
+           quizTitle.includes('exam')) {
+    imageIndex = 2 // liquid-cheese
+  }
+  // Default: use deterministic hash for other quizzes
+  else {
+    const hash = getDeterministicIndex(`${quiz.id}-${quiz.title}`)
+    imageIndex = hash % coverImages.length
+  }
+
+  const url = coverImages[imageIndex]
   return {
     backgroundImage: `url(${url})`
   }
@@ -83,7 +120,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
       <h2 class="text-xl font-bold text-gray-800">My Quizzes</h2>
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
     </div>
-    
+
     <!-- Empty State -->
     <div v-if="displayedQuizzes.length === 0" class="p-12 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-gray-200">
       <div class="relative mb-6">
@@ -96,38 +133,88 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
         You don't have any quizzes at the moment. Check back later for new assignments from your teachers.
       </p>
     </div>
-    
+
     <div v-else-if="props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
-        v-for="quiz in displayedQuizzes" 
+      <div
+        v-for="quiz in displayedQuizzes"
         :key="quiz.id"
-        class="quiz-card rounded-xl shadow-md overflow-hidden cursor-pointer"
-        :style="{ ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"
+        class="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
         @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
       >
-        <div class="p-5 text-white">
-          <div class="flex justify-end items-start mb-3">
-            <span class="text-xs text-white">Due: {{ quiz.dueDate }}</span>
-          </div>
-          <h3 class="text-lg font-bold text-white mb-4">{{ quiz.title }}</h3>
-          <div class="flex items-center justify-between">
-            <div></div>
-            <button 
-              @click.stop="toggleDone(quiz.id)"
-              class="text-sm font-medium transition-colors"
-              :class="isDone(quiz.id) ? 'text-green-200 cursor-default' : 'text-white hover:opacity-90'"
+        <!-- Header with background image -->
+        <div class="relative h-32 overflow-hidden">
+          <div
+            class="absolute inset-0 bg-cover bg-center transform group-hover:scale-105 transition-transform duration-300"
+            :style="getCoverStyle(quiz)"
+          ></div>
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-blue-800/50 to-transparent"></div>
+
+          <!-- Status badge -->
+          <div class="absolute top-3 right-3">
+            <span
+              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
+              :class="isAnswered(quiz.id)
+                ? 'bg-green-500/90 text-white'
+                : 'bg-yellow-500/90 text-white'"
             >
-              {{ isDone(quiz.id) ? 'Done' : 'Mark as done' }}
-            </button>
+              <span class="w-1.5 h-1.5 rounded-full mr-1.5"
+                :class="isAnswered(quiz.id) ? 'bg-green-200' : 'bg-yellow-200'">
+              </span>
+              {{ getStatusLabel(quiz.id) }}
+            </span>
+          </div>
+
+          <!-- Quiz title -->
+          <div class="absolute bottom-3 left-4 right-4">
+            <h3 class="text-lg font-bold text-white line-clamp-2 drop-shadow-lg">
+              {{ quiz.title }}
+            </h3>
           </div>
         </div>
-        <div class="bg-white px-5 py-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-gray-500">Time: {{ quiz.timeLimit }}</span>
-            <div class="flex items-center">
-              <span class="text-xs text-gray-500 mr-2">Status:</span>
-              <span class="text-xs font-medium" :class="getStatusClass(quiz.id)">{{ getStatusLabel(quiz.id) }}</span>
-            </div>
+
+        <!-- Card body -->
+        <div class="p-4 space-y-3">
+          <!-- Due date -->
+          <div class="flex items-center text-sm text-gray-600">
+            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="font-medium">Due:</span>
+            <span class="ml-1">{{ quiz.dueDate }}</span>
+          </div>
+
+          <!-- Time limit -->
+          <div class="flex items-center text-sm text-gray-600">
+            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="font-medium">Time:</span>
+            <span class="ml-1">{{ quiz.timeLimit }}</span>
+          </div>
+
+          <!-- Action button -->
+          <div class="pt-2 flex items-center justify-between">
+            <button
+              @click.stop="toggleDone(quiz.id)"
+              class="text-sm font-medium transition-colors"
+              :class="isDone(quiz.id)
+                ? 'text-green-600 cursor-default flex items-center'
+                : 'text-gray-500 hover:text-blue-600'"
+            >
+              <svg v-if="isDone(quiz.id)" class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              {{ isDone(quiz.id) ? 'Completed' : 'Mark as done' }}
+            </button>
+
+            <button
+              class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center group-hover:translate-x-1 transition-transform"
+            >
+              Start Quiz
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -147,7 +234,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
               <div>
                 <div class="text-xs text-gray-500 mb-1">Due: {{ quiz.dueDate }}</div>
                 <div class="text-base font-semibold text-gray-900 mb-1">{{ quiz.title }}</div>
-                
+
                 <div class="mt-3 flex items-center gap-4 text-xs text-gray-600">
                   <span>Time: {{ quiz.timeLimit }}</span>
                   <span>
@@ -159,7 +246,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
                 </div>
               </div>
               <div class="ml-3">
-                <button 
+                <button
                   @click.stop="toggleDone(quiz.id)"
                   class="px-3 py-1.5 rounded-md text-sm"
                   :class="isDone(quiz.id) ? 'bg-green-100 text-green-700 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'"
