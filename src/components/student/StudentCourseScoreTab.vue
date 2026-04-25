@@ -14,27 +14,20 @@ const myScores = computed<MyScoreItem[]>(() => {
   const all = quizzesStore.myStudentQuizzes.filter((q) => q.subject === courseName)
 
   return all.map((q) => {
-    const history = quizzesStore.getQuizAttemptHistory(q.id)
-    const latestAttempt = history.length > 0 ? history[history.length - 1] : null
-
     let total = 0
     let score = 0
 
-    if (latestAttempt) {
-      score = latestAttempt.score
-      total = latestAttempt.totalPoints
-    } else {
-      const questions = quizzesStore.getStudentQuizQuestions(q.id)
-      total = questions.reduce(
-        (sum: number, qq: { points?: number }) => sum + (typeof qq.points === 'number' ? qq.points : 0),
-        0
-      )
+    // Get score from API only
+    const apiScore = quizzesStore.attemptScores[q.id]
+    if (apiScore) {
+      score = apiScore.score
+      total = apiScore.totalPoints
     }
 
     const percent = total > 0 ? Math.round((score / total) * 100) : 0
 
-    // Check backend-backed submitted quiz IDs first (authoritative), then fallback to localStorage
-    const hasSubmitted = quizzesStore.hasSubmittedAttempt(q.id) || history.length > 0
+    // Check submission status
+    const hasSubmitted = quizzesStore.hasSubmittedAttempt(q.id)
     const status: 'Answered' | 'Unanswered' = hasSubmitted ? 'Answered' : 'Unanswered'
 
     return {
@@ -55,7 +48,7 @@ const filteredScores = computed<MyScoreItem[]>(() => {
 })
 
 onMounted(() => {
-  quizzesStore.loadAttemptHistoryFromStorage()
+  // Scores are loaded from API via fetchStudentQuizzesAsync
 })
 </script>
 

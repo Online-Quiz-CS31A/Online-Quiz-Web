@@ -43,6 +43,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   const quizzesVersion = ref(0)
   const archivedSeedQuizIds = ref<number[]>([])
   const submittedQuizIds = ref<Set<number>>(new Set())
+  const attemptScores = ref<Record<number, { score: number; totalPoints: number }>>({})
   let quizDoneLoaded = false
   let attemptHistoryLoaded = false
 
@@ -90,14 +91,79 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     try {
       const api = await import('../services/api')
       const attemptsResponse = await api.default.get(`/Attempt/student/${user.id}`)
+      console.log('Attempts API response:', attemptsResponse.data)
+
       if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
         const newSubmittedIds = new Set<number>()
-        attemptsResponse.data.forEach((attempt: { quizId: number; submittedAt: string | null }) => {
+        const newAttemptScores: Record<number, { score: number; totalPoints: number }> = {}
+
+        // First pass: collect quiz IDs that need total points
+        const quizIdsNeedingTotalPoints = new Set<number>()
+        attemptsResponse.data.forEach((attempt: { quizId: number; submittedAt: string | null; score?: number | null; totalPoints?: number | null }) => {
           if (attempt.submittedAt) {
             newSubmittedIds.add(attempt.quizId)
           }
+          if (attempt.score != null && attempt.totalPoints == null) {
+            quizIdsNeedingTotalPoints.add(attempt.quizId)
+          }
         })
+
+        // Fetch quiz details for quizzes missing totalPoints
+        const quizTotalPointsMap: Record<number, number> = {}
+        if (quizIdsNeedingTotalPoints.size > 0) {
+          console.log('Fetching quiz details for quizzes missing totalPoints:', Array.from(quizIdsNeedingTotalPoints))
+          await Promise.all(
+            Array.from(quizIdsNeedingTotalPoints).map(async (quizId) => {
+              try {
+                const quizResponse = await api.default.get(`/Quiz/${quizId}`, {
+                  params: { userId: user.id }
+                })
+                if (quizResponse.data && quizResponse.data.questions) {
+                  const total = quizResponse.data.questions.reduce(
+                    (sum: number, q: { points?: number }) => sum + (q.points || 0),
+                    0
+                  )
+                  quizTotalPointsMap[quizId] = total
+                  console.log(`Calculated totalPoints for quiz ${quizId}: ${total}`)
+                }
+              } catch (error) {
+                console.error(`Failed to fetch quiz ${quizId} for totalPoints calculation:`, error)
+              }
+            })
+          )
+        }
+
+        // Second pass: process attempts with totalPoints from API or calculated
+        attemptsResponse.data.forEach((attempt: { quizId: number; submittedAt: string | null; score?: number | null; totalPoints?: number | null }) => {
+          console.log(`Processing attempt for quiz ${attempt.quizId}:`, {
+            submittedAt: attempt.submittedAt,
+            score: attempt.score,
+            totalPoints: attempt.totalPoints
+          })
+
+          // Backend returns score as earned points (not percentage) and totalPoints as sum of question points
+          if (attempt.score != null) {
+            const score = typeof attempt.score === 'number' ? attempt.score : Number(attempt.score)
+            const total = attempt.totalPoints != null
+              ? (typeof attempt.totalPoints === 'number' ? attempt.totalPoints : Number(attempt.totalPoints))
+              : quizTotalPointsMap[attempt.quizId]
+
+            if (total != null && total > 0) {
+              const actualScore = Math.round(score)
+              console.log(`Quiz ${attempt.quizId} score: ${actualScore}/${total} points`)
+              newAttemptScores[attempt.quizId] = {
+                score: actualScore,
+                totalPoints: total,
+              }
+            } else {
+              console.log(`Quiz ${attempt.quizId} missing totalPoints even after fetch - score: ${attempt.score}, totalPoints: ${attempt.totalPoints}`)
+            }
+          }
+        })
+        console.log('Final attemptScores:', newAttemptScores)
+        console.log('Final submittedQuizIds:', Array.from(newSubmittedIds))
         submittedQuizIds.value = newSubmittedIds
+        attemptScores.value = newAttemptScores
       }
     } catch (error) {
       console.error('Failed to fetch student attempts:', error)
@@ -1600,6 +1666,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     mapApiQuestionToFrontend,
     setQuizQuestionsForScore,
     hasSubmittedAttempt,
-    markQuizAsSubmitted
+    markQuizAsSubmitted,
+    attemptScores
   }
 })
