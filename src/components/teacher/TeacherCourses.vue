@@ -214,14 +214,40 @@ const fetchStudentCounts = async () => {
     return
   }
 
+  // Group classes by course code to avoid duplicate fetches
+  const processedCodes = new Set<string>()
+
   for (const classItem of coursesToProcess) {
     try {
-      // Fetch enrollments for this course
-      const enrollments = await courseService.getCourseEnrollments(classItem.id, teacherId)
+      const code = classItem.code
 
-      // Group enrollments by section
+      if (code && processedCodes.has(code)) {
+        continue
+      }
+
+      const courseIdsToFetch = code
+        ? classesStore.rawTeacherCourses
+            .filter(c => c.code === code)
+            .map(c => c.courseId)
+        : [classItem.id]
+
+      if (code) {
+        processedCodes.add(code)
+      }
+
+      // Fetch enrollments for all related courses
+      const allEnrollments = await Promise.all(
+        courseIdsToFetch.map(courseId =>
+          courseService.getCourseEnrollments(courseId, teacherId).catch(err => {
+            console.error(`Failed to fetch enrollments for course ${courseId}`, err)
+            return []
+          })
+        )
+      )
+
+      // Flatten all enrollments and group by section
       const sectionCounts: Record<string, number> = {}
-      enrollments.forEach((enrollment: { section?: string; sectionName?: string }) => {
+      allEnrollments.flat().forEach((enrollment: { section?: string; sectionName?: string }) => {
         const sectionName = enrollment.section || enrollment.sectionName || ''
         if (sectionName) {
           sectionCounts[sectionName] = (sectionCounts[sectionName] || 0) + 1
