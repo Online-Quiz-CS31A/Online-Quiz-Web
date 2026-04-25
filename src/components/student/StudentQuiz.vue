@@ -256,7 +256,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
             <button
               class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center group-hover:translate-x-1 transition-transform"
             >
-              Start Quiz
+              {{ isAnswered(quiz.id) ? 'View Results' : 'Start Quiz' }}
               <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
