@@ -161,7 +161,7 @@ export const useCoursesStore = defineStore('classes', () => {
         name: c.name,
         teacher: c.instructorName || c.instructorUsername || 'Teacher',
         description: c.category || '',
-        students: 0,
+        students: c.enrollmentCount ?? 0,
         color: 'blue',
         status: (c.status === 'Active' || c.status === 'Archived') ? c.status : 'Active',
         studentUsernames: []
@@ -186,7 +186,7 @@ export const useCoursesStore = defineStore('classes', () => {
       return {
         ...course,
         teacher: course.teacher,
-        students: studentCount,
+        students: sections.length > 0 ? studentCount : course.students,
       }
     })
   })

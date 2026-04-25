@@ -18,4 +18,7 @@ export interface StudentCourseDto {
   instructorUsername?: string
   status: string
   category?: string
+  enrollmentCount?: number
+  sectionCount?: number
+  quizCount?: number
 }

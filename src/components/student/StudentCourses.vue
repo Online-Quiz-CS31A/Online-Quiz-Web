@@ -3,7 +3,6 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
-import { useAuthStore } from '@/stores/authStore'
 import type { ClassItem } from '@/interfaces/interfaces'
 import bg1 from '@/assets/image/bg1.webp'
 import bg2 from '@/assets/image/bg2.webp'
@@ -26,7 +25,6 @@ const emit = defineEmits<{
 // REACTIVE
 const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
-const authStore = useAuthStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
@@ -140,17 +138,13 @@ const getInitials = (name: string) => {
 }
 
 const getStudentCount = (courseId: number) => {
-  const uname = authStore.currentUser?.username
-  const sections = sectionsStore.getSectionsByCourse(courseId)
-
-  if (!uname) {
-    return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
+  const classItem = classes.value.find(c => c.id === courseId)
+  if (classItem && classItem.students > 0) {
+    return classItem.students
   }
 
-  const mySection = sections.find(section => (section.studentUsernames || []).includes(uname))
-  if (!mySection) return 0
-
-  return (mySection.studentUsernames || []).length
+  const sections = sectionsStore.getSectionsByCourse(courseId)
+  return sections.reduce((total, section) => total + section.studentUsernames.length, 0)
 }
 
 // LIFECYCLE
