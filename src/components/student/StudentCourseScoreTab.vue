@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { MyScoreItem } from '@/interfaces/interfaces'
 
@@ -17,7 +17,6 @@ const myScores = computed<MyScoreItem[]>(() => {
     let total = 0
     let score = 0
 
-    // Get score from API only
     const apiScore = quizzesStore.attemptScores[q.id]
     if (apiScore) {
       score = apiScore.score
@@ -25,8 +24,6 @@ const myScores = computed<MyScoreItem[]>(() => {
     }
 
     const percent = total > 0 ? Math.round((score / total) * 100) : 0
-
-    // Check submission status
     const hasSubmitted = quizzesStore.hasSubmittedAttempt(q.id)
     const status: 'Answered' | 'Unanswered' = hasSubmitted ? 'Answered' : 'Unanswered'
 
@@ -47,103 +44,157 @@ const filteredScores = computed<MyScoreItem[]>(() => {
   return myScores.value.filter((s) => s.status === 'Unanswered')
 })
 
-onMounted(() => {
-  // Scores are loaded from API via fetchStudentQuizzesAsync
-})
+const getScoreColor = (percent: number) => {
+  if (percent >= 90) return 'text-green-600'
+  if (percent >= 75) return 'text-blue-600'
+  if (percent >= 60) return 'text-yellow-600'
+  return 'text-red-600'
+}
+
+const formatDate = (dateStr: string) => {
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {
+    return dateStr
+  }
+}
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- No Scores at All -->
+  <div class="space-y-4">
+    <!-- Empty State -->
     <div
       v-if="myScores.length === 0"
-      class="bg-white rounded-lg shadow border border-gray-200 p-12 flex flex-col items-center justify-center text-center"
+      class="bg-white border border-gray-200 rounded-lg p-16 text-center"
     >
-      <div class="relative mb-6">
-        <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center">
-          <i class="fas fa-chart-line text-4xl text-blue-400"></i>
-        </div>
-        <div
-          class="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg"
-        >
-          <i class="fas fa-star text-white text-sm"></i>
-        </div>
+      <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-clipboard-list text-2xl text-gray-400"></i>
       </div>
-      <h3 class="text-xl font-semibold text-gray-800 mb-2">No Scores Yet</h3>
-      <p class="text-gray-500 max-w-md mb-6">
-        You haven't completed any quizzes for this course yet. Start taking quizzes to see your
-        scores here!
-      </p>
-      <div class="flex items-center gap-2 text-sm text-gray-400">
-        <i class="fas fa-info-circle"></i>
-        <span>Your quiz scores and progress will be tracked here</span>
-      </div>
+      <h3 class="text-base font-semibold text-gray-900 mb-1">No quiz scores yet</h3>
+      <p class="text-sm text-gray-500">Complete quizzes to see your scores here</p>
     </div>
 
-    <!-- Scores Available -->
-    <div v-else class="bg-white rounded-lg shadow border border-gray-200">
-      <!-- Filter dropdown -->
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="relative w-full max-w-sm">
-          <label class="block text-xs text-gray-500 mb-2">Task filter</label>
-          <select
-            v-model="scoreFilter"
-            class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
-          >
-            <option value="all">All</option>
-            <option value="answered">Answered</option>
-            <option value="unanswered">Unanswered</option>
-          </select>
-          <i class="fas fa-chevron-down absolute right-4 top-10 text-gray-400 pointer-events-none"></i>
+    <!-- Scores List -->
+    <div v-else>
+      <!-- Filter Tabs -->
+      <div class="bg-white border border-gray-200 rounded-lg mb-4">
+        <div class="border-b border-gray-200 px-6 py-3">
+          <div class="flex gap-6">
+            <button
+              @click="scoreFilter = 'all'"
+              :class="[
+                'pb-3 border-b-2 text-sm font-medium transition-colors',
+                scoreFilter === 'all'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ]"
+            >
+              All
+            </button>
+            <button
+              @click="scoreFilter = 'answered'"
+              :class="[
+                'pb-3 border-b-2 text-sm font-medium transition-colors',
+                scoreFilter === 'answered'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ]"
+            >
+              Completed
+            </button>
+            <button
+              @click="scoreFilter = 'unanswered'"
+              :class="[
+                'pb-3 border-b-2 text-sm font-medium transition-colors',
+                scoreFilter === 'unanswered'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ]"
+            >
+              Pending
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Scores list -->
-      <div class="divide-y divide-gray-100">
+      <!-- Quiz Cards -->
+      <div class="space-y-3">
         <div
           v-for="q in filteredScores"
           :key="q.title"
-          class="px-6 py-5 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between"
+          class="bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
         >
-          <div class="flex-1">
-            <h4 class="font-medium text-gray-900 mb-1">{{ q.title }}</h4>
-            <p class="text-sm text-gray-500">Due {{ q.due }}</p>
-          </div>
-          <div class="flex items-center gap-6">
-            <div class="text-right">
-              <div class="text-sm text-gray-500 mb-1">Status</div>
-              <div
-                class="text-sm font-medium"
-                :class="q.status === 'Answered' ? 'text-gray-700' : 'text-red-600'"
-              >
-                {{ q.status }}
+          <div class="px-6 py-4">
+            <div class="flex items-center justify-between gap-4">
+              <!-- Quiz Info -->
+              <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-semibold text-gray-900 mb-1">{{ q.title }}</h4>
+                <div class="flex items-center gap-4 text-xs text-gray-500">
+                  <span class="flex items-center gap-1">
+                    <i class="far fa-calendar"></i>
+                    {{ formatDate(q.due) }}
+                  </span>
+                  <span
+                    :class="[
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium',
+                      q.status === 'Answered'
+                        ? 'bg-green-50 text-green-700'
+                        : 'bg-yellow-50 text-yellow-700'
+                    ]"
+                  >
+                    <i :class="q.status === 'Answered' ? 'fas fa-check-circle' : 'far fa-clock'"></i>
+                    {{ q.status }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Score Display -->
+              <div class="flex items-center gap-6">
+                <!-- Percentage -->
+                <div v-if="q.status === 'Answered'" class="text-right">
+                  <div :class="['text-2xl font-bold', getScoreColor(q.percent)]">
+                    {{ q.percent }}%
+                  </div>
+                </div>
+
+                <!-- Points -->
+                <div class="text-right">
+                  <div class="text-xs text-gray-500 mb-0.5">Score</div>
+                  <div class="text-lg font-semibold text-gray-900">
+                    {{ q.score }}<span class="text-gray-400">/{{ q.total }}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="text-right min-w-[80px]">
-              <div class="text-2xl font-semibold text-gray-900">{{ q.score }}/{{ q.total }}</div>
-            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div v-if="q.status === 'Answered'" class="h-1 bg-gray-100">
+            <div
+              :class="[
+                'h-full transition-all',
+                q.percent >= 90 ? 'bg-green-500' :
+                q.percent >= 75 ? 'bg-blue-500' :
+                q.percent >= 60 ? 'bg-yellow-500' :
+                'bg-red-500'
+              ]"
+              :style="{ width: `${q.percent}%` }"
+            ></div>
           </div>
         </div>
 
-        <!-- Empty Filtered Results -->
+        <!-- Empty Filter Results -->
         <div
           v-if="filteredScores.length === 0"
-          class="px-6 py-12 flex flex-col items-center justify-center text-center"
+          class="bg-white border border-gray-200 rounded-lg px-6 py-12 text-center"
         >
-          <div class="relative mb-6">
-            <div class="w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-full flex items-center justify-center">
-              <i class="fas fa-filter text-3xl text-gray-300"></i>
-            </div>
-          </div>
-          <h4 class="text-lg font-semibold text-gray-700 mb-2">No Matching Scores</h4>
-          <p class="text-gray-500 max-w-sm mb-4">
-            No scores match your current filter. Try selecting a different filter option.
-          </p>
+          <p class="text-sm text-gray-500 mb-3">No quizzes match the selected filter</p>
           <button
             @click="scoreFilter = 'all'"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+            class="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            <i class="fas fa-undo mr-2"></i>Clear Filter
+            Clear filter
           </button>
         </div>
       </div>
