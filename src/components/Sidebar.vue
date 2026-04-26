@@ -7,6 +7,9 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 const ImportQuestionsModal = defineAsyncComponent(() => import('@/components/modals/ImportQuestionsModal.vue'))
 
+// eslint-disable-next-line vue/multi-word-component-names
+defineOptions({ name: 'Sidebar' })
+
 // TYPES
 interface Props {
   isActive: boolean
@@ -80,7 +83,6 @@ const isQuizzesActive = computed(() => activeSection.value === 'quizzes')
 const isCalendarActive = computed(() => activeSection.value === 'calendar')
 const isArchivedActive = computed(() => activeSection.value === 'archived')
 const isTeacher = computed(() => auth.userRole === 'teacher')
-const isStudent = computed(() => auth.userRole === 'student')
 const myClasses = computed(() => classesStore.myClasses)
 
 // METHODS
@@ -131,7 +133,7 @@ async function handleImport(file: File) {
 
       const [type, question, points, optA, optB, optC, optD, correct, required] = cols
 
-      const questionData: any = {
+      const questionData: ImportedQuestion = {
         id: Date.now() + i,
         type: type || 'short-answer',
         question: question || '',
@@ -161,7 +163,7 @@ async function handleImport(file: File) {
         name: 'quiz-builder',
         params: { id: classId },
         state: { importedQuestions: questions }
-      } as any)
+      })
     }, 300)
   } catch (error) {
     console.error('Error parsing file:', error)
@@ -258,7 +260,7 @@ async function handleImport(file: File) {
             </button>
           </li>
 
-          <li>
+          <li v-if="isTeacher">
             <button
               @click="$emit('nav-calendar')"
               class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
