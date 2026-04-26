@@ -262,9 +262,23 @@ async function fetchCurrentUserProfile() {
     const response = await api.get('/Auth/verify-me')
     const userData = response.data
 
-    const nameParts = (userData.fullName || '').split(' ')
-    firstName.value = nameParts[0] || ''
-    lastName.value = nameParts.slice(1).join(' ') || ''
+    // Parse full name more robustly
+    const fullNameStr = (userData.fullName || '').trim()
+    if (fullNameStr) {
+      const spaceIndex = fullNameStr.indexOf(' ')
+      if (spaceIndex > 0) {
+        // Multi-word name: split at first space
+        firstName.value = fullNameStr.substring(0, spaceIndex)
+        lastName.value = fullNameStr.substring(spaceIndex + 1).trim()
+      } else {
+        // Single-word name: use as first name, leave last name empty
+        firstName.value = fullNameStr
+        lastName.value = ''
+      }
+    } else {
+      firstName.value = ''
+      lastName.value = ''
+    }
 
     email.value = userData.email || ''
     phone.value = userData.contactNumber || ''
@@ -332,8 +346,13 @@ async function onSubmit(e: Event) {
       return
     }
 
+    // Reconstruct full name properly (avoid trailing space for single-word names)
+    const reconstructedFullName = lastName.value.trim()
+      ? `${firstName.value.trim()} ${lastName.value.trim()}`
+      : firstName.value.trim()
+
     const updatePayload: UpdateUserPayload = {
-      fullName: `${firstName.value} ${lastName.value}`.trim(),
+      fullName: reconstructedFullName,
       email: email.value.trim(),
       contactNumber: formatPhoneNumber(phone.value),
       emergencyContactPerson: emergencyContactName.value.trim(),
