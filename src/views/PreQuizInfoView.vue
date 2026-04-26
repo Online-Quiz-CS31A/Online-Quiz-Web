@@ -263,17 +263,20 @@ const quiz = computed((): QuizData => {
     return curScore > bestScore ? cur : best
   }, null)
 
-  const correctAnswers = bestAttempt ? bestAttempt.score : 0
+  const basePoints = bestAttempt ? (bestAttempt.totalPoints || overallTotalPoints) : overallTotalPoints
+
+  const correctAnswers = bestAttempt
+    ? Math.round((bestAttempt.score / 100) * basePoints)
+    : 0
 
   const improvement = history.length >= 2
     ? ((history[0].score || 0) / (history[0].totalPoints || 1) * 100) - ((history[history.length - 1].score || 0) / (history[history.length - 1].totalPoints || 1) * 100)
     : 0
 
-  const basePoints = bestAttempt ? (bestAttempt.totalPoints || overallTotalPoints) : overallTotalPoints
   const passingScore = Math.ceil(basePoints * 0.5)
 
-  const bestPercentage = bestAttempt && bestAttempt.totalPoints
-    ? Math.round((bestAttempt.score / bestAttempt.totalPoints) * 100)
+  const bestPercentage = bestAttempt
+    ? Math.round(bestAttempt.score)
     : 0
 
   return {
