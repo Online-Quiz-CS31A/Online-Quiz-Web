@@ -5,11 +5,11 @@ const ProfileTab = defineAsyncComponent(() => import('@/components/profile/Profi
 </script>
 
 <template>
-  <div class="bg-gray-50 min-h-screen">
+  <div class="bg-gray-50 h-screen flex flex-col overflow-hidden">
     <AppHeader breadcrumb="Dashboard > Profile" />
 
-    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-      <div class="bg-white rounded-xl shadow-md overflow-hidden p-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 lg:px-8 overflow-hidden">
+      <div class="bg-white rounded-lg md:rounded-xl shadow-md h-full overflow-hidden p-3 sm:p-4 md:p-6">
         <ProfileTab />
       </div>
     </main>
