@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
+import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag, AlertTriangle } from 'lucide-vue-next'
 import AppHeader from '@/components/AppHeader.vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -47,6 +47,16 @@ interface QuizData {
   hasScore: boolean
 }
 
+interface QuizApiResponse {
+  quizId: number
+  title: string
+  courseId: number
+  courseName?: string
+  course?: { name: string }
+  timeLimitMinutes: number
+  questions: ApiQuestion[]
+}
+
 interface RouteParams {
   quizId: string
 }
@@ -82,6 +92,8 @@ const isLoadingAttempts = ref(false)
 const isLoadingQuiz = ref(false)
 const quizQuestions = ref<QuizQuestion[]>([])
 const isLoading = ref(true)
+const showStartQuizModal = ref(false)
+const quizMetadata = ref<QuizApiResponse | null>(null)
 
 onMounted(async () => {
   try {
@@ -149,9 +161,25 @@ const loadQuizQuestions = async () => {
       params: { userId }
     })
 
-    if (response.data && response.data.questions) {
-      const questions = (response.data.questions || []) as ApiQuestion[]
-      quizQuestions.value = questions.map((q) => quizzesStore.mapApiQuestionToFrontend(q))
+    if (response.data) {
+      quizMetadata.value = response.data
+
+      // Fetch course name if we have courseId
+      if (response.data.courseId) {
+        try {
+          const courseResponse = await api.get(`/Course/${response.data.courseId}`)
+          if (courseResponse.data) {
+            quizMetadata.value.courseName = courseResponse.data.name || courseResponse.data.title
+          }
+        } catch (error) {
+          console.error('Failed to load course name:', error)
+        }
+      }
+
+      if (response.data.questions) {
+        const questions = (response.data.questions || []) as ApiQuestion[]
+        quizQuestions.value = questions.map((q) => quizzesStore.mapApiQuestionToFrontend(q))
+      }
     }
   } catch (error) {
     console.error('Failed to load quiz questions:', error)
@@ -166,7 +194,29 @@ const quizId = computed(() => Number((route.params as unknown as RouteParams).qu
 const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value?.title || 'Quiz'} > Score`)
 
 const studentQuizData = computed(() => {
-  return quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+  // Try to get from store first (if available)
+  const storeData = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+  if (storeData) return storeData
+
+  // Fallback to API data if store is empty (e.g., after refresh)
+  if (quizMetadata.value) {
+    return {
+      id: quizMetadata.value.quizId,
+      subject: quizMetadata.value.course?.name || quizMetadata.value.courseName || 'Course',
+      title: quizMetadata.value.title,
+      description: '',
+      dueDate: '',
+      class: '',
+      timeLimit: `${quizMetadata.value.timeLimitMinutes} min`,
+      status: 'Not Started',
+      color: 'blue',
+      maxAttempts: 1,
+      courseCode: '',
+      courseSection: ''
+    }
+  }
+
+  return null
 })
 
 const quiz = computed((): QuizData => {
@@ -283,12 +333,26 @@ const parseTimeLimitToSeconds = (tl: string | undefined): number => {
 
 
 // METHODS
+const openStartQuizModal = () => {
+  showStartQuizModal.value = true
+}
+
+const closeStartQuizModal = () => {
+  showStartQuizModal.value = false
+}
+
+const confirmStartQuiz = () => {
+  showStartQuizModal.value = false
+  startQuiz()
+}
+
 const startQuiz = () => {
   const questions = quizQuestions.value
   const durationSec = parseTimeLimitToSeconds(quiz.value.duration)
   quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length, durationSec)
   router.push({
     name: 'quiz',
+    params: { quizId: quizId.value.toString() },
     state: {
       quizId: quizId.value,
       quizTitle: quiz.value.title,
@@ -302,6 +366,7 @@ const continueQuiz = () => {
   const questions = quizQuestions.value
   router.push({
     name: 'quiz',
+    params: { quizId: quizId.value.toString() },
     state: {
       quizId: quizId.value,
       quizTitle: quiz.value.title,
@@ -471,7 +536,7 @@ const reviewAttempt = async (attemptId: number) => {
                   </li>
                   <li class="flex items-start">
                     <Book class="mr-2 mt-1 w-4 h-4" />
-                    <span>Subject: <span class="font-medium">{{ quiz.subject }}</span></span>
+                    <span>Course: <span class="font-medium">{{ quiz.subject }}</span></span>
                   </li>
                   <li class="flex items-start">
                     <Clock class="mr-2 mt-1 w-4 h-4" />
@@ -542,7 +607,7 @@ const reviewAttempt = async (attemptId: number) => {
                 </div>
                 <button
                   v-if="!hasOngoingAttempt"
-                  @click="startQuiz"
+                  @click="openStartQuizModal"
                   :disabled="!canStartQuiz"
                   class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
                 >
@@ -595,5 +660,85 @@ const reviewAttempt = async (attemptId: number) => {
         </div>
       </div>
     </main>
+
+    <!-- Start Quiz Confirmation Modal -->
+    <div
+      v-if="showStartQuizModal"
+      class="fixed inset-0 bg-gray-900 bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="closeStartQuizModal"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 sm:p-6 transform transition-all max-h-[90vh] overflow-y-auto">
+        <!-- Header -->
+        <div class="flex items-start sm:items-center gap-3 mb-4">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle class="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900">Ready to Start?</h3>
+            <p class="text-xs sm:text-sm text-gray-600">Please read these important reminders</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
+          <div class="bg-blue-50 border-l-4 border-blue-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <Clock class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-blue-900">Time Limit</p>
+                <p class="text-xs sm:text-sm text-blue-800">You have {{ quiz.duration }} to complete this quiz. The quiz will auto-submit when time runs out.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-red-50 border-l-4 border-red-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <XCircle class="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-red-900">No Tab Switching</p>
+                <p class="text-xs sm:text-sm text-red-800">Switching tabs or windows will automatically end your quiz attempt.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-amber-50 border-l-4 border-amber-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <AlertCircle class="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-amber-900">Single Attempt</p>
+                <p class="text-xs sm:text-sm text-amber-800">This quiz can only be taken once. Make sure you're ready before starting.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-green-50 border-l-4 border-green-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <CheckCircle class="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-green-900">Auto-Save</p>
+                <p class="text-xs sm:text-sm text-green-800">Your answers are automatically saved as you progress through the quiz.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            @click="closeStartQuizModal"
+            class="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm sm:text-base order-2 sm:order-1"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmStartQuiz"
+            class="flex-1 px-4 py-2.5 bg-[#4285f4] text-white rounded-xl font-semibold hover:bg-[#1976d2] transition-colors flex items-center justify-center gap-2 text-sm sm:text-base order-1 sm:order-2"
+          >
+            <Play class="w-4 h-4" />
+            Start Quiz
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
