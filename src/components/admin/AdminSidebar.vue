@@ -29,13 +29,13 @@ const toggleArchived = () => {
 
 <template>
   <div class="flex flex-col w-64 bg-white border-r border-gray-200">
-    <!-- Header -->
+    <!-- AppHeader -->
     <div class="flex items-center justify-center h-16 px-4 bg-white">
       <div class="flex items-center">
         <span class="text-xl font-semibold text-blue-600">Quiz Portal Admin</span>
       </div>
     </div>
-    
+
     <!-- Navigation -->
     <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
       <div class="space-y-1">
@@ -45,7 +45,7 @@ const toggleArchived = () => {
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             route.name === 'admin-dashboard'
-              ? 'text-blue-600 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -57,14 +57,14 @@ const toggleArchived = () => {
           />
           Dashboard
         </router-link>
-        
+
         <!-- User Management -->
         <router-link
           to="/admin/users"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             route.name === 'admin-users'
-              ? 'text-blue-600 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -76,14 +76,14 @@ const toggleArchived = () => {
           />
           User Management
         </router-link>
-        
+
         <!-- Course Catalog -->
         <router-link
           to="/admin/courses"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             route.name === 'admin-courses'
-              ? 'text-blue-600 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -95,14 +95,14 @@ const toggleArchived = () => {
           />
           Course Catalog
         </router-link>
-        
+
         <!-- Quiz Settings -->
         <router-link
           to="/admin/quiz-settings"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             route.name === 'admin-quiz-settings'
-              ? 'text-blue-600 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -114,14 +114,14 @@ const toggleArchived = () => {
           />
           Quiz Settings
         </router-link>
-        
+
         <!-- Data Management -->
         <router-link
           to="/admin/data"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             route.name === 'admin-data'
-              ? 'text-blue-600 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -133,14 +133,14 @@ const toggleArchived = () => {
           />
           Data Management
         </router-link>
-        
+
         <!-- Analytics -->
         <router-link
           to="/admin/analytics"
           :class="[
             'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
             route.name === 'admin-analytics'
-              ? 'text-blue-600 bg-blue-50' 
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
           ]"
         >
@@ -152,7 +152,7 @@ const toggleArchived = () => {
           />
           Analytics
         </router-link>
-        
+
         <!-- Archived Dropdown -->
         <div>
           <button
@@ -181,7 +181,7 @@ const toggleArchived = () => {
               ]"
             />
           </button>
-          
+
           <!-- Dropdown Sub-items -->
           <div
             v-show="archivedOpen"
@@ -225,13 +225,13 @@ const toggleArchived = () => {
         </div>
       </div>
     </div>
-    
+
     <!-- User Profile -->
     <div class="p-4 border-t border-gray-200">
       <div class="flex items-center">
-        <img 
-          class="w-10 h-10 rounded-full" 
-          :src="authStore.currentUser?.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" 
+        <img
+          class="w-10 h-10 rounded-full"
+          :src="authStore.currentUser?.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'"
           :alt="authStore.currentUser?.name"
         >
         <div class="ml-3">

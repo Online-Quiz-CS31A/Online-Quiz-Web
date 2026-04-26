@@ -13,7 +13,7 @@ import quiz5 from '@/assets/image/quiz_bg/subtle-prism.webp'
 // TYPES
 interface Props {
   quizzes?: StudentQuiz[]
-  hideHeader?: boolean
+  hideAppHeader?: boolean
   viewMode?: 'cards' | 'rows'
   isLoading?: boolean
 }
@@ -24,7 +24,7 @@ const router = useRouter()
 
 // PROPS
 const props = withDefaults(defineProps<Props>(), {
-  hideHeader: false,
+  hideAppHeader: false,
   viewMode: 'cards',
   isLoading: false,
 })
@@ -123,7 +123,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
 
 <template>
   <div class="mb-8">
-    <div v-if="!props.hideHeader" class="flex justify-between items-center mb-4">
+    <div v-if="!props.hideAppHeader" class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-bold text-gray-800">My Quizzes</h2>
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
     </div>
@@ -169,7 +169,7 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
         class="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
         @click="router.push({ name: 'student-prequiz', params: { quizId: quiz.id } })"
       >
-        <!-- Header with background image -->
+        <!-- AppHeader with background image -->
         <div class="relative h-32 overflow-hidden">
           <div
             class="absolute inset-0 bg-cover bg-center transform group-hover:scale-105 transition-transform duration-300"

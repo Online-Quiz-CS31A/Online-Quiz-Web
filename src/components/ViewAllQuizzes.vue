@@ -120,8 +120,8 @@ const filtered = computed(() => {
       @action="addQuiz"
     />
 
-    <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-header="true" :show-filters="false" />
-    <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-header="true" />
+    <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-AppHeader="true" :show-filters="false" />
+    <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-AppHeader="true" />
 
     <!-- Only show this message when there's a search query with no results -->
     <div v-if="filtered.length === 0 && query && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">

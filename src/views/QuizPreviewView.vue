@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 const router = useRouter()
@@ -68,10 +68,10 @@ function closePreview() {
 
 <template>
   <div class="min-h-screen">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <div class="max-w-6xl mx-auto p-4 mt-8">
-      <!-- Quiz Header -->
+      <!-- Quiz AppHeader -->
       <div v-if="hasQuestions" class="mb-6 flex items-baseline justify-between">
         <div>
           <h1 class="text-3xl font-bold text-[#4285f4] leading-tight">{{ quizTitle }}</h1>
@@ -105,7 +105,7 @@ function closePreview() {
                 Student Preview
               </div>
             </div>
-            <!-- Question Header and Show Answers toggle -->
+            <!-- Question AppHeader and Show Answers toggle -->
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
                 <h2 class="text-lg font-semibold text-gray-800">

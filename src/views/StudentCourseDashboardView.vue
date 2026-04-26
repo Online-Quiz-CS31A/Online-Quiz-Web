@@ -6,7 +6,7 @@ import { useCoursesStore } from '@/stores/coursesStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import * as courseService from '@/services/courseService'
 import type { ClassmateDto } from '@/services/types'
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 const StudentCourseQuizzesTab = defineAsyncComponent(() => import('@/components/student/StudentCourseQuizzesTab.vue'))
 const StudentCourseScoreTab = defineAsyncComponent(() => import('@/components/student/StudentCourseScoreTab.vue'))
 const StudentCoursePeopleTab = defineAsyncComponent(() => import('@/components/student/StudentCoursePeopleTab.vue'))
@@ -88,7 +88,7 @@ const getDeterministicIndex = (key: string) => {
 
 <template>
   <div class="bg-white min-h-screen">
-    <Header :breadcrumb="`Dashboard > Courses > ${currentCourse?.name || 'Course'}`" />
+    <AppHeader :breadcrumb="`Dashboard > Courses > ${currentCourse?.name || 'Course'}`" />
 
     <!-- Loading State with Skeleton -->
     <div v-if="isLoading">

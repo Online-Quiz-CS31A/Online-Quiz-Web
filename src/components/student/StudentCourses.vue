@@ -14,7 +14,7 @@ import bg5 from '@/assets/image/bg5.webp'
 const coverImages = [bg1, bg2, bg3, bg4, bg5]
 
 // PROPS
-const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showHeader?: boolean; maxItems?: number }>()
+const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showAppHeader?: boolean; maxItems?: number }>()
 
 // EMITS
 const emit = defineEmits<{
@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="mb-8">
-    <div class="flex justify-between items-center mb-4 student-classes-header">
+    <div class="flex justify-between items-center mb-4 student-classes-AppHeader">
       <h2 class="text-xl font-bold text-gray-800">My Courses</h2>
       <a href="#" @click.prevent="$emit('view-all')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</a>
     </div>
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
         class="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
         @click="handleEnterClass(classItem)"
       >
-        <!-- Header with background image -->
+        <!-- AppHeader with background image -->
         <div class="relative h-40 overflow-hidden">
           <div
             class="absolute inset-0 bg-center bg-cover transform group-hover:scale-105 transition-transform duration-300"

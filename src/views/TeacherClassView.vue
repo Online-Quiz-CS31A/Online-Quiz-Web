@@ -12,7 +12,7 @@ import bg2 from '@/assets/image/bg2.webp'
 import bg3 from '@/assets/image/bg3.webp'
 import bg4 from '@/assets/image/bg4.webp'
 import bg5 from '@/assets/image/bg5.webp'
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 const SectionDeleteModal = defineAsyncComponent(() => import('@/components/modals/SectionDeleteModal.vue'))
 
 // CONSTANTS
@@ -176,7 +176,7 @@ function openDashboard(sectionId: number) {
 
 <template>
   <div class="bg-gray-50 min-h-screen">
-    <Header :breadcrumb="breadcrumbText" />
+    <AppHeader :breadcrumb="breadcrumbText" />
 
     <!-- Hero section -->
     <div class="relative">

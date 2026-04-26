@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import type { StudentProfile, StudentViewModel, YearLevel } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 import ImportResultsModal from '@/components/modals/ImportResultsModal.vue'
 
 // CONSTANTS
@@ -64,11 +64,11 @@ const students = computed<StudentViewModel[]>(() => {
 
 const filteredStudents = computed(() => {
   const q = search.value.trim().toLowerCase()
-  
+
   const baseList = students.value.filter(s => {
-    const matchQuery = !q || 
-      s.name.toLowerCase().includes(q) || 
-      s.email.toLowerCase().includes(q) || 
+    const matchQuery = !q ||
+      s.name.toLowerCase().includes(q) ||
+      s.email.toLowerCase().includes(q) ||
       s.major.toLowerCase().includes(q)
     const matchFilter = filters.value === 'All' || s.year === filters.value
     return matchQuery && matchFilter
@@ -77,10 +77,10 @@ const filteredStudents = computed(() => {
   return baseList.sort((a, b) => {
     const aSelected = isSelected(a.username)
     const bSelected = isSelected(b.username)
-    
+
     if (aSelected && !bSelected) return -1
     if (!aSelected && bSelected) return 1
-    
+
     return a.name.localeCompare(b.name)
   })
 })
@@ -117,11 +117,11 @@ watch([editingSectionId, students], ([sectionId, studentList]) => {
     const section = sectionsStore.allSections.find(s => s.id === sectionId)
     if (section) {
       form.className = section.name
-      
+
       const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
         studentList.map(s => [s.username, s])
       )
-      
+
       selectedStudents.value = (section.studentUsernames || [])
         .map(u => byUsername[u])
         .filter((s): s is StudentViewModel => !!s)
@@ -247,12 +247,12 @@ function onImportMasterList(e: Event) {
         error('CSV is empty or missing rows')
         return
       }
-      const [header, ...data] = rows
+      const [AppHeader, ...data] = rows
       importAdded.value = []
       importSkipped.value = []
 
       const map: Record<string, number> = {}
-      header.forEach((h, i) => {
+      AppHeader.forEach((h, i) => {
         const key = String(h).replace(/^\uFEFF/, '').trim().toLowerCase()
         if (key) map[key] = i
       })
@@ -348,12 +348,12 @@ function closeImportResult() {
 }
 
 function downloadTemplate() {
-  const headers = ['studentNumber', 'firstName', 'lastName', 'yearLevel', 'program']
+  const AppHeaders = ['studentNumber', 'firstName', 'lastName', 'yearLevel', 'program']
   const sample = [
     ['0212345678', 'Juan', 'Dela Cruz', '1', 'BSCS'],
     ['0212345679', 'Maria', 'Santos', '2', 'BSIT']
   ]
-  const rows = [headers, ...sample]
+  const rows = [AppHeaders, ...sample]
   const csv = rows
     .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
     .join('\r\n')
@@ -376,7 +376,7 @@ function hideSectionDropdown() {
 function selectSection(sec: any) {
   form.className = sec.name
   showSectionDropdown.value = false
-  
+
   const byUsername: Record<string, StudentViewModel> = Object.fromEntries(
     students.value.map(s => [s.username, s])
   )
@@ -418,7 +418,7 @@ async function saveClass() {
 
       const fallback = rawCourses.find(rc => rc.name === subjectName)
       if (!fallback) return null
-      
+
       try {
         const createPayload = {
           name: fallback.name,
@@ -611,8 +611,8 @@ onMounted(async () => {
 
 <template>
   <div class="bg-blue-50 min-h-screen font-sans flex flex-col">
-    <!-- Header -->
-    <Header breadcrumb="Dashboard > Class Management" />
+    <!-- AppHeader -->
+    <AppHeader breadcrumb="Dashboard > Class Management" />
 
     <main class="flex-grow container mx-auto px-4 py-8">
       <div class="flex flex-col lg:flex-row gap-8">

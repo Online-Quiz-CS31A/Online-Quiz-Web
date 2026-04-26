@@ -69,12 +69,12 @@ function handleAddQuestionClick() {
     toast.info('Please select a course first before adding questions.')
     return
   }
-  
+
   if (!hasAssignedSections.value) {
     toast.info('Please assign a section for this quiz in the assign tab before adding questions.')
     return
   }
-  
+
   openAddQuestionModal()
 }
 
@@ -106,7 +106,7 @@ onMounted(() => {
         isCorrect: q.correctAnswer === String.fromCharCode(65 + idx),
         imageUrl: ''
       })) : []
-      
+
       const newQuestion: QuizQuestion = {
         id: q.id || Date.now() + index,
         type: q.type || 'short-answer',
@@ -122,7 +122,7 @@ onMounted(() => {
       }
       handleAddQuestion(newQuestion)
     })
-    
+
     useToast().success(`Successfully imported ${importedQuestions.length} question${importedQuestions.length > 1 ? 's' : ''}!`)
   }
 })
@@ -156,13 +156,13 @@ defineExpose({
 
       <!-- Middle -->
       <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Header inside center content container -->
+        <!-- AppHeader inside center content container -->
         <div class="py-4">
           <div class="bg-white p-4 flex items-start gap-4 rounded-lg">
             <!-- Add Question Button -->
             <div class="flex-shrink-0">
               <!-- Real button when enabled -->
-              <button 
+              <button
                 v-if="hasCourseSelected && hasAssignedSections"
                 @click="handleAddQuestionClick"
                 class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center transition-colors cursor-pointer"
@@ -170,9 +170,9 @@ defineExpose({
                 <i class="fas fa-plus mr-2"></i>
                 Add Question
               </button>
-              
+
               <!-- Fake disabled button when disabled -->
-              <button 
+              <button
                 v-else
                 @click="handleDisabledAddQuestionClick"
                 class="bg-gray-400 text-gray-200 py-2 px-4 rounded-md flex items-center cursor-pointer"
@@ -188,12 +188,12 @@ defineExpose({
             <div class="flex-1">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                 <div>
-                  <input v-model="quiz.title" type="text" 
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  <input v-model="quiz.title" type="text"
+                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                          placeholder="Quiz Title">
                 </div>
                 <div>
-                  <select v-model="quiz.subject" 
+                  <select v-model="quiz.subject"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Select Course</option>
                     <option v-for="subject in teacherSubjects" :key="subject" :value="subject">
@@ -244,13 +244,13 @@ defineExpose({
 }
 
 @keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(10px); 
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -259,16 +259,16 @@ defineExpose({
 }
 
 .scrollbar-hide {
-  -ms-overflow-style: none; 
-  scrollbar-width: none; 
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none; 
+  display: none;
 }
 
 .pretty-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.6) transparent; 
+  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
 }
 .pretty-scroll::-webkit-scrollbar {
   width: 10px;
@@ -277,7 +277,7 @@ defineExpose({
   background: transparent;
 }
 .pretty-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.5); 
+  background-color: rgba(148, 163, 184, 0.5);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;

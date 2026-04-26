@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
-import Header from '@/components/Header.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import ConfirmUnansweredModal from '@/components/modals/ConfirmUnansweredModal.vue'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
@@ -35,12 +35,31 @@ interface QuestionChoice {
   text?: string
 }
 
+interface QuestionOption {
+  text: string
+  isCorrect: boolean
+  imageUrl?: string
+  choiceId?: number
+}
+
+interface ApiQuestion {
+  questionId?: number
+  id?: number
+  type?: string
+  body?: string
+  text?: string
+  points?: number
+  options?: QuestionOption[]
+  choices?: QuestionChoice[]
+}
+
 // REFS
 const currentDate = ref('')
 const currentTime = ref('')
 const timeInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const showConfirmModal = ref(false)
 const isLoading = ref(true)
+const isSubmitting = ref(false)
 const attemptId = ref<number | null>(null)
 const quizQuestions = ref<QuizQuestion[]>([])
 
@@ -58,8 +77,11 @@ const questions = computed(() => {
     let isAnswered = false
     const qType = (q.type || '').toLowerCase()
 
-    if (qType === 'multiple' || qType === 'single' || qType === 'multiple-choice' || qType === 'true-false') {
+    if (qType === 'single-choice' || qType === 'true-false') {
       isAnswered = typeof userAnswer === 'number' && userAnswer >= 0
+    } else if (qType === 'multiple-choice') {
+      // Multiple-choice answers are stored as arrays
+      isAnswered = Array.isArray(userAnswer) && userAnswer.length > 0
     } else if (qType === 'text' || qType === 'essay') {
       isAnswered = typeof userAnswer === 'string' && userAnswer.trim().length > 0
     } else if (qType === 'enumeration') {
@@ -140,35 +162,43 @@ const submitQuiz = async () => {
   }
 
   try {
+    isSubmitting.value = true
     const userId = authStore.currentUser?.id
     if (!attemptId.value || !userId) {
       console.error('Missing attemptId or userId')
+      alert('Cannot submit quiz: Missing attempt information.')
       return
     }
 
-    const scoreDetails = quizzesStore.calculateScore()
     const startTime = quizzesStore.currentAttempt.startAtISO
       ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
       : Date.now()
     const timeSpent = Math.floor((Date.now() - startTime) / 1000)
 
+    // Backend calculates score automatically
     await api.put(`/Attempt/${attemptId.value}/submit?studentId=${userId}`, {
-      score: scoreDetails.score,
       timeSpentSeconds: timeSpent
     })
 
     quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
     quizzesStore.currentAttempt.isOngoing = false
-    quizzesStore.saveAttemptToHistory()
 
     // Mark quiz as submitted in backend-backed store
     if (quizzesStore.currentAttempt.quizId) {
       quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+      // Store quizId for score view
+      localStorage.setItem('lastQuizId', quizzesStore.currentAttempt.quizId.toString())
     }
 
-    router.push({ name: 'quiz-score' })
+    router.push({
+      name: 'quiz-score',
+      params: { quizId: quizzesStore.currentAttempt.quizId?.toString() || '' }
+    })
   } catch (error) {
     console.error('Failed to submit quiz:', error)
+    alert('Failed to submit quiz. Please try again.')
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -176,35 +206,43 @@ const confirmSubmit = async () => {
   showConfirmModal.value = false
 
   try {
+    isSubmitting.value = true
     const userId = authStore.currentUser?.id
     if (!attemptId.value || !userId) {
       console.error('Missing attemptId or userId')
+      alert('Cannot submit quiz: Missing attempt information.')
       return
     }
 
-    const scoreDetails = quizzesStore.calculateScore()
     const startTime = quizzesStore.currentAttempt.startAtISO
       ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
       : Date.now()
     const timeSpent = Math.floor((Date.now() - startTime) / 1000)
 
+    // Backend calculates score automatically
     await api.put(`/Attempt/${attemptId.value}/submit?studentId=${userId}`, {
-      score: scoreDetails.score,
       timeSpentSeconds: timeSpent
     })
 
     quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
     quizzesStore.currentAttempt.isOngoing = false
-    quizzesStore.saveAttemptToHistory()
 
     // Mark quiz as submitted in backend-backed store
     if (quizzesStore.currentAttempt.quizId) {
       quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+      // Store quizId for score view
+      localStorage.setItem('lastQuizId', quizzesStore.currentAttempt.quizId.toString())
     }
 
-    router.push({ name: 'quiz-score' })
+    router.push({
+      name: 'quiz-score',
+      params: { quizId: quizzesStore.currentAttempt.quizId?.toString() || '' }
+    })
   } catch (error) {
     console.error('Failed to submit quiz:', error)
+    alert('Failed to submit quiz. Please try again.')
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -215,20 +253,37 @@ const cancelSubmit = () => {
 const fetchQuizQuestions = async () => {
   try {
     isLoading.value = true
+
+    console.log('=== ReviewQuizView: fetchQuizQuestions called ===')
+    console.log('quizzesStore.currentAttempt:', quizzesStore.currentAttempt)
+
     const quizId = quizzesStore.currentAttempt.quizId
     const userId = authStore.currentUser?.id
 
+    console.log('quizId:', quizId, 'userId:', userId)
+
     if (!quizId || !userId) {
-      console.error('Missing quizId or userId')
+      console.error('Missing quizId or userId in ReviewQuizView')
+      console.error('quizId:', quizId, 'userId:', userId)
+      console.error('currentAttempt:', quizzesStore.currentAttempt)
       return
     }
+
+    console.log('Fetching quiz questions for review, quizId:', quizId)
 
     const response = await api.get(`/Quiz/${quizId}`, {
       params: { userId }
     })
 
+    console.log('Quiz response:', response.data)
+
     if (response.data) {
-      quizQuestions.value = response.data.questions || []
+      const rawQuestions = response.data.questions || []
+      console.log('Raw questions from API:', rawQuestions)
+
+      // Map API questions to frontend format
+      quizQuestions.value = rawQuestions.map((q: ApiQuestion) => quizzesStore.mapApiQuestionToFrontend(q))
+      console.log('Mapped questions:', quizQuestions.value)
 
       if (quizQuestions.value.length > 0) {
         quizzesStore.currentAttempt.questionsLength = quizQuestions.value.length
@@ -236,16 +291,22 @@ const fetchQuizQuestions = async () => {
     }
 
     const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
+    console.log('All attempts for student:', attemptsResponse.data)
 
     if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
       const ongoingAttempt = attemptsResponse.data.find((attempt: AttemptResponse) =>
         attempt.quizId === quizId && !attempt.submittedAt
       )
 
+      console.log('Looking for ongoing attempt for quizId:', quizId)
+      console.log('Found ongoing attempt:', ongoingAttempt)
+
       if (ongoingAttempt) {
         attemptId.value = ongoingAttempt.attemptId
+        console.log('Using attemptId:', attemptId.value)
 
         const answersResponse = await api.get(`/Answer/attempt/${attemptId.value}?userId=${userId}`)
+        console.log('Answers response:', answersResponse.data)
 
         if (answersResponse.data && Array.isArray(answersResponse.data)) {
           answersResponse.data.forEach((answer: AnswerResponse) => {
@@ -256,7 +317,9 @@ const fetchQuizQuestions = async () => {
             if (questionIndex >= 0) {
               const question = quizQuestions.value[questionIndex]
               const qType = (question.type || '').toLowerCase()
-              if (answer.choiceId != null && Array.isArray(question.options)) {
+
+              // Handle single-choice and true-false (radio buttons)
+              if (answer.choiceId != null && Array.isArray(question.options) && (qType === 'single-choice' || qType === 'true-false')) {
                 const choices = question.options as unknown as QuestionChoice[]
                 const choiceIndex = choices.findIndex((c: QuestionChoice) =>
                   c.choiceId === answer.choiceId
@@ -265,7 +328,30 @@ const fetchQuizQuestions = async () => {
                   quizzesStore.setAnswer(questionIndex, choiceIndex)
                   quizzesStore.markAnswered(questionIndex)
                 }
-              } else if (answer.textAnswer) {
+              }
+              // Handle multiple-choice (checkboxes) - stored as JSON array of choiceIds in textAnswer
+              else if (answer.textAnswer && qType === 'multiple-choice') {
+                try {
+                  const parsed = JSON.parse(answer.textAnswer)
+                  if (Array.isArray(parsed)) {
+                    // parsed is array of choiceIds, convert to array of indices
+                    const selectedIndices: number[] = []
+                    parsed.forEach((choiceId: number) => {
+                      const idx = question.options?.findIndex((opt: QuestionOption) => opt.choiceId === choiceId)
+                      if (idx != null && idx >= 0) {
+                        selectedIndices.push(idx)
+                      }
+                    })
+                    if (selectedIndices.length > 0) {
+                      quizzesStore.setAnswer(questionIndex, selectedIndices)
+                      quizzesStore.markAnswered(questionIndex)
+                    }
+                  }
+                } catch {
+                  // If parsing fails, ignore
+                }
+              }
+              else if (answer.textAnswer) {
                 if (qType === 'text' || qType === 'essay') {
                   quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
                   quizzesStore.markAnswered(questionIndex)
@@ -319,10 +405,10 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <div class="max-w-5xl mx-auto px-4 py-12">
-      <!-- Header -->
+      <!-- AppHeader -->
       <div class="text-center mb-12">
         <h1 class="text-3xl md:text-4xl font-bold text-[#4285f4] mb-2">Review Your Answers</h1>
         <p class="text-gray-600">Please verify your answers before final submission</p>
@@ -417,10 +503,17 @@ onUnmounted(() => {
         </button>
         <button
           @click="submitQuiz"
-          class="px-6 py-3 bg-[#4285f4] hover:bg-[#4866DA] text-white rounded-xl font-semibold flex items-center justify-center transition-all shadow-md"
+          :disabled="isSubmitting"
+          class="px-6 py-3 bg-[#4285f4] hover:bg-[#4866DA] text-white rounded-xl font-semibold flex items-center justify-center transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Submit Quiz
-          <CheckCircle class="w-5 h-5 ml-2" />
+          <span v-if="isSubmitting" class="flex items-center">
+            <i class="fas fa-spinner fa-spin mr-2"></i>
+            Submitting...
+          </span>
+          <span v-else class="flex items-center">
+            Submit Quiz
+            <CheckCircle class="w-5 h-5 ml-2" />
+          </span>
         </button>
       </div>
     </div>

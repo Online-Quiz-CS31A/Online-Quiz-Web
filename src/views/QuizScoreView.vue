@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
+import { useRouter, useRoute } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
 import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -9,6 +9,7 @@ import api from '@/services/api'
 
 // CONSTANTS
 const router = useRouter()
+const route = useRoute()
 const quizzesStore = useQuizzesStore()
 const authStore = useAuthStore()
 
@@ -72,6 +73,11 @@ const currentQuestionData = computed(() => {
 const scoreDetails = computed(() => quizzesStore.calculateScore())
 
 const score = computed(() => {
+  // Use backend score if available
+  if (attemptData.value?.score != null) {
+    return `${attemptData.value.score.toFixed(2)}%`
+  }
+  // Fallback to frontend calculation
   return `${scoreDetails.value.score}/${scoreDetails.value.totalPoints}`
 })
 
@@ -316,7 +322,25 @@ const loadScoreData = async () => {
   try {
     isLoading.value = true
     const userId = authStore.currentUser?.id
-    const quizId = quizzesStore.currentAttempt.quizId
+
+    // Try to get quizId from multiple sources
+    let quizId = quizzesStore.currentAttempt.quizId
+
+    // If not in store, try route params
+    if (!quizId && route.params.quizId) {
+      quizId = Number(route.params.quizId)
+    }
+
+    // If not in route, try localStorage
+    if (!quizId) {
+      const stored = localStorage.getItem('lastQuizId')
+      if (stored) {
+        quizId = Number(stored)
+      }
+    }
+
+    console.log('=== QuizScoreView: loadScoreData ===')
+    console.log('userId:', userId, 'quizId:', quizId)
 
     if (!userId || !quizId) {
       console.error('Missing userId or quizId')
@@ -325,28 +349,36 @@ const loadScoreData = async () => {
     }
 
     const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
+    console.log('Attempts response:', attemptsResponse.data)
 
     if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
       const submittedAttempts = attemptsResponse.data.filter((attempt: AttemptResponse) =>
         attempt.quizId === quizId && attempt.submittedAt
       )
 
+      console.log('Submitted attempts for quiz:', submittedAttempts)
+
       if (submittedAttempts.length > 0) {
         submittedAttempts.sort((a: AttemptResponse, b: AttemptResponse) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
         )
         attemptData.value = submittedAttempts[0]
+        console.log('Using attempt:', attemptData.value)
 
         const quizResponse = await api.get(`/Quiz/${quizId}`, {
           params: { userId }
         })
 
+        console.log('Quiz response:', quizResponse.data)
+
         if (quizResponse.data) {
           quizData.value = quizResponse.data
 
           const questions = quizResponse.data.questions || []
+          console.log('Raw questions from API:', questions)
 
           const mappedQuestions = questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
+          console.log('Mapped questions:', mappedQuestions)
 
           const username = authStore.currentUser?.username
           if (username) {
@@ -363,6 +395,7 @@ const loadScoreData = async () => {
           }
 
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
+          console.log('Answers response:', answersResponse.data)
 
           if (answersResponse.data && Array.isArray(answersResponse.data)) {
             answersResponse.data.forEach((answer: AnswerResponse) => {
@@ -370,47 +403,78 @@ const loadScoreData = async () => {
                 (q.questionId || q.id) === answer.questionId
               )
 
+              console.log(`Processing answer for questionId ${answer.questionId}:`, answer, 'questionIndex:', questionIndex)
+
               if (questionIndex >= 0) {
-                const question = mappedQuestions[questionIndex] as QuestionResponse
+                const question = mappedQuestions[questionIndex]
                 const qType = (question.type || '').toLowerCase()
+                console.log(`Question type: ${qType}`)
 
-                if (answer.choiceId != null && Array.isArray(question.options)) {
-                  const choiceIndex = question.options.findIndex((opt: { text: string }) => {
-                    const choices = question.choices || []
-                    const matchingChoice = choices.find((c: { choiceId: number; body?: string; text?: string }) => c.choiceId === answer.choiceId)
-                    if (matchingChoice) {
-                      return opt.text === matchingChoice.body || opt.text === matchingChoice.text
-                    }
-                    return false
-                  })
+                // Handle single-choice and true-false (radio buttons) - uses choiceId
+                if (answer.choiceId != null && (qType === 'single-choice' || qType === 'true-false')) {
+                  const choiceIndex = question.options?.findIndex((opt: { text: string; choiceId?: number }) =>
+                    opt.choiceId === answer.choiceId
+                  )
 
-                  if (choiceIndex >= 0) {
+                  console.log(`Single-choice: choiceId=${answer.choiceId}, choiceIndex=${choiceIndex}`)
+
+                  if (choiceIndex != null && choiceIndex >= 0) {
                     quizzesStore.setAnswer(questionIndex, choiceIndex)
                     quizzesStore.markAnswered(questionIndex)
                   }
-                } else if (answer.textAnswer) {
-                  if (qType === 'text' || qType === 'essay') {
-                    quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
-                    quizzesStore.markAnswered(questionIndex)
-                  } else {
-                    try {
-                      const parsed = JSON.parse(answer.textAnswer)
-                      if (qType === 'enumeration' && Array.isArray(parsed)) {
-                        quizzesStore.setEnumerationAnswer(questionIndex, parsed)
-                        quizzesStore.markAnswered(questionIndex)
-                      } else if (qType === 'matching' && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                        const map: Record<number, number> = {}
-                        Object.entries(parsed).forEach(([k, v]) => { map[Number(k)] = Number(v) })
-                        quizzesStore.setMatchingAnswer(questionIndex, map)
-                        quizzesStore.markAnswered(questionIndex)
-                      } else if ((qType === 'fill-blank' || qType === 'fillblank' || qType === 'fill_blank') && Array.isArray(parsed)) {
-                        quizzesStore.setFillBlankAnswer(questionIndex, parsed)
+                }
+                // Handle multiple-choice (checkboxes) - stored as JSON array of choiceIds in textAnswer
+                else if (answer.textAnswer && qType === 'multiple-choice') {
+                  try {
+                    const parsed = JSON.parse(answer.textAnswer)
+                    console.log('Multiple-choice parsed:', parsed)
+                    if (Array.isArray(parsed)) {
+                      // parsed is array of choiceIds, convert to array of indices
+                      const selectedIndices: number[] = []
+                      parsed.forEach((choiceId: number) => {
+                        const idx = question.options?.findIndex((opt: { text: string; choiceId?: number }) => opt.choiceId === choiceId)
+                        if (idx != null && idx >= 0) {
+                          selectedIndices.push(idx)
+                        }
+                      })
+                      console.log('Multiple-choice selectedIndices:', selectedIndices)
+                      if (selectedIndices.length > 0) {
+                        quizzesStore.setAnswer(questionIndex, selectedIndices)
                         quizzesStore.markAnswered(questionIndex)
                       }
-                    } catch {
-                      quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse multiple-choice answer:', e)
+                  }
+                }
+                // Handle text/essay questions
+                else if (answer.textAnswer && (qType === 'text' || qType === 'essay')) {
+                  console.log('Text/essay answer:', answer.textAnswer)
+                  quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                  quizzesStore.markAnswered(questionIndex)
+                }
+                // Handle other question types with JSON answers
+                else if (answer.textAnswer) {
+                  try {
+                    const parsed = JSON.parse(answer.textAnswer)
+                    console.log('Parsed JSON answer:', parsed)
+                    if (qType === 'enumeration' && Array.isArray(parsed)) {
+                      quizzesStore.setEnumerationAnswer(questionIndex, parsed)
+                      quizzesStore.markAnswered(questionIndex)
+                    } else if (qType === 'matching' && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                      const map: Record<number, number> = {}
+                      Object.entries(parsed).forEach(([k, v]) => { map[Number(k)] = Number(v) })
+                      quizzesStore.setMatchingAnswer(questionIndex, map)
+                      quizzesStore.markAnswered(questionIndex)
+                    } else if ((qType === 'fill-blank' || qType === 'fillblank' || qType === 'fill_blank') && Array.isArray(parsed)) {
+                      quizzesStore.setFillBlankAnswer(questionIndex, parsed)
                       quizzesStore.markAnswered(questionIndex)
                     }
+                  } catch (e) {
+                    // If JSON parsing fails, treat as plain text
+                    console.warn('Failed to parse answer as JSON, treating as text:', e)
+                    quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
+                    quizzesStore.markAnswered(questionIndex)
                   }
                 }
               }
@@ -422,6 +486,9 @@ const loadScoreData = async () => {
           quizzesStore.currentAttempt.startAtISO = attemptData.value.startedAt
           quizzesStore.currentAttempt.endAtISO = attemptData.value.submittedAt
           quizzesStore.currentAttempt.isOngoing = false
+
+          console.log('Final currentAttempt:', quizzesStore.currentAttempt)
+          console.log('Final questions from getScoreItems:', quizzesStore.getScoreItems())
         }
       } else {
         console.warn('No submitted attempts found for this quiz')
@@ -442,10 +509,10 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <div class="max-w-6xl mx-auto p-4 mt-8">
-      <!-- Quiz Header Info -->
+      <!-- Quiz AppHeader Info -->
       <div class="mb-6 flex items-start gap-6">
         <!-- Title Block -->
         <div class="shrink-0">
@@ -515,8 +582,8 @@ onMounted(async () => {
             </div>
 
             <div class="space-y-3">
-              <!-- Multiple Choice / True-False Rendering -->
-              <template v-if="currentQuestionData.questionType === 'multiple-choice' || currentQuestionData.questionType === 'true-false' || !currentQuestionData.questionType">
+              <!-- Single Choice / True-False Rendering -->
+              <template v-if="currentQuestionData.questionType === 'single-choice' || currentQuestionData.questionType === 'true-false' || (!currentQuestionData.questionType && !Array.isArray(currentQuestionData.userAnswer))">
                 <div
                   v-for="(option, index) in currentQuestionData.options"
                   :key="index"
@@ -549,6 +616,61 @@ onMounted(async () => {
                     :class="[
                       'text-base font-medium',
                       currentQuestionData.userAnswer === index ? 'text-[#4866DA]' : 'text-gray-800'
+                    ]"
+                  >{{ option }}</span>
+                </div>
+              </template>
+
+              <!-- Multiple Choice Rendering (checkboxes) -->
+              <template v-else-if="currentQuestionData.questionType === 'multiple-choice' || Array.isArray(currentQuestionData.userAnswer)">
+                <div
+                  v-for="(option, index) in currentQuestionData.options"
+                  :key="index"
+                  :class="[
+                    'relative flex items-center p-2 rounded-xl transition-all border-1',
+                    Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index)
+                      ? (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index)
+                        ? 'bg-[#86efac] border-[#4ade80]'
+                        : 'bg-[#fca5a5] border-[#f87171]')
+                      : (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index)
+                        ? 'bg-[#F4F7F9] border-[#4ade80]'
+                        : 'bg-[#F4F7F9] border-[#7B90DF]')
+                  ]"
+                >
+                  <div
+                    v-if="Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index) && !(Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index))"
+                    class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
+                  >
+                    Correct
+                  </div>
+                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                    <div
+                      :class="[
+                        'w-6 h-6 rounded-sm border-1 flex items-center justify-center text-sm font-semibold',
+                        (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index) && Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index))
+                          ? 'bg-[#4ade80] border-[#4ade80] text-white'
+                          : (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index))
+                          ? 'bg-[#F4F7F9] border-[#4ade80] text-[#4ade80]'
+                          : (Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index))
+                          ? 'bg-[#f87171] border-[#f87171] text-white'
+                          : 'bg-[#F4F7F9] border-[#7B90DF] text-black'
+                      ]"
+                    >
+                      <i
+                        v-if="(Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index)) || (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index))"
+                        :class="[
+                          'fas',
+                          (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index)) ? 'fa-check' : 'fa-times',
+                          'text-xs'
+                        ]"
+                      ></i>
+                      <span v-else>{{ String.fromCharCode(65 + index) }}</span>
+                    </div>
+                  </div>
+                  <span
+                    :class="[
+                      'text-base font-medium',
+                      (Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index)) ? 'text-[#4866DA]' : 'text-gray-800'
                     ]"
                   >{{ option }}</span>
                 </div>

@@ -4,12 +4,8 @@ import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
-import type { HeaderProps } from '@/interfaces/interfaces'
 
 const NotificationDropdown = defineAsyncComponent(() => import('./NotificationDropdown.vue'))
-
-// TYPES
-interface Props extends HeaderProps {}
 
 // CONSTANTS
 const router = useRouter()
@@ -100,16 +96,6 @@ function viewProfile() {
     router.push({ name: 'teacher-profile' })
   } else {
     router.push({ name: 'student-profile' })
-  }
-}
-
-function settings() {
-  closeProfileDropdown()
-  const role = store.userRole
-  if (role === 'teacher') {
-    router.push({ name: 'teacher-profile', query: { tab: 'account' } })
-  } else {
-    router.push({ name: 'student-profile', query: { tab: 'account' } })
   }
 }
 
@@ -328,11 +314,6 @@ function markAllAsRead() {
                     class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center cursor-pointer">
               <i class="fas fa-user mr-3"></i>
               View Profile
-            </button>
-            <button @click="settings"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center cursor-pointer">
-              <i class="fas fa-cog mr-3"></i>
-              Settings
             </button>
             <hr class="my-1">
             <button @click="logout"

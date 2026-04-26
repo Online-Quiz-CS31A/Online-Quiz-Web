@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useCoursesStore } from '@/stores/coursesStore'
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
 const StudentUpcomingQuizzes = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
@@ -100,8 +100,8 @@ onUnmounted(() => {
 
     <!-- Main Content -->
     <div class="md:ml-64 min-h-screen">
-      <!-- Header -->
-      <Header />
+      <!-- AppHeader -->
+      <AppHeader />
 
       <!-- Main Dashboard -->
       <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">

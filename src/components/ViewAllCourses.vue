@@ -49,8 +49,8 @@ const filtered = computed(() => {
       @update:filter="(v: string) => (filter = v)"
     />
 
-    <TeacherCourses v-if="isTeacher" :classes="filtered" :show-header="false" />
-    <StudentClasses v-else :classes="filtered" :show-header="false" />
+    <TeacherCourses v-if="isTeacher" :classes="filtered" :show-AppHeader="false" />
+    <StudentClasses v-else :classes="filtered" :show-AppHeader="false" />
 
     <div v-if="filtered.length === 0" class="text-center text-gray-500 py-12">
       No courses found for "{{ query }}".
@@ -59,7 +59,7 @@ const filtered = computed(() => {
 </template>
 
 <style scoped>
-:deep(.student-classes-header) {
+:deep(.student-classes-AppHeader) {
   display: none;
 }
 </style>

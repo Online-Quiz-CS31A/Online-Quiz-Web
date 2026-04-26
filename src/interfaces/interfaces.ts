@@ -209,6 +209,7 @@ export interface QuestionOption {
   text: string
   isCorrect: boolean
   imageUrl?: string
+  choiceId?: number
 }
 
 export interface MatchingPair {

@@ -1,17 +1,23 @@
   <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
+import { useRouter, useRoute } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
 import type { QuizQuestion, QuestionOption } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
+import { quizSecurityService, type SecurityViolation } from '@/services/quizSecurityService'
 
 const router = useRouter()
+const route = useRoute()
 const quizzesStore = useQuizzesStore()
 const authStore = useAuthStore()
 
-const quizId = ref<number | null>((history.state?.quizId as number) || null)
+const quizId = ref<number | null>(
+  Number(route.params.quizId) ||
+  (history.state?.quizId as number) ||
+  null
+)
 const attemptId = ref<number | null>(null)
 const quizStateQuestions = (history.state?.questions || []) as QuizQuestion[]
 const questions = ref<QuizQuestion[]>(quizStateQuestions)
@@ -48,12 +54,20 @@ interface QuestionResponse {
   choices?: { choiceId: number; body?: string; text?: string }[]
 }
 
+interface QuizMetadata {
+  title?: string
+  timeLimitMinutes?: number
+  courseId?: number
+  courseName?: string
+}
+
 // REFS
 const initialQuestionIndex = typeof (history.state as HistoryState)?.questionIndex === 'number'
   ? (history.state as HistoryState).questionIndex
   : 0
   const currentQuestion = ref(initialQuestionIndex)
   const selectedOption = ref<number | null>(null)
+  const selectedOptions = ref<Set<number>>(new Set()) // For multiple-choice checkboxes
   const textAnswer = ref('')
   const enumerationAnswers = ref<string[]>([])
   const matchingAnswers = ref<Record<number, number>>({})
@@ -61,6 +75,12 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   const timer = ref(0)
   const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const durationSeconds = ref(0)
+  const isLoading = ref(false)
+  const isSubmitting = ref(false)
+  const quizMetadata = ref<QuizMetadata>({})
+  const showViolationWarning = ref(false)
+  const violationMessage = ref('')
+  const tabSwitchCount = ref(0)
 
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
@@ -82,6 +102,27 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     quizzesStore.markAnswered(currentQuestion.value)
 
     await saveAnswerToBackend(currentQuestion.value, optionIndex)
+  }
+
+  const toggleOption = async (optionIndex: number) => {
+    if (selectedOptions.value.has(optionIndex)) {
+      selectedOptions.value.delete(optionIndex)
+    } else {
+      selectedOptions.value.add(optionIndex)
+    }
+
+    const selectedArray = Array.from(selectedOptions.value)
+    quizzesStore.setAnswer(currentQuestion.value, selectedArray)
+
+    if (selectedArray.length > 0) {
+      quizzesStore.markAnswered(currentQuestion.value)
+    }
+
+    await saveAnswerToBackend(currentQuestion.value, selectedArray)
+  }
+
+  const isOptionSelected = (optionIndex: number): boolean => {
+    return selectedOptions.value.has(optionIndex)
   }
 
   const updateTextAnswer = async () => {
@@ -121,6 +162,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
   const clearAnswers = () => {
     selectedOption.value = null
+    selectedOptions.value.clear()
     textAnswer.value = ''
     enumerationAnswers.value = []
     matchingAnswers.value = {}
@@ -136,8 +178,15 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       return
     }
 
-    if (q.type === 'multiple-choice' || q.type === 'true-false') {
+    if (q.type === 'single-choice' || q.type === 'true-false') {
       selectedOption.value = typeof answer === 'number' ? answer : null
+    } else if (q.type === 'multiple-choice') {
+      // Multiple-choice uses checkboxes - answer is array of indices
+      if (Array.isArray(answer)) {
+        selectedOptions.value = new Set(answer.filter((v): v is number => typeof v === 'number'))
+      } else {
+        selectedOptions.value.clear()
+      }
     } else if (q.type === 'text') {
       textAnswer.value = typeof answer === 'string' ? answer : ''
     } else if (q.type === 'enumeration') {
@@ -178,7 +227,10 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   const startAttemptInBackend = async () => {
     try {
       const userId = authStore.currentUser?.id
-      if (!quizId.value || !userId) return
+      if (!quizId.value || !userId) {
+        console.error('Missing quizId or userId:', { quizId: quizId.value, userId })
+        return
+      }
 
       const response = await api.post('/Attempt/start', {
         quizId: quizId.value,
@@ -191,42 +243,89 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         quizzesStore.currentAttempt.quizTitle = response.data.quizTitle || quizTitle.value
         quizzesStore.currentAttempt.startAtISO = response.data.startedAt
         quizzesStore.currentAttempt.isOngoing = true
+        // durationSeconds will be set in initDuration() after this function returns
+      } else {
+        console.error('No attemptId in response:', response.data)
       }
     } catch (error) {
       console.error('Failed to start attempt:', error)
+      alert('Failed to start quiz attempt. Please try again or contact support.')
     }
   }
 
-  const saveAnswerToBackend = async (questionIndex: number, answer: number | string | string[] | Record<number, number> | null) => {
+  const saveAnswerToBackend = async (questionIndex: number, answer: number | number[] | string | string[] | Record<number, number> | null) => {
     try {
-      if (!attemptId.value || !authStore.currentUser?.id) return
+      if (!attemptId.value || !authStore.currentUser?.id) {
+        console.warn('Cannot save answer: missing attemptId or userId')
+        return
+      }
 
       const question = questions.value[questionIndex]
       if (!question) return
 
-      const questionId = question.id
+      const questionId = question.questionId || question.id
       const qType = (question.type || '').toLowerCase()
 
-      let choiceId = null
-      let textAnswer = null
-
-      if (typeof answer === 'number' && (qType === 'multiple-choice' || qType === 'true-false' || qType === 'single' || qType === 'multiple')) {
+      // Single-choice (radio button) - one answer with choiceId
+      if (typeof answer === 'number' && (qType === 'single-choice' || qType === 'true-false')) {
         const choices = question.options
         if (Array.isArray(choices) && answer >= 0 && answer < choices.length) {
-          choiceId = (choices[answer] as { choiceId?: number }).choiceId || null
-        }
-      } else if (qType === 'text' || qType === 'essay') {
-        textAnswer = typeof answer === 'string' ? answer : null
-      } else if (answer !== null && answer !== undefined) {
-        textAnswer = JSON.stringify(answer)
-      }
+          const choiceId = choices[answer].choiceId || null
 
-      await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
-        attemptId: attemptId.value,
-        questionId: questionId,
-        choiceId: choiceId,
-        textAnswer: textAnswer
-      })
+          await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
+            attemptId: attemptId.value,
+            questionId: questionId,
+            choiceId: choiceId,
+            textAnswer: null
+          })
+        }
+      }
+      // Multiple-choice (checkboxes) - multiple answers, one per selected choice
+      // For now, save as JSON in textAnswer since backend doesn't support multiple answers per question easily
+      else if (Array.isArray(answer) && qType === 'multiple-choice') {
+        const choices = question.options
+        if (Array.isArray(choices) && answer.length > 0) {
+          // Convert indices to choiceIds
+          const selectedChoiceIds = answer
+            .filter(idx => idx >= 0 && idx < choices.length)
+            .map(idx => choices[idx].choiceId)
+            .filter(id => id != null)
+
+          // Save as JSON array in textAnswer
+          await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
+            attemptId: attemptId.value,
+            questionId: questionId,
+            choiceId: null,
+            textAnswer: JSON.stringify(selectedChoiceIds)
+          })
+        } else if (answer.length === 0) {
+          // Clear answer if nothing selected
+          await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
+            attemptId: attemptId.value,
+            questionId: questionId,
+            choiceId: null,
+            textAnswer: null
+          })
+        }
+      }
+      // Text/Essay questions
+      else if (qType === 'text' || qType === 'essay') {
+        await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
+          attemptId: attemptId.value,
+          questionId: questionId,
+          choiceId: null,
+          textAnswer: typeof answer === 'string' ? answer : null
+        })
+      }
+      // Other complex types (enumeration, matching, fill-blank)
+      else if (answer !== null && answer !== undefined) {
+        await api.post(`/Answer?studentId=${authStore.currentUser.id}`, {
+          attemptId: attemptId.value,
+          questionId: questionId,
+          choiceId: null,
+          textAnswer: JSON.stringify(answer)
+        })
+      }
 
     } catch (error) {
       console.error('Failed to save answer:', error)
@@ -235,24 +334,42 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
   const submitAttempt = async () => {
     try {
-      if (!attemptId.value || !authStore.currentUser?.id) return
+      if (!attemptId.value) {
+        console.error('Cannot submit: attemptId is missing')
+        alert('Cannot submit quiz: Attempt ID is missing. Please refresh and try again.')
+        return
+      }
 
-      const scoreDetails = quizzesStore.calculateScore()
+      if (!authStore.currentUser?.id) {
+        console.error('Cannot submit: user ID is missing')
+        return
+      }
+
+      isSubmitting.value = true
+
       const startTime = quizzesStore.currentAttempt.startAtISO
         ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
         : Date.now()
       const timeSpent = Math.floor((Date.now() - startTime) / 1000)
 
       await api.put(`/Attempt/${attemptId.value}/submit?studentId=${authStore.currentUser.id}`, {
-        score: scoreDetails.score,
         timeSpentSeconds: timeSpent
       })
 
       quizzesStore.currentAttempt.endAtISO = new Date().toISOString()
       quizzesStore.currentAttempt.isOngoing = false
 
+      // Mark quiz as submitted
+      if (quizId.value) {
+        quizzesStore.markQuizAsSubmitted(quizId.value)
+      }
+
     } catch (error) {
       console.error('Failed to submit attempt:', error)
+      alert('Failed to submit quiz. Please try again.')
+      throw error
+    } finally {
+      isSubmitting.value = false
     }
   }
 
@@ -282,15 +399,40 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
               if (questionIndex >= 0) {
                 const question = questions.value[questionIndex]
                 const qType = (question.type || '').toLowerCase()
-                if (answer.choiceId != null && Array.isArray(question.options)) {
-                  const choiceIndex = question.options.findIndex((c: QuestionOption) =>
-                    (c as { choiceId?: number }).choiceId === answer.choiceId
+
+                // Handle single-choice and true-false (radio buttons)
+                if (answer.choiceId != null && Array.isArray(question.options) && (qType === 'single-choice' || qType === 'true-false')) {
+                  const choiceIndex = question.options.findIndex((opt: QuestionOption) =>
+                    opt.choiceId === answer.choiceId
                   )
                   if (choiceIndex >= 0) {
                     quizzesStore.setAnswer(questionIndex, choiceIndex)
                     quizzesStore.markAnswered(questionIndex)
                   }
-                } else if (answer.textAnswer) {
+                }
+                // Handle multiple-choice (checkboxes) - stored as JSON array of choiceIds in textAnswer
+                else if (answer.textAnswer && qType === 'multiple-choice') {
+                  try {
+                    const parsed = JSON.parse(answer.textAnswer)
+                    if (Array.isArray(parsed)) {
+                      // parsed is array of choiceIds, convert to array of indices
+                      const selectedIndices: number[] = []
+                      parsed.forEach((choiceId: number) => {
+                        const idx = question.options?.findIndex((opt: QuestionOption) => opt.choiceId === choiceId)
+                        if (idx != null && idx >= 0) {
+                          selectedIndices.push(idx)
+                        }
+                      })
+                      if (selectedIndices.length > 0) {
+                        quizzesStore.setAnswer(questionIndex, selectedIndices)
+                        quizzesStore.markAnswered(questionIndex)
+                      }
+                    }
+                  } catch {
+                    // If parsing fails, ignore
+                  }
+                }
+                else if (answer.textAnswer) {
                   if (qType === 'text' || qType === 'essay') {
                     quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
                     quizzesStore.markAnswered(questionIndex)
@@ -338,7 +480,18 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       timerInterval.value = null
     }
 
-    router.push({ name: 'quiz-review' })
+    try {
+      // Ensure the current attempt has all necessary data
+      if (quizId.value) {
+        quizzesStore.currentAttempt.quizId = quizId.value
+        quizzesStore.currentAttempt.quizTitle = quizTitle.value
+        quizzesStore.currentAttempt.questionsLength = questions.value.length
+      }
+
+      router.push({ name: 'quiz-review' })
+    } catch (error) {
+      console.error('Error finishing quiz:', error)
+    }
   }
 
   const autoSubmitOnTimeout = async () => {
@@ -355,7 +508,81 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
     }
 
-    router.push({ name: 'quiz-score' })
+    // Store quizId for score view
+    if (quizId.value) {
+      localStorage.setItem('lastQuizId', quizId.value.toString())
+    }
+
+    router.push({
+      name: 'quiz-score',
+      params: { quizId: quizId.value?.toString() || '' }
+    })
+  }
+
+  const handleSecurityViolation = (violation: SecurityViolation) => {
+    if (violation.type === 'tab_switch') {
+      tabSwitchCount.value = violation.count
+      violationMessage.value = `Warning: You switched tabs/windows (${violation.count}/2). The quiz will auto-submit after 2 violations.`
+      showViolationWarning.value = true
+
+      setTimeout(() => {
+        showViolationWarning.value = false
+      }, 5000)
+    } else if (violation.type === 'copy' || violation.type === 'paste') {
+      violationMessage.value = violation.type === 'copy' ? 'Copying is disabled during the quiz.' : 'Pasting is disabled during the quiz.'
+      showViolationWarning.value = true
+
+      setTimeout(() => {
+        showViolationWarning.value = false
+      }, 3000)
+    } else if (violation.type === 'right_click') {
+      violationMessage.value = 'Right-click is disabled during the quiz.'
+      showViolationWarning.value = true
+
+      setTimeout(() => {
+        showViolationWarning.value = false
+      }, 3000)
+    }
+  }
+
+  const handleMaxViolations = async () => {
+    // Stop the security service to prevent further violations
+    quizSecurityService.stop()
+
+    // Stop the timer
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+
+    // Show final warning message
+    violationMessage.value = 'Maximum violations reached! Quiz is being submitted automatically...'
+    showViolationWarning.value = true
+
+    try {
+      // Submit the attempt
+      await submitAttempt()
+      quizzesStore.saveAttemptToHistory()
+
+      // Mark quiz as submitted
+      if (quizzesStore.currentAttempt.quizId) {
+        quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+      }
+
+      // Store quizId for score view
+      if (quizId.value) {
+        localStorage.setItem('lastQuizId', quizId.value.toString())
+      }
+
+      // Redirect to score page
+      router.push({
+        name: 'quiz-score',
+        params: { quizId: quizId.value?.toString() || '' }
+      })
+    } catch (error) {
+      console.error('Failed to auto-submit on max violations:', error)
+      alert('Failed to submit quiz. Please try again manually.')
+    }
   }
 
   const parseTimeLimitToSeconds = (tl: string | undefined): number => {
@@ -373,20 +600,53 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     return 0
   }
 
-  const initDuration = () => {
-
-    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
-      durationSeconds.value = quizzesStore.currentAttempt.durationSeconds
-      timer.value = quizzesStore.getRemainingSeconds()
-      restoreAnswers()
-    } else if (quizId.value != null) {
-      const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
-      const sec = parseTimeLimitToSeconds(sq?.timeLimit)
-      durationSeconds.value = sec > 0 ? sec : 0
-      timer.value = durationSeconds.value
-    } else {
+  const initDuration = async () => {
+    if (quizId.value == null) {
+      console.warn('No quizId available')
       durationSeconds.value = 0
       timer.value = 0
+      return
+    }
+
+    let sec = 0
+
+    // First, try to use the metadata we fetched in onMounted
+    if (quizMetadata.value.timeLimitMinutes) {
+      sec = quizMetadata.value.timeLimitMinutes * 60
+    } else {
+      // Try to get time limit from myStudentQuizzes
+      const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+      sec = parseTimeLimitToSeconds(sq?.timeLimit)
+
+      // If not found or zero, fetch from API
+      if (sec === 0 && authStore.currentUser?.id) {
+        try {
+          const detail = await quizzesStore.fetchQuizDetail(quizId.value, authStore.currentUser.id)
+
+          if (detail && detail.timeLimitMinutes) {
+            sec = detail.timeLimitMinutes * 60
+            quizMetadata.value.timeLimitMinutes = detail.timeLimitMinutes
+          } else {
+            console.warn('No timeLimitMinutes in API response')
+          }
+        } catch (error) {
+          console.error('Failed to fetch quiz time limit:', error)
+        }
+      }
+    }
+
+    durationSeconds.value = sec > 0 ? sec : 0
+
+    // Set durationSeconds in currentAttempt for ongoing attempts
+    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
+      // Update the durationSeconds if it wasn't set
+      if (quizzesStore.currentAttempt.durationSeconds === 0) {
+        quizzesStore.currentAttempt.durationSeconds = durationSeconds.value
+      }
+      timer.value = quizzesStore.getRemainingSeconds()
+      restoreAnswers()
+    } else {
+      timer.value = durationSeconds.value
     }
   }
 
@@ -398,9 +658,13 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       const q = questions.value[index]
       if (!q) return
 
-      if (q.type === 'multiple-choice' || q.type === 'true-false') {
+      if (q.type === 'single-choice' || q.type === 'true-false') {
         if (typeof answer === 'number') {
           selectedOption.value = answer
+        }
+      } else if (q.type === 'multiple-choice') {
+        if (Array.isArray(answer)) {
+          selectedOptions.value = new Set(answer.filter((v): v is number => typeof v === 'number'))
         }
       } else if (q.type === 'text') {
         if (typeof answer === 'string') {
@@ -438,30 +702,62 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
   // LIFECYCLE
   onMounted(async () => {
-    if (questions.value.length === 0 && quizId.value != null) {
-      const authLocal = useAuthStore()
-      if (authLocal.currentUser?.id) {
-        const detail = await quizzesStore.fetchQuizDetail(quizId.value, authLocal.currentUser.id)
-        if (detail && Array.isArray(detail.questions)) {
-          questions.value = detail.questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
-          quizzesStore.currentAttempt.questionsLength = questions.value.length
+    isLoading.value = true
+
+    try {
+      if (questions.value.length === 0 && quizId.value != null) {
+        const authLocal = useAuthStore()
+        if (authLocal.currentUser?.id) {
+          const detail = await quizzesStore.fetchQuizDetail(quizId.value, authLocal.currentUser.id)
+
+          if (detail && Array.isArray(detail.questions)) {
+            questions.value = detail.questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
+            quizzesStore.currentAttempt.questionsLength = questions.value.length
+
+            // Store quiz metadata for timer initialization
+            quizMetadata.value = {
+              title: detail.title,
+              timeLimitMinutes: detail.timeLimitMinutes,
+              courseId: detail.courseId,
+              courseName: detail.courseName
+            }
+
+            // Set quiz title from API if not already set
+            if (detail.title) {
+              quizTitle.value = detail.title
+            }
+          }
         }
       }
-    }
 
-    const hasOngoingAttempt = await loadAttemptFromBackend()
+      const hasOngoingAttempt = await loadAttemptFromBackend()
 
-    if (!hasOngoingAttempt) {
-      await startAttemptInBackend()
-    }
+      if (!hasOngoingAttempt) {
+        await startAttemptInBackend()
+      }
 
-    initDuration()
-    loadCurrentQuestionAnswers()
+      await initDuration()
+      loadCurrentQuestionAnswers()
 
-    if (durationSeconds.value > 0 && timer.value <= 0) {
-      autoSubmitOnTimeout()
-    } else if (durationSeconds.value > 0) {
-      startTimer()
+      // Only auto-submit if timer has actually run out during quiz-taking
+      // Don't auto-submit when first loading the page
+      if (durationSeconds.value > 0 && timer.value <= 0 && hasOngoingAttempt) {
+        autoSubmitOnTimeout()
+      } else if (durationSeconds.value > 0 && timer.value > 0) {
+        startTimer()
+      }
+
+      // Start security monitoring
+      quizSecurityService.configure({
+        maxTabSwitches: 2,
+        autoSubmitOnMaxViolations: true,
+        blockCopyPaste: true,
+        blockRightClick: true
+      })
+      quizSecurityService.setCallbacks(handleSecurityViolation, handleMaxViolations)
+      quizSecurityService.start()
+    } finally {
+      isLoading.value = false
     }
   })
 
@@ -469,16 +765,64 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
     }
+    quizSecurityService.stop()
   })
   </script>
 
+<style scoped>
+.quiz-container .no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-down-enter-from {
+  transform: translate(-50%, -100%);
+  opacity: 0;
+}
+
+.slide-down-leave-to {
+  transform: translate(-50%, -100%);
+  opacity: 0;
+}
+</style>
+
 <template>
-    <div class="min-h-screen">
-      <Header :breadcrumb="breadcrumb" />
+    <div class="min-h-screen quiz-container">
+      <AppHeader :breadcrumb="breadcrumb" />
+
+      <!-- Security Violation Warning Banner -->
+      <transition name="slide-down">
+        <div
+          v-if="showViolationWarning"
+          :class="[
+            'fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 max-w-2xl',
+            tabSwitchCount >= 2 ? 'bg-red-500' : 'bg-yellow-500'
+          ]"
+        >
+          <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+          <span class="text-white font-medium">{{ violationMessage }}</span>
+        </div>
+      </transition>
+
       <div class="max-w-6xl mx-auto p-4 mt-8">
 
+      <!-- Loading Indicator -->
+      <div v-if="isLoading" class="flex items-center justify-center min-h-[400px]">
+        <div class="text-center">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p class="text-gray-600">Loading quiz...</p>
+        </div>
+      </div>
+
       <!-- No Questions Available -->
-      <div v-if="!hasValidQuestions" class="flex items-center justify-center min-h-[400px]">
+      <div v-else-if="!hasValidQuestions" class="flex items-center justify-center min-h-[400px]">
         <div class="text-center">
           <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
           <h2 class="text-2xl font-bold text-gray-800 mb-2">No Questions Available</h2>
@@ -493,7 +837,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       <main v-else class="grid grid-cols-3 gap-6">
         <!-- Left Panel-->
         <div class="col-span-2">
-          <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
+          <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative no-select">
             <!-- Timer -->
             <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
               <div class="bg-[#4285f4] text-white px-6 py-2 rounded-full text-sm font-semibold">
@@ -503,7 +847,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
-              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6 no-select">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
               <div v-if="questions[currentQuestion].mediaUrl" class="mb-6">
                 <img
                   :src="questions[currentQuestion].mediaUrl"
@@ -513,8 +857,8 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
               </div>
             </div>
 
-            <!-- Multiple Choice / True-False -->
-            <div v-if="['multiple-choice', 'true-false', 'Single', 'Multiple'].includes(questions[currentQuestion].type)" class="space-y-3">
+            <!-- Single Choice / True-False (Radio Buttons) -->
+            <div v-if="['single-choice', 'true-false'].includes(questions[currentQuestion].type)" class="space-y-3">
               <div
                 v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])"
                 :key="index"
@@ -546,6 +890,44 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
                   :class="[
                     'text-base font-medium',
                     selectedOption === index ? 'text-[#4866DA]' : 'text-gray-800'
+                  ]"
+                >{{ (option && 'text' in option) ? (option as any).text : (option && 'body' in option ? (option as any).body : option) }}</span>
+              </div>
+            </div>
+
+            <!-- Multiple Choice (Checkboxes) -->
+            <div v-else-if="questions[currentQuestion].type === 'multiple-choice'" class="space-y-3">
+              <div
+                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])"
+                :key="index"
+                :class="[
+                  'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
+                  isOptionSelected(index)
+                    ? 'bg-[#C9E4F6] border-[#7B90DF]'
+                    : 'bg-[#F4F7F9] border-[#7B90DF] hover:bg-gray-100'
+                ]"
+                @click="toggleOption(index)"
+              >
+                <div class="mr-4 flex items-center justify-center w-8 h-8">
+                  <div
+                    :class="[
+                      'w-6 h-6 rounded border-1 flex items-center justify-center text-sm font-semibold',
+                      isOptionSelected(index)
+                        ? 'bg-[#8B9EE3] border-[#7B90DF] text-[#C9E4F6]'
+                        : 'bg-[#F4F7F9] border-[#7B90DF] text-black'
+                    ]"
+                  >
+                    <i
+                      v-if="isOptionSelected(index)"
+                      class="fas fa-check text-xs"
+                    ></i>
+                    <span v-else>{{ String.fromCharCode(65 + index) }}</span>
+                  </div>
+                </div>
+                <span
+                  :class="[
+                    'text-base font-medium',
+                    isOptionSelected(index) ? 'text-[#4866DA]' : 'text-gray-800'
                   ]"
                 >{{ (option && 'text' in option) ? (option as any).text : (option && 'body' in option ? (option as any).body : option) }}</span>
               </div>
@@ -604,11 +986,11 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
                     class="mb-2"
                   >
                     <select
-                      v-model="matchingAnswers[leftIndex]"
+                      v-model.number="matchingAnswers[leftIndex]"
                       @change="updateMatchingAnswer(leftIndex, matchingAnswers[leftIndex])"
                       class="w-full p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
                     >
-                      <option value="">Select answer...</option>
+                      <option :value="undefined">Select answer...</option>
                       <option
                         v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as any).pairs || [])"
                         :key="rightIndex"
@@ -656,10 +1038,14 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
             <button
               v-else
-              class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50"
+              class="px-8 py-2 bg-[#C9E4F6] border border-[#7B90DF] text-[#4D74FF] rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
               @click="finishQuiz"
+              :disabled="isSubmitting"
             >
-              Finish
+              <span v-if="isSubmitting">
+                <i class="fas fa-spinner fa-spin"></i> Submitting...
+              </span>
+              <span v-else>Finish</span>
             </button>
           </div>
         </div>
@@ -698,10 +1084,16 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
             <div class="mt-6 pt-4 border-t border-gray-300">
               <button
                 @click="finishQuiz"
-                class="w-full px-4 py-2 bg-white border border-[#7B90DF] text-[#4285f4] rounded-xl font-medium hover:bg-[#F4F7F9] transition-all flex items-center justify-center gap-2"
+                :disabled="isSubmitting"
+                class="w-full px-4 py-2 bg-white border border-[#7B90DF] text-[#4285f4] rounded-xl font-medium hover:bg-[#F4F7F9] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <span>Finish Attempt</span>
-                <i class="fas fa-arrow-right text-sm"></i>
+                <span v-if="isSubmitting">
+                  <i class="fas fa-spinner fa-spin"></i> Submitting...
+                </span>
+                <template v-else>
+                  <span>Finish Attempt</span>
+                  <i class="fas fa-arrow-right text-sm"></i>
+                </template>
               </button>
             </div>
           </div>

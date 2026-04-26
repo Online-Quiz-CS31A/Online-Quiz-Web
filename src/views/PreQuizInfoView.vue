@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
-import Header from '@/components/Header.vue'
+import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag, AlertTriangle } from 'lucide-vue-next'
+import AppHeader from '@/components/AppHeader.vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
@@ -47,6 +47,16 @@ interface QuizData {
   hasScore: boolean
 }
 
+interface QuizApiResponse {
+  quizId: number
+  title: string
+  courseId: number
+  courseName?: string
+  course?: { name: string }
+  timeLimitMinutes: number
+  questions: ApiQuestion[]
+}
+
 interface RouteParams {
   quizId: string
 }
@@ -79,20 +89,30 @@ const authStore = useAuthStore()
 
 const attemptHistory = ref<AttemptHistoryItem[]>([])
 const isLoadingAttempts = ref(false)
+const isLoadingQuiz = ref(false)
+const quizQuestions = ref<QuizQuestion[]>([])
+const isLoading = ref(true)
+const showStartQuizModal = ref(false)
+const quizMetadata = ref<QuizApiResponse | null>(null)
 
 onMounted(async () => {
-  const current = quizzesStore.currentAttempt
-  const id = Number((route.params as unknown as RouteParams)?.quizId)
+  try {
+    isLoading.value = true
+    const current = quizzesStore.currentAttempt
+    const id = Number((route.params as unknown as RouteParams)?.quizId)
 
-  if (current && current.isOngoing && current.quizId === id) {
-    const remaining = quizzesStore.getRemainingSeconds()
-    if (remaining <= 0 && current.durationSeconds > 0) {
-      quizzesStore.finishAttempt()
-      quizzesStore.clearAttemptStorage()
+    if (current && current.isOngoing && current.quizId === id) {
+      const remaining = quizzesStore.getRemainingSeconds()
+      if (remaining <= 0 && current.durationSeconds > 0) {
+        quizzesStore.finishAttempt()
+        quizzesStore.clearAttemptStorage()
+      }
     }
-  }
 
-  await loadAttemptHistory()
+    await Promise.all([loadAttemptHistory(), loadQuizQuestions()])
+  } finally {
+    isLoading.value = false
+  }
 })
 
 const loadAttemptHistory = async () => {
@@ -126,13 +146,77 @@ const loadAttemptHistory = async () => {
   }
 }
 
+const loadQuizQuestions = async () => {
+  try {
+    isLoadingQuiz.value = true
+    const userId = authStore.currentUser?.id
+    const qId = quizId.value
+
+    if (!userId || !qId) {
+      console.error('Missing userId or quizId')
+      return
+    }
+
+    const response = await api.get(`/Quiz/${qId}`, {
+      params: { userId }
+    })
+
+    if (response.data) {
+      quizMetadata.value = response.data
+
+      // Fetch course name if we have courseId
+      if (response.data.courseId) {
+        try {
+          const courseResponse = await api.get(`/Course/${response.data.courseId}`)
+          if (courseResponse.data) {
+            quizMetadata.value.courseName = courseResponse.data.name || courseResponse.data.title
+          }
+        } catch (error) {
+          console.error('Failed to load course name:', error)
+        }
+      }
+
+      if (response.data.questions) {
+        const questions = (response.data.questions || []) as ApiQuestion[]
+        quizQuestions.value = questions.map((q) => quizzesStore.mapApiQuestionToFrontend(q))
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load quiz questions:', error)
+  } finally {
+    isLoadingQuiz.value = false
+  }
+}
+
 // COMPUTED
 const quizId = computed(() => Number((route.params as unknown as RouteParams).quizId))
 
 const breadcrumb = computed(() => `Dashboard > Quizzes > ${quiz.value?.title || 'Quiz'} > Score`)
 
 const studentQuizData = computed(() => {
-  return quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+  // Try to get from store first (if available)
+  const storeData = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+  if (storeData) return storeData
+
+  // Fallback to API data if store is empty (e.g., after refresh)
+  if (quizMetadata.value) {
+    return {
+      id: quizMetadata.value.quizId,
+      subject: quizMetadata.value.course?.name || quizMetadata.value.courseName || 'Course',
+      title: quizMetadata.value.title,
+      description: '',
+      dueDate: '',
+      class: '',
+      timeLimit: `${quizMetadata.value.timeLimitMinutes} min`,
+      status: 'Not Started',
+      color: 'blue',
+      maxAttempts: 1,
+      courseCode: '',
+      courseSection: ''
+    }
+  }
+
+  return null
 })
 
 const quiz = computed((): QuizData => {
@@ -147,7 +231,7 @@ const quiz = computed((): QuizData => {
       correctAnswers: 0,
       passingScore: 0,
       passingPercentage: 50,
-      attemptsAvailable: 1,
+      attemptsAvailable: 0,
       maxAttempts: 1,
       currentScore: 0,
       improvement: 0,
@@ -157,12 +241,11 @@ const quiz = computed((): QuizData => {
     }
   }
 
-  const quizQuestions = quizzesStore.getStudentQuizQuestions(quizId.value)
-  const questionCount = quizQuestions.length
-  const maxAttempts = studentQuiz.maxAttempts || 1
+  const questionCount = quizQuestions.value.length
+  const maxAttempts = 1 // All quizzes can only be taken once
   const history = attemptHistory.value
 
-  const overallTotalPoints = quizQuestions.reduce((sum: number, q: QuizQuestion) => {
+  const overallTotalPoints = quizQuestions.value.reduce((sum: number, q: QuizQuestion) => {
     const base = typeof q.points === 'number' ? q.points : 1
     if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
       return sum + base * q.pairs.length
@@ -180,17 +263,20 @@ const quiz = computed((): QuizData => {
     return curScore > bestScore ? cur : best
   }, null)
 
-  const correctAnswers = bestAttempt ? bestAttempt.score : 0
+  const basePoints = bestAttempt ? (bestAttempt.totalPoints || overallTotalPoints) : overallTotalPoints
+
+  const correctAnswers = bestAttempt
+    ? Math.round((bestAttempt.score / 100) * basePoints)
+    : 0
 
   const improvement = history.length >= 2
     ? ((history[0].score || 0) / (history[0].totalPoints || 1) * 100) - ((history[history.length - 1].score || 0) / (history[history.length - 1].totalPoints || 1) * 100)
     : 0
 
-  const basePoints = bestAttempt ? (bestAttempt.totalPoints || overallTotalPoints) : overallTotalPoints
   const passingScore = Math.ceil(basePoints * 0.5)
 
-  const bestPercentage = bestAttempt && bestAttempt.totalPoints
-    ? Math.round((bestAttempt.score / bestAttempt.totalPoints) * 100)
+  const bestPercentage = bestAttempt
+    ? Math.round(bestAttempt.score)
     : 0
 
   return {
@@ -207,13 +293,18 @@ const quiz = computed((): QuizData => {
     currentScore: bestPercentage,
     improvement,
     history: history.map((h, index) => {
-      const percentage = h.totalPoints ? Math.round((h.score / h.totalPoints) * 100) : 0
+      // Backend returns score as percentage (0-100)
+      const percentage = Math.round(h.score || 0)
+      // Calculate earned points from percentage
+      const totalPoints = h.totalPoints || basePoints
+      const earnedPoints = Math.round((percentage / 100) * totalPoints)
+
       return {
         attempt: (history.length - index).toString(),
         attemptNumber: history.length - index,
         attemptId: h.attemptId,
         date: new Date(h.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        score: `${h.score || 0}/${h.totalPoints || basePoints}`,
+        score: `${earnedPoints}/${totalPoints}`,
         mark: percentage.toString(),
         isBest: bestAttempt ? h.attemptId === bestAttempt.attemptId : false,
         percentage: percentage
@@ -250,12 +341,26 @@ const parseTimeLimitToSeconds = (tl: string | undefined): number => {
 
 
 // METHODS
+const openStartQuizModal = () => {
+  showStartQuizModal.value = true
+}
+
+const closeStartQuizModal = () => {
+  showStartQuizModal.value = false
+}
+
+const confirmStartQuiz = () => {
+  showStartQuizModal.value = false
+  startQuiz()
+}
+
 const startQuiz = () => {
-  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const questions = quizQuestions.value
   const durationSec = parseTimeLimitToSeconds(quiz.value.duration)
   quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length, durationSec)
   router.push({
     name: 'quiz',
+    params: { quizId: quizId.value.toString() },
     state: {
       quizId: quizId.value,
       quizTitle: quiz.value.title,
@@ -266,9 +371,10 @@ const startQuiz = () => {
 }
 
 const continueQuiz = () => {
-  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const questions = quizQuestions.value
   router.push({
     name: 'quiz',
+    params: { quizId: quizId.value.toString() },
     state: {
       quizId: quizId.value,
       quizTitle: quiz.value.title,
@@ -337,15 +443,9 @@ const reviewAttempt = async (attemptId: number) => {
             const qType = (question.type || '').toLowerCase()
 
             if (answer.choiceId != null && Array.isArray(question.options)) {
-              const choiceIndex = question.options.findIndex((opt) => {
-                const apiQ = questions[questionIndex]
-                const choices = apiQ.choices || []
-                const matchingChoice = choices.find((c) => c.choiceId === answer.choiceId)
-                if (matchingChoice) {
-                  return opt.text === matchingChoice.body || opt.text === matchingChoice.text
-                }
-                return false
-              })
+              const choiceIndex = question.options.findIndex((opt) =>
+                opt.choiceId === answer.choiceId
+              )
 
               if (choiceIndex >= 0) {
                 quizzesStore.setAnswer(questionIndex, choiceIndex)
@@ -392,12 +492,22 @@ const reviewAttempt = async (attemptId: number) => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <!-- Main -->
     <main class="container mx-auto px-4 py-8">
       <div class="max-w-5xl mx-auto">
-        <div class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
+
+        <!-- Loading State -->
+        <div v-if="isLoading" class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4]">
+          <div class="flex flex-col items-center justify-center py-12">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-[#4285f4] mb-4"></div>
+            <p class="text-gray-600 text-lg">Loading quiz information...</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div v-else class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
           <div class="bg-[white] p-6 text-[#4285f4] border-b-2 border-[#4285f4]">
             <div class="flex items-center justify-between">
               <div>
@@ -434,7 +544,7 @@ const reviewAttempt = async (attemptId: number) => {
                   </li>
                   <li class="flex items-start">
                     <Book class="mr-2 mt-1 w-4 h-4" />
-                    <span>Subject: <span class="font-medium">{{ quiz.subject }}</span></span>
+                    <span>Course: <span class="font-medium">{{ quiz.subject }}</span></span>
                   </li>
                   <li class="flex items-start">
                     <Clock class="mr-2 mt-1 w-4 h-4" />
@@ -487,7 +597,7 @@ const reviewAttempt = async (attemptId: number) => {
                 </div>
                 <div class="flex items-start">
                   <HelpCircle class="mr-2 mt-1 text-blue-600 w-4 h-4" />
-                  <span>You have {{ quiz.attemptsAvailable }} of {{ quiz.maxAttempts }} attempt(s) remaining for this quiz.</span>
+                  <span>This quiz can only be taken once. {{ quiz.attemptsAvailable > 0 ? 'You have not taken this quiz yet.' : 'You have already completed this quiz.' }}</span>
                 </div>
               </div>
             </div>
@@ -501,11 +611,11 @@ const reviewAttempt = async (attemptId: number) => {
               <div class="flex flex-col items-end gap-2">
                 <div v-if="!canStartQuiz && !hasOngoingAttempt" class="text-red-600 text-sm flex items-center">
                   <XCircle class="w-4 h-4 mr-2" />
-                  Maximum attempts reached
+                  Quiz already completed
                 </div>
                 <button
                   v-if="!hasOngoingAttempt"
-                  @click="startQuiz"
+                  @click="openStartQuizModal"
                   :disabled="!canStartQuiz"
                   class="bg-[#4285f4] hover:bg-[#1976d2] text-white font-semibold py-3 px-8 rounded-xl transition duration-200 flex items-center shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
                 >
@@ -520,7 +630,7 @@ const reviewAttempt = async (attemptId: number) => {
         </div>
 
         <!-- Attempts History -->
-        <div class="mt-8 bg-white rounded-3xl p-6 shadow-sm border-2 border-[#4285f4]">
+        <div v-if="!isLoading" class="mt-8 bg-white rounded-3xl p-6 shadow-sm border-2 border-[#4285f4]">
           <h3 class="text-xl font-bold text-[#4285f4] flex items-center">
             <BarChart2 class="w-5 h-5 mr-2" /> Attempts History
           </h3>
@@ -546,7 +656,7 @@ const reviewAttempt = async (attemptId: number) => {
                 <div :class="item.isBest ? 'font-extrabold text-blue-700' : 'font-bold text-[#1976d2]'">{{ item.mark }}%</div>
                 <div>
                   <button
-                    @click="reviewAttempt(item.attemptNumber)"
+                    @click="reviewAttempt(item.attemptId)"
                     class="text-[#4285f4] hover:text-[#1976d2] font-medium hover:underline transition-colors"
                   >
                     Review
@@ -558,5 +668,85 @@ const reviewAttempt = async (attemptId: number) => {
         </div>
       </div>
     </main>
+
+    <!-- Start Quiz Confirmation Modal -->
+    <div
+      v-if="showStartQuizModal"
+      class="fixed inset-0 bg-gray-900 bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="closeStartQuizModal"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 sm:p-6 transform transition-all max-h-[90vh] overflow-y-auto">
+        <!-- Header -->
+        <div class="flex items-start sm:items-center gap-3 mb-4">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle class="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900">Ready to Start?</h3>
+            <p class="text-xs sm:text-sm text-gray-600">Please read these important reminders</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
+          <div class="bg-blue-50 border-l-4 border-blue-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <Clock class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-blue-900">Time Limit</p>
+                <p class="text-xs sm:text-sm text-blue-800">You have {{ quiz.duration }} to complete this quiz. The quiz will auto-submit when time runs out.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-red-50 border-l-4 border-red-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <XCircle class="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-red-900">No Tab Switching</p>
+                <p class="text-xs sm:text-sm text-red-800">Switching tabs or windows will automatically end your quiz attempt.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-amber-50 border-l-4 border-amber-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <AlertCircle class="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-amber-900">Single Attempt</p>
+                <p class="text-xs sm:text-sm text-amber-800">This quiz can only be taken once. Make sure you're ready before starting.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-green-50 border-l-4 border-green-500 p-2.5 sm:p-3 rounded">
+            <div class="flex items-start gap-2">
+              <CheckCircle class="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold text-green-900">Auto-Save</p>
+                <p class="text-xs sm:text-sm text-green-800">Your answers are automatically saved as you progress through the quiz.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            @click="closeStartQuizModal"
+            class="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm sm:text-base order-2 sm:order-1"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmStartQuiz"
+            class="flex-1 px-4 py-2.5 bg-[#4285f4] text-white rounded-xl font-semibold hover:bg-[#1976d2] transition-colors flex items-center justify-center gap-2 text-sm sm:text-base order-1 sm:order-2"
+          >
+            <Play class="w-4 h-4" />
+            Start Quiz
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

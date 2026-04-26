@@ -14,7 +14,7 @@ import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmM
 import ClassDashboardTab from '@/components/teacher/TeacherClassQuizzesTab.vue'
 import ClassPeopleTab from '@/components/teacher/TeacherClassPeopleTab.vue'
 import ClassGradesTab from '@/components/teacher/TeacherClassGradesTab.vue'
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 
 // PROPS
 interface Props { id: string }
@@ -104,18 +104,18 @@ const breadcrumbText = computed(() => {
 const students = computed<Student[]>(() => {
   if (apiStudents.value.length > 0) {
     const currentSectionName = currentSection.value?.name
-    
+
     const filteredApiStudents = apiStudents.value.filter(student => {
       if (!currentSectionName) return true
-      
+
       if (Array.isArray(student.sections)) {
         return student.sections.includes(currentSectionName)
       }
-      
+
       if (typeof student.section === 'string') {
         return student.section.split(',').map((s: string) => s.trim()).includes(currentSectionName)
       }
-      
+
       return true
     })
 
@@ -135,9 +135,9 @@ const students = computed<Student[]>(() => {
   }
 
   if (!currentSection.value) return []
-  
+
   const studentUsernames = currentSection.value.studentUsernames || []
-  
+
   return studentUsernames.map((username, i) => {
     const profile = studentsStore.profiles[username]
     if (!profile) {
@@ -149,7 +149,7 @@ const students = computed<Student[]>(() => {
         avatar: AVATAR_URL,
       }
     }
-    
+
     const fullName = `${profile.firstName} ${profile.lastName}`.trim()
     return {
       id: i + 1,
@@ -269,12 +269,12 @@ const scheduleInfo = computed(() => {
   const day = schedule.value.scheduleDay
   const time = schedule.value.scheduleTime
   const room = schedule.value.classroom
-  
+
   const [hours, minutes] = time.split(':').map(Number)
   const period = hours >= 12 ? 'PM' : 'AM'
   const hours12 = hours % 12 || 12
   const formattedTime = `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
-  
+
   return `${day}, ${formattedTime} - ${room}`
 })
 
@@ -327,7 +327,7 @@ const classMeta = reactive({
 // FETCH FUNCTIONS
 async function fetchStudentsFromAPI() {
   const currentSectionName = currentSection.value?.name
-  
+
   if (!currentCourseId.value || !currentSectionName) return
   if (!authStore.currentUser?.id) return
 
@@ -336,7 +336,7 @@ async function fetchStudentsFromAPI() {
   try {
     const { useAdminStore } = await import('@/stores/adminStore')
     const adminStore = useAdminStore()
-    
+
     const students = await adminStore.fetchStudentsBySection(currentSectionName)
 
     if (students && Array.isArray(students)) {
@@ -365,7 +365,7 @@ async function fetchStudentsFromAPI() {
 
 async function fetchQuizzesFromAPI() {
   if (!currentCourseId.value || !authStore.currentUser?.id) return
-  
+
   isLoadingQuizzes.value = true
   try {
     const response = await api.get(`/Quiz/course/${currentCourseId.value}`, {
@@ -374,7 +374,7 @@ async function fetchQuizzesFromAPI() {
         isStudent: false
       }
     })
-    
+
     if (response.data && Array.isArray(response.data)) {
       apiQuizzes.value = response.data.map((quiz: any) => ({
         id: quiz.quizId || quiz.id,
@@ -426,9 +426,9 @@ watch([sectionId], () => {
 // METHODS
 function navigateToQuizCreator() {
   quizzesStore.resetCurrentQuiz()
-  
+
   const sectionId = route.params.id as string
-  
+
   router.push({ name: 'quiz-builder', params: { id: sectionId } })
 }
 
@@ -479,7 +479,7 @@ function exportGrades() {
     quizTotals.set(q.title, totalPoints)
   })
 
-  const headers = ['Student Name', ...quizTitles.map(title => {
+  const AppHeaders = ['Student Name', ...quizTitles.map(title => {
     const total = quizTotals.get(title) || 0
     return total ? `${title} (${total}/${total})` : title
   })]
@@ -506,7 +506,7 @@ function exportGrades() {
     return `"${escaped}"`
   }
 
-  const csvContent = [headers, ...dataRows]
+  const csvContent = [AppHeaders, ...dataRows]
     .map(row => row.map(escapeCell).join(','))
     .join('\r\n')
 
@@ -567,7 +567,7 @@ function cancelRemove() {
 
 <template>
   <div class="bg-white min-h-screen">
-    <Header :breadcrumb="breadcrumbText" @segment-click="handleBreadcrumbSegment" />
+    <AppHeader :breadcrumb="breadcrumbText" @segment-click="handleBreadcrumbSegment" />
     <div class="classroom-banner w-full flex items-end text-white">
       <div class="container mx-auto px-4 py-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end">

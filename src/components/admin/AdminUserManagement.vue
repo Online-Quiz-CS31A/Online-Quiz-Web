@@ -137,12 +137,12 @@ const normalizeRole = (val: string): 'Student' | 'Teacher' | 'Administrator' => 
 const parseCSV = (text: string): Record<string, string>[] => {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length)
   if (!lines.length) return []
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+  const AppHeaders = lines[0].split(',').map(h => h.trim().toLowerCase())
   const rows: Record<string, string>[] = []
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',')
     const obj: Record<string, string> = {}
-    headers.forEach((h, idx) => {
+    AppHeaders.forEach((h, idx) => {
       obj[h] = (cols[idx] || '').trim()
     })
     rows.push(obj)

@@ -33,13 +33,13 @@ const updateSetting = () => {
 
 const saveSettings = async () => {
   isSaving.value = true
-  
+
   try {
     await new Promise(resolve => setTimeout(resolve, 1000))
     localStorage.setItem('adminQuizSettings', JSON.stringify(settings))
     originalSettings.value = { ...settings }
     hasChanges.value = false
-    
+
     success('Settings saved successfully')
   } catch (err) {
     error('Failed to save settings')
@@ -89,7 +89,7 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-6">
-    <!-- Header -->
+    <!-- AppHeader -->
     <div class="flex items-center justify-between">
       <div class="flex gap-2">
         <button

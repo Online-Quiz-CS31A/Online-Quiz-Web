@@ -883,7 +883,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return quizQuestions.map((q, i) => {
       const rawUserAnswer = (i in currentAttempt.answers) ? currentAttempt.answers[i] : null
 
-      if ((q.type === 'multiple-choice' || q.type === 'true-false') && q.options && q.options.length > 0) {
+      // Handle single-choice and true-false (radio buttons)
+      if ((q.type === 'single-choice' || q.type === 'true-false') && q.options && q.options.length > 0) {
         const options = q.options.map(opt => opt.text)
         const idx = q.options.findIndex(opt => opt.isCorrect)
         const correctIndex = idx >= 0 ? idx : 0
@@ -894,6 +895,32 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           options,
           correctAnswer: correctIndex,
           userAnswer: rawUserAnswer,
+          isCorrect,
+          points: q.points ?? 0,
+          questionType: q.type
+        }
+      }
+
+      // Handle multiple-choice (checkboxes) - answer is array of indices
+      if (q.type === 'multiple-choice' && q.options && q.options.length > 0) {
+        const options = q.options.map(opt => opt.text)
+        const correctIndices = q.options
+          .map((opt, idx) => opt.isCorrect ? idx : -1)
+          .filter(idx => idx >= 0)
+
+        const userIndices = Array.isArray(rawUserAnswer) ? rawUserAnswer as number[] : []
+
+        // Check if user selected exactly the correct options
+        const isCorrect =
+          correctIndices.length === userIndices.length &&
+          correctIndices.every(idx => userIndices.includes(idx)) &&
+          userIndices.every(idx => correctIndices.includes(idx))
+
+        return {
+          question: q.text,
+          options,
+          correctAnswer: correctIndices,
+          userAnswer: userIndices,
           isCorrect,
           points: q.points ?? 0,
           questionType: q.type
@@ -1321,6 +1348,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     mediaUrl?: string
     required?: boolean
     choices?: Array<{
+      choiceId?: number
       body?: string
       text?: string
       isCorrect?: boolean
@@ -1336,7 +1364,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const question = q as ApiQuestion
     let type = (question.type || '').toLowerCase()
     if (type === 'multiple') type = 'multiple-choice'
-    else if (type === 'single') type = 'true-false'
+    else if (type === 'single') type = 'single-choice'
     else if (type === 'text' || type === 'essay') type = 'text'
     else if (type === 'matching') type = 'matching'
     else if (type === 'enumeration') type = 'enumeration'
@@ -1346,7 +1374,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       ? question.choices.map((c) => ({
         text: c.body || c.text || '',
         isCorrect: !!c.isCorrect,
-        imageUrl: c.imageUrl || ''
+        imageUrl: c.imageUrl || '',
+        choiceId: c.choiceId
       }))
       : Array.isArray(question.options)
         ? question.options as QuizQuestion['options']
@@ -1354,6 +1383,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
     return {
       id: question.questionId || question.id || Date.now(),
+      questionId: question.questionId || question.id,
       type,
       text: question.body || question.text || '',
       points: question.points || 1,
