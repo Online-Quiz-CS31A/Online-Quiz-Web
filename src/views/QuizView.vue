@@ -232,14 +232,10 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         return
       }
 
-      console.log('Starting attempt for quiz:', quizId.value, 'user:', userId)
-
       const response = await api.post('/Attempt/start', {
         quizId: quizId.value,
         studentId: userId
       })
-
-      console.log('Attempt start response:', response.data)
 
       if (response.data && response.data.attemptId) {
         attemptId.value = response.data.attemptId
@@ -248,7 +244,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         quizzesStore.currentAttempt.startAtISO = response.data.startedAt
         quizzesStore.currentAttempt.isOngoing = true
         // durationSeconds will be set in initDuration() after this function returns
-        console.log('Attempt started successfully. AttemptId:', attemptId.value)
       } else {
         console.error('No attemptId in response:', response.data)
       }
@@ -357,8 +352,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         : Date.now()
       const timeSpent = Math.floor((Date.now() - startTime) / 1000)
 
-      console.log('Submitting attempt:', attemptId.value, 'timeSpent:', timeSpent)
-
       await api.put(`/Attempt/${attemptId.value}/submit?studentId=${authStore.currentUser.id}`, {
         timeSpentSeconds: timeSpent
       })
@@ -370,8 +363,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       if (quizId.value) {
         quizzesStore.markQuizAsSubmitted(quizId.value)
       }
-
-      console.log('Attempt submitted successfully')
 
     } catch (error) {
       console.error('Failed to submit attempt:', error)
@@ -490,20 +481,12 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     }
 
     try {
-      console.log('=== finishQuiz called ===')
-      console.log('quizId:', quizId.value)
-      console.log('attemptId:', attemptId.value)
-      console.log('questions.length:', questions.value.length)
-      console.log('quizzesStore.currentAttempt before:', JSON.parse(JSON.stringify(quizzesStore.currentAttempt)))
-
       // Ensure the current attempt has all necessary data
       if (quizId.value) {
         quizzesStore.currentAttempt.quizId = quizId.value
         quizzesStore.currentAttempt.quizTitle = quizTitle.value
         quizzesStore.currentAttempt.questionsLength = questions.value.length
       }
-
-      console.log('quizzesStore.currentAttempt after:', JSON.parse(JSON.stringify(quizzesStore.currentAttempt)))
 
       router.push({ name: 'quiz-review' })
     } catch (error) {
@@ -618,9 +601,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   }
 
   const initDuration = async () => {
-    console.log('initDuration called, quizId:', quizId.value)
-    console.log('quizMetadata:', quizMetadata.value)
-
     if (quizId.value == null) {
       console.warn('No quizId available')
       durationSeconds.value = 0
@@ -633,25 +613,19 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     // First, try to use the metadata we fetched in onMounted
     if (quizMetadata.value.timeLimitMinutes) {
       sec = quizMetadata.value.timeLimitMinutes * 60
-      console.log('Using timeLimitMinutes from quizMetadata:', quizMetadata.value.timeLimitMinutes, 'seconds:', sec)
     } else {
       // Try to get time limit from myStudentQuizzes
       const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
-      console.log('Found student quiz:', sq)
       sec = parseTimeLimitToSeconds(sq?.timeLimit)
-      console.log('Parsed time limit from student quiz:', sec, 'from:', sq?.timeLimit)
 
       // If not found or zero, fetch from API
       if (sec === 0 && authStore.currentUser?.id) {
         try {
-          console.log('Fetching quiz detail from API for quizId:', quizId.value)
           const detail = await quizzesStore.fetchQuizDetail(quizId.value, authStore.currentUser.id)
-          console.log('Quiz detail from API:', detail)
 
           if (detail && detail.timeLimitMinutes) {
             sec = detail.timeLimitMinutes * 60
             quizMetadata.value.timeLimitMinutes = detail.timeLimitMinutes
-            console.log('Got timeLimitMinutes from API:', detail.timeLimitMinutes, 'seconds:', sec)
           } else {
             console.warn('No timeLimitMinutes in API response')
           }
@@ -670,11 +644,9 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         quizzesStore.currentAttempt.durationSeconds = durationSeconds.value
       }
       timer.value = quizzesStore.getRemainingSeconds()
-      console.log('Using ongoing attempt - duration:', durationSeconds.value, 'remaining:', timer.value)
       restoreAnswers()
     } else {
       timer.value = durationSeconds.value
-      console.log('New attempt - duration:', durationSeconds.value, 'timer:', timer.value)
     }
   }
 
@@ -737,7 +709,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         const authLocal = useAuthStore()
         if (authLocal.currentUser?.id) {
           const detail = await quizzesStore.fetchQuizDetail(quizId.value, authLocal.currentUser.id)
-          console.log('Fetched quiz detail in onMounted:', detail)
 
           if (detail && Array.isArray(detail.questions)) {
             questions.value = detail.questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
@@ -750,8 +721,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
               courseId: detail.courseId,
               courseName: detail.courseName
             }
-
-            console.log('Stored quiz metadata:', quizMetadata.value)
 
             // Set quiz title from API if not already set
             if (detail.title) {
@@ -773,7 +742,6 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       // Only auto-submit if timer has actually run out during quiz-taking
       // Don't auto-submit when first loading the page
       if (durationSeconds.value > 0 && timer.value <= 0 && hasOngoingAttempt) {
-        console.log('Timer expired for ongoing attempt - auto-submitting')
         autoSubmitOnTimeout()
       } else if (durationSeconds.value > 0 && timer.value > 0) {
         startTimer()

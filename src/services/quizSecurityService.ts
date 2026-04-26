@@ -49,8 +49,6 @@ class QuizSecurityService {
     this.lastViolationTime = 0
     this.blurStartTime = 0
 
-    console.log('Quiz security service started')
-
     // Tab/Window switching detection
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
     window.addEventListener('blur', this.handleWindowBlur)
@@ -74,8 +72,6 @@ class QuizSecurityService {
     if (!this.isActive) return
     this.isActive = false
 
-    console.log('Quiz security service stopped')
-
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     window.removeEventListener('blur', this.handleWindowBlur)
     window.removeEventListener('focus', this.handleWindowFocus)
@@ -89,32 +85,24 @@ class QuizSecurityService {
   private handleVisibilityChange = () => {
     // Only count when tab becomes hidden, not when it becomes visible again
     if (document.hidden) {
-      console.log('Tab became hidden - recording violation')
       this.recordViolation('tab_switch')
-    } else {
-      console.log('Tab became visible - not recording')
     }
   }
 
   private handleWindowBlur = () => {
     // Record when blur started
     this.blurStartTime = Date.now()
-    console.log('Window blur started')
   }
 
   private handleWindowFocus = () => {
     // Check how long the window was blurred
     if (this.blurStartTime > 0) {
       const blurDuration = Date.now() - this.blurStartTime
-      console.log(`Window focus restored after ${blurDuration}ms`)
 
       // Only count as violation if blur lasted longer than threshold
       // This filters out quick clicks on notifications, screenshot tools, etc.
       if (blurDuration >= this.blurThresholdMs && !document.hidden && this.isActive) {
-        console.log(`Blur duration exceeded threshold (${this.blurThresholdMs}ms) - recording violation`)
         this.recordViolation('tab_switch')
-      } else {
-        console.log(`Blur duration too short or tab hidden - not recording`)
       }
 
       this.blurStartTime = 0
@@ -155,10 +143,8 @@ class QuizSecurityService {
     const now = Date.now()
     if (type === 'tab_switch') {
       const timeSinceLastViolation = now - this.lastViolationTime
-      console.log(`Time since last violation: ${timeSinceLastViolation}ms`)
 
       if (timeSinceLastViolation < this.violationDebounceMs) {
-        console.log(`Debounced duplicate tab switch violation (within ${this.violationDebounceMs}ms)`)
         return
       }
     }
@@ -173,8 +159,6 @@ class QuizSecurityService {
       this.tabSwitchCount++
       violation.count = this.tabSwitchCount
       this.lastViolationTime = now
-      console.log(`Tab switch violation #${this.tabSwitchCount} recorded at ${violation.timestamp}`)
-      console.log(`Total violations so far: ${this.tabSwitchCount}`)
     }
 
     this.violations.push(violation)
@@ -190,7 +174,6 @@ class QuizSecurityService {
       this.config.autoSubmitOnMaxViolations &&
       this.tabSwitchCount >= this.config.maxTabSwitches
     ) {
-      console.log(`Max violations (${this.config.maxTabSwitches}) reached, triggering auto-submit`)
       if (this.onMaxViolationsCallback) {
         this.onMaxViolationsCallback()
       }
