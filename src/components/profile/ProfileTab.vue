@@ -1,11 +1,33 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
+
+interface UpdateUserPayload {
+  fullName: string
+  email: string
+  contactNumber: string
+  emergencyContactPerson: string
+  emergencyContactNumber: string
+}
+
+interface ApiValidationError {
+  [key: string]: string[]
+}
+
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      error?: string
+      errors?: ApiValidationError
+    }
+  }
+  message?: string
+}
 
 // REACTIVE
 const auth = useAuthStore()
@@ -38,6 +60,7 @@ const quizzesCount = computed(() => (isTeacher.value ? quizzesStore.myTeacherQui
 
 // REFS
 const loading = ref(true)
+const submitting = ref(false)
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
@@ -48,6 +71,36 @@ const department = ref('')
 const yearLevel = ref('')
 const program = ref('')
 
+// INITIAL VALUES — snapshot after profile load, used to detect changes
+const initialEmail = ref('')
+const initialPhone = ref('')
+const initialEmergencyContactName = ref('')
+const initialEmergencyContactNumber = ref('')
+
+const hasChanges = computed(() => {
+  return (
+    email.value !== initialEmail.value ||
+    phone.value !== initialPhone.value ||
+    emergencyContactName.value !== initialEmergencyContactName.value ||
+    emergencyContactNumber.value !== initialEmergencyContactNumber.value
+  )
+})
+
+// ERROR HANDLING
+interface FieldErrors {
+  email: string
+  phone: string
+  emergencyContactName: string
+  emergencyContactNumber: string
+}
+
+const errors = reactive<FieldErrors>({
+  email: '',
+  phone: '',
+  emergencyContactName: '',
+  emergencyContactNumber: '',
+})
+
 const fullName = computed(() => `${firstName.value} ${lastName.value}`.trim() || 'Guest')
 const subtitle = computed(() => {
   return isTeacher.value
@@ -55,12 +108,152 @@ const subtitle = computed(() => {
     : `${yearLevel.value || 'Year'}${program.value ? ' • ' : ''}${program.value || ''}`
 })
 
-// Generate initials for avatar
 const initials = computed(() => {
   const first = firstName.value.charAt(0).toUpperCase()
   const last = lastName.value.charAt(0).toUpperCase()
   return first + last || 'U'
 })
+
+// PHONE NUMBER HELPERS
+function sanitizePhoneInput(value: string): string {
+  let sanitized = value.replace(/[^0-9+]/g, '')
+  // Only allow '+' at the start
+  if (sanitized.indexOf('+') > 0) {
+    sanitized = sanitized[0] + sanitized.slice(1).replace(/\+/g, '')
+  }
+  // If user started with '0', strip any '+'
+  if (sanitized.startsWith('0') && sanitized.includes('+')) {
+    sanitized = sanitized.replace(/\+/g, '')
+  }
+  // If user started with '+', ensure it's only '+63'
+  if (sanitized.startsWith('+')) {
+    const afterPlus = sanitized.slice(1)
+    if (afterPlus.length > 0 && !afterPlus.startsWith('63')) {
+      // Strip the '+' if not followed by '63' (non-PH country code)
+      sanitized = afterPlus
+    }
+  }
+  return sanitized
+}
+
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/[^0-9]/g, '')
+  if (!digits) return ''
+  if (value.startsWith('+63')) {
+    const after63 = digits.slice(2).slice(0, 10)
+    return `+63${after63}`
+  }
+  if (value.startsWith('0')) {
+    const after0 = digits.slice(1).slice(0, 10)
+    return `0${after0}`
+  }
+  return digits.slice(0, 10)
+}
+
+// Strict PH phone: +639xxxxxxxxx (13 chars) or 09xxxxxxxxx (11 digits)
+const PH_PHONE_REGEX = /^(\+639\d{9}|09\d{9})$/
+
+function isValidPhilippinePhone(value: string): boolean {
+  if (!value.trim()) return true
+  return PH_PHONE_REGEX.test(value.replace(/[\s\-]/g, ''))
+}
+
+// VALIDATION FUNCTIONS
+function validateEmail(value: string): string {
+  if (!value.trim()) {
+    return 'Email is required'
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(value)) {
+    return 'Invalid email format'
+  }
+  if (value.length > 255) {
+    return 'Email must not exceed 255 characters'
+  }
+  return ''
+}
+
+function validatePhone(value: string): string {
+  if (!value.trim()) {
+    return ''
+  }
+  if (value.length > 50) {
+    return 'Phone number must not exceed 50 characters'
+  }
+  if (!isValidPhilippinePhone(value)) {
+    return 'Enter a valid Philippine number (e.g., +639xxxxxxxxx or 09xxxxxxxxx)'
+  }
+  return ''
+}
+
+function validateEmergencyContactName(value: string): string {
+  if (!value.trim()) {
+    return ''
+  }
+  if (value.length > 255) {
+    return 'Emergency contact name must not exceed 255 characters'
+  }
+  if (value.trim().length < 2) {
+    return 'Emergency contact name must be at least 2 characters'
+  }
+  return ''
+}
+
+function validateEmergencyContactNumber(value: string): string {
+  if (!value.trim()) {
+    return ''
+  }
+  if (value.length > 50) {
+    return 'Emergency contact number must not exceed 50 characters'
+  }
+  if (!isValidPhilippinePhone(value)) {
+    return 'Enter a valid Philippine number (e.g., +639xxxxxxxxx or 09xxxxxxxxx)'
+  }
+  return ''
+}
+
+// REACTIVE VALIDATION
+function onEmailBlur() {
+  errors.email = validateEmail(email.value)
+}
+
+function onPhoneBlur() {
+  errors.phone = validatePhone(phone.value)
+}
+
+function onEmergencyContactNameBlur() {
+  errors.emergencyContactName = validateEmergencyContactName(emergencyContactName.value)
+}
+
+function onEmergencyContactNumberBlur() {
+  errors.emergencyContactNumber = validateEmergencyContactNumber(emergencyContactNumber.value)
+}
+
+function onEmailInput() {
+  if (errors.email) {
+    errors.email = ''
+  }
+}
+
+function onPhoneInput() {
+  phone.value = sanitizePhoneInput(phone.value)
+  if (errors.phone) {
+    errors.phone = ''
+  }
+}
+
+function onEmergencyContactNameInput() {
+  if (errors.emergencyContactName) {
+    errors.emergencyContactName = ''
+  }
+}
+
+function onEmergencyContactNumberInput() {
+  emergencyContactNumber.value = sanitizePhoneInput(emergencyContactNumber.value)
+  if (errors.emergencyContactNumber) {
+    errors.emergencyContactNumber = ''
+  }
+}
 
 // METHODS
 async function fetchCurrentUserProfile() {
@@ -69,7 +262,6 @@ async function fetchCurrentUserProfile() {
     const response = await api.get('/Auth/verify-me')
     const userData = response.data
 
-    // Parse full name
     const nameParts = (userData.fullName || '').split(' ')
     firstName.value = nameParts[0] || ''
     lastName.value = nameParts.slice(1).join(' ') || ''
@@ -79,12 +271,15 @@ async function fetchCurrentUserProfile() {
     emergencyContactName.value = userData.emergencyContactPerson || ''
     emergencyContactNumber.value = userData.emergencyContactNumber || ''
 
-    // Handle teacher-specific data
+    initialEmail.value = email.value
+    initialPhone.value = phone.value
+    initialEmergencyContactName.value = emergencyContactName.value
+    initialEmergencyContactNumber.value = emergencyContactNumber.value
+
     if (isTeacher.value && userData.teacher) {
       department.value = userData.teacher.department || ''
     }
 
-    // Handle student-specific data
     if (!isTeacher.value && userData.student) {
       const yearLevelMap: Record<number, string> = {
         1: '1st Year',
@@ -97,12 +292,18 @@ async function fetchCurrentUserProfile() {
     }
   } catch (error) {
     console.error('Failed to fetch user profile:', error)
+    showError('Failed to load profile data')
   } finally {
     loading.value = false
   }
 }
 
 function onCancel() {
+  errors.email = ''
+  errors.phone = ''
+  errors.emergencyContactName = ''
+  errors.emergencyContactNumber = ''
+
   fetchCurrentUserProfile()
 }
 
@@ -110,37 +311,82 @@ const { success, error: showError } = useToast()
 
 async function onSubmit(e: Event) {
   e.preventDefault()
+
+  // Validate all fields
+  errors.email = validateEmail(email.value)
+  errors.phone = validatePhone(phone.value)
+  errors.emergencyContactName = validateEmergencyContactName(emergencyContactName.value)
+  errors.emergencyContactNumber = validateEmergencyContactNumber(emergencyContactNumber.value)
+
+  const hasErrors = Object.values(errors).some(err => err !== '')
+  if (hasErrors) {
+    showError('Please fix all validation errors before submitting')
+    return
+  }
+
   try {
-    const userId = auth.currentUser?.userId
+    submitting.value = true
+    const userId = auth.currentUser?.id
     if (!userId) {
       showError('User not found')
       return
     }
 
-    await api.put(`/User/${userId}`, {
+    const updatePayload: UpdateUserPayload = {
       fullName: `${firstName.value} ${lastName.value}`.trim(),
-      email: email.value,
-      contactNumber: phone.value,
-      emergencyContactPerson: emergencyContactName.value,
-      emergencyContactNumber: emergencyContactNumber.value,
-    })
+      email: email.value.trim(),
+      contactNumber: formatPhoneNumber(phone.value),
+      emergencyContactPerson: emergencyContactName.value.trim(),
+      emergencyContactNumber: formatPhoneNumber(emergencyContactNumber.value),
+    }
 
-    success('Profile changes saved successfully!')
-  } catch (error) {
-    console.error('Failed to update profile:', error)
-    showError('Failed to save profile changes')
+    await api.put(`/User/${userId}`, updatePayload)
+
+    success('Profile updated successfully!')
+
+    initialEmail.value = email.value
+    initialPhone.value = phone.value
+    initialEmergencyContactName.value = emergencyContactName.value
+    initialEmergencyContactNumber.value = emergencyContactNumber.value
+
+    await fetchCurrentUserProfile()
+  } catch (err: unknown) {
+    console.error('Failed to update profile:', err)
+
+    const error = err as AxiosErrorLike
+
+    if (error.response?.data?.error) {
+      showError(error.response.data.error)
+    } else if (error.response?.data?.errors) {
+      const validationErrors = error.response.data.errors
+      Object.keys(validationErrors).forEach(key => {
+        const fieldName = key.toLowerCase()
+        if (fieldName.includes('email')) {
+          errors.email = validationErrors[key][0]
+        } else if (fieldName.includes('contactnumber')) {
+          errors.phone = validationErrors[key][0]
+        } else if (fieldName.includes('emergencycontactperson')) {
+          errors.emergencyContactName = validationErrors[key][0]
+        } else if (fieldName.includes('emergencycontactnumber')) {
+          errors.emergencyContactNumber = validationErrors[key][0]
+        }
+      })
+      showError('Please fix the validation errors')
+    } else {
+      showError('Failed to update profile. Please try again.')
+    }
+  } finally {
+    submitting.value = false
   }
 }
 
 // LIFECYCLE
 onMounted(async () => {
-  // Fetch user profile
   await fetchCurrentUserProfile()
 
-  // Fetch courses data
   if (isTeacher.value) {
     await classesStore.fetchTeacherCourses()
-    await quizzesStore.fetchTeacherQuizzesAsync()
+    await quizzesStore.fetchTeacherQuizzes()
   } else {
     await classesStore.fetchStudentCourses()
     await quizzesStore.fetchStudentQuizzesAsync()
@@ -244,13 +490,45 @@ onMounted(async () => {
                 <label class="block text-xs font-medium text-gray-600 mb-1.5" for="email">
                   <i class="fas fa-envelope text-xs mr-1"></i>Email Address
                 </label>
-                <input v-model="email" type="email" id="email" class="w-full px-3 py-2 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                <input
+                  v-model="email"
+                  type="text"
+                  id="email"
+                  @blur="onEmailBlur"
+                  @input="onEmailInput"
+                  :class="[
+                    'w-full px-3 py-2 text-xs md:text-sm border rounded transition-colors',
+                    errors.email
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+                  ]"
+                />
+                <p v-if="errors.email" class="mt-1 text-xs text-red-600">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ errors.email }}
+                </p>
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1.5" for="phone">
                   <i class="fas fa-phone text-xs mr-1"></i>Phone Number
                 </label>
-                <input v-model="phone" type="tel" id="phone" placeholder="+63 XXX XXX XXXX" class="w-full px-3 py-2 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+                <input
+                  v-model="phone"
+                  type="tel"
+                  inputmode="tel"
+                  id="phone"
+                  placeholder="+639xxxxxxxxx"
+                  @blur="onPhoneBlur"
+                  @input="onPhoneInput"
+                  :class="[
+                    'w-full px-3 py-2 text-xs md:text-sm border rounded transition-colors',
+                    errors.phone
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+                  ]"
+                />
+                <p v-if="errors.phone" class="mt-1 text-xs text-red-600">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ errors.phone }}
+                </p>
               </div>
             </div>
           </div>
@@ -306,13 +584,46 @@ onMounted(async () => {
                 <label class="block text-xs font-medium text-gray-600 mb-1.5" for="emergency-name">
                   <i class="fas fa-user-shield text-xs mr-1"></i>Contact Person
                 </label>
-                <input v-model="emergencyContactName" type="text" id="emergency-name" placeholder="Full Name" class="w-full px-3 py-2 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500" />
+                <input
+                  v-model="emergencyContactName"
+                  type="text"
+                  id="emergency-name"
+                  placeholder="Full Name"
+                  @blur="onEmergencyContactNameBlur"
+                  @input="onEmergencyContactNameInput"
+                  :class="[
+                    'w-full px-3 py-2 text-xs md:text-sm border rounded transition-colors',
+                    errors.emergencyContactName
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                  ]"
+                />
+                <p v-if="errors.emergencyContactName" class="mt-1 text-xs text-red-600">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ errors.emergencyContactName }}
+                </p>
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1.5" for="emergency-phone">
                   <i class="fas fa-phone-alt text-xs mr-1"></i>Contact Number
                 </label>
-                <input v-model="emergencyContactNumber" type="tel" id="emergency-phone" placeholder="+63 XXX XXX XXXX" class="w-full px-3 py-2 text-xs md:text-sm border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500" />
+                <input
+                  v-model="emergencyContactNumber"
+                  type="tel"
+                  inputmode="tel"
+                  id="emergency-phone"
+                  placeholder="+639xxxxxxxxx"
+                  @blur="onEmergencyContactNumberBlur"
+                  @input="onEmergencyContactNumberInput"
+                  :class="[
+                    'w-full px-3 py-2 text-xs md:text-sm border rounded transition-colors',
+                    errors.emergencyContactNumber
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500'
+                  ]"
+                />
+                <p v-if="errors.emergencyContactNumber" class="mt-1 text-xs text-red-600">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ errors.emergencyContactNumber }}
+                </p>
               </div>
             </div>
           </div>
@@ -321,11 +632,23 @@ onMounted(async () => {
 
       <!-- Footer Actions -->
       <div class="p-3 md:p-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-end gap-2 md:gap-3">
-        <button type="button" @click="onCancel" class="w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium border border-gray-300 rounded text-gray-700 hover:bg-white transition-colors">
+        <button
+          type="button"
+          @click="onCancel"
+          :disabled="submitting"
+          class="w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium border border-gray-300 rounded text-gray-700 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <i class="fas fa-times mr-1.5"></i>Cancel
         </button>
-        <button type="submit" @click="onSubmit" class="w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors">
-          <i class="fas fa-save mr-1.5"></i>Save Changes
+        <button
+          type="submit"
+          @click="onSubmit"
+          :disabled="submitting || !hasChanges"
+          class="w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        >
+          <i v-if="!submitting" class="fas fa-save mr-1.5"></i>
+          <i v-else class="fas fa-spinner fa-spin mr-1.5"></i>
+          {{ submitting ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </div>
