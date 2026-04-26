@@ -79,6 +79,8 @@ const authStore = useAuthStore()
 
 const attemptHistory = ref<AttemptHistoryItem[]>([])
 const isLoadingAttempts = ref(false)
+const isLoadingQuiz = ref(false)
+const quizQuestions = ref<QuizQuestion[]>([])
 
 onMounted(async () => {
   const current = quizzesStore.currentAttempt
@@ -92,7 +94,7 @@ onMounted(async () => {
     }
   }
 
-  await loadAttemptHistory()
+  await Promise.all([loadAttemptHistory(), loadQuizQuestions()])
 })
 
 const loadAttemptHistory = async () => {
@@ -126,6 +128,32 @@ const loadAttemptHistory = async () => {
   }
 }
 
+const loadQuizQuestions = async () => {
+  try {
+    isLoadingQuiz.value = true
+    const userId = authStore.currentUser?.id
+    const qId = quizId.value
+
+    if (!userId || !qId) {
+      console.error('Missing userId or quizId')
+      return
+    }
+
+    const response = await api.get(`/Quiz/${qId}`, {
+      params: { userId }
+    })
+
+    if (response.data && response.data.questions) {
+      const questions = (response.data.questions || []) as ApiQuestion[]
+      quizQuestions.value = questions.map((q) => quizzesStore.mapApiQuestionToFrontend(q))
+    }
+  } catch (error) {
+    console.error('Failed to load quiz questions:', error)
+  } finally {
+    isLoadingQuiz.value = false
+  }
+}
+
 // COMPUTED
 const quizId = computed(() => Number((route.params as unknown as RouteParams).quizId))
 
@@ -147,7 +175,7 @@ const quiz = computed((): QuizData => {
       correctAnswers: 0,
       passingScore: 0,
       passingPercentage: 50,
-      attemptsAvailable: 1,
+      attemptsAvailable: 0,
       maxAttempts: 1,
       currentScore: 0,
       improvement: 0,
@@ -157,12 +185,11 @@ const quiz = computed((): QuizData => {
     }
   }
 
-  const quizQuestions = quizzesStore.getStudentQuizQuestions(quizId.value)
-  const questionCount = quizQuestions.length
-  const maxAttempts = studentQuiz.maxAttempts || 1
+  const questionCount = quizQuestions.value.length
+  const maxAttempts = 1 // All quizzes can only be taken once
   const history = attemptHistory.value
 
-  const overallTotalPoints = quizQuestions.reduce((sum: number, q: QuizQuestion) => {
+  const overallTotalPoints = quizQuestions.value.reduce((sum: number, q: QuizQuestion) => {
     const base = typeof q.points === 'number' ? q.points : 1
     if (q.type === 'matching' && Array.isArray(q.pairs) && q.pairs.length > 0) {
       return sum + base * q.pairs.length
@@ -251,7 +278,7 @@ const parseTimeLimitToSeconds = (tl: string | undefined): number => {
 
 // METHODS
 const startQuiz = () => {
-  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const questions = quizQuestions.value
   const durationSec = parseTimeLimitToSeconds(quiz.value.duration)
   quizzesStore.startAttempt(quizId.value, quiz.value.title, questions.length, durationSec)
   router.push({
@@ -266,7 +293,7 @@ const startQuiz = () => {
 }
 
 const continueQuiz = () => {
-  const questions = quizzesStore.getStudentQuizQuestions(quizId.value)
+  const questions = quizQuestions.value
   router.push({
     name: 'quiz',
     state: {
@@ -487,7 +514,7 @@ const reviewAttempt = async (attemptId: number) => {
                 </div>
                 <div class="flex items-start">
                   <HelpCircle class="mr-2 mt-1 text-blue-600 w-4 h-4" />
-                  <span>You have {{ quiz.attemptsAvailable }} of {{ quiz.maxAttempts }} attempt(s) remaining for this quiz.</span>
+                  <span>This quiz can only be taken once. {{ quiz.attemptsAvailable > 0 ? 'You have not taken this quiz yet.' : 'You have already completed this quiz.' }}</span>
                 </div>
               </div>
             </div>
@@ -501,7 +528,7 @@ const reviewAttempt = async (attemptId: number) => {
               <div class="flex flex-col items-end gap-2">
                 <div v-if="!canStartQuiz && !hasOngoingAttempt" class="text-red-600 text-sm flex items-center">
                   <XCircle class="w-4 h-4 mr-2" />
-                  Maximum attempts reached
+                  Quiz already completed
                 </div>
                 <button
                   v-if="!hasOngoingAttempt"
@@ -546,7 +573,7 @@ const reviewAttempt = async (attemptId: number) => {
                 <div :class="item.isBest ? 'font-extrabold text-blue-700' : 'font-bold text-[#1976d2]'">{{ item.mark }}%</div>
                 <div>
                   <button
-                    @click="reviewAttempt(item.attemptNumber)"
+                    @click="reviewAttempt(item.attemptId)"
                     class="text-[#4285f4] hover:text-[#1976d2] font-medium hover:underline transition-colors"
                   >
                     Review
