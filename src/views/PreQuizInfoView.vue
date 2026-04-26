@@ -290,13 +290,18 @@ const quiz = computed((): QuizData => {
     currentScore: bestPercentage,
     improvement,
     history: history.map((h, index) => {
-      const percentage = h.totalPoints ? Math.round((h.score / h.totalPoints) * 100) : 0
+      // Backend returns score as percentage (0-100)
+      const percentage = Math.round(h.score || 0)
+      // Calculate earned points from percentage
+      const totalPoints = h.totalPoints || basePoints
+      const earnedPoints = Math.round((percentage / 100) * totalPoints)
+
       return {
         attempt: (history.length - index).toString(),
         attemptNumber: history.length - index,
         attemptId: h.attemptId,
         date: new Date(h.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        score: `${h.score || 0}/${h.totalPoints || basePoints}`,
+        score: `${earnedPoints}/${totalPoints}`,
         mark: percentage.toString(),
         isBest: bestAttempt ? h.attemptId === bestAttempt.attemptId : false,
         percentage: percentage
