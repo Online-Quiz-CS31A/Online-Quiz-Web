@@ -186,9 +186,14 @@ const submitQuiz = async () => {
     // Mark quiz as submitted in backend-backed store
     if (quizzesStore.currentAttempt.quizId) {
       quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+      // Store quizId for score view
+      localStorage.setItem('lastQuizId', quizzesStore.currentAttempt.quizId.toString())
     }
 
-    router.push({ name: 'quiz-score' })
+    router.push({
+      name: 'quiz-score',
+      params: { quizId: quizzesStore.currentAttempt.quizId?.toString() || '' }
+    })
   } catch (error) {
     console.error('Failed to submit quiz:', error)
     alert('Failed to submit quiz. Please try again.')
@@ -225,9 +230,14 @@ const confirmSubmit = async () => {
     // Mark quiz as submitted in backend-backed store
     if (quizzesStore.currentAttempt.quizId) {
       quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+      // Store quizId for score view
+      localStorage.setItem('lastQuizId', quizzesStore.currentAttempt.quizId.toString())
     }
 
-    router.push({ name: 'quiz-score' })
+    router.push({
+      name: 'quiz-score',
+      params: { quizId: quizzesStore.currentAttempt.quizId?.toString() || '' }
+    })
   } catch (error) {
     console.error('Failed to submit quiz:', error)
     alert('Failed to submit quiz. Please try again.')

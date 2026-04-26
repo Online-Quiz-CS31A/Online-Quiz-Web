@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
@@ -9,6 +9,7 @@ import api from '@/services/api'
 
 // CONSTANTS
 const router = useRouter()
+const route = useRoute()
 const quizzesStore = useQuizzesStore()
 const authStore = useAuthStore()
 
@@ -321,7 +322,22 @@ const loadScoreData = async () => {
   try {
     isLoading.value = true
     const userId = authStore.currentUser?.id
-    const quizId = quizzesStore.currentAttempt.quizId
+
+    // Try to get quizId from multiple sources
+    let quizId = quizzesStore.currentAttempt.quizId
+
+    // If not in store, try route params
+    if (!quizId && route.params.quizId) {
+      quizId = Number(route.params.quizId)
+    }
+
+    // If not in route, try localStorage
+    if (!quizId) {
+      const stored = localStorage.getItem('lastQuizId')
+      if (stored) {
+        quizId = Number(stored)
+      }
+    }
 
     console.log('=== QuizScoreView: loadScoreData ===')
     console.log('userId:', userId, 'quizId:', quizId)
