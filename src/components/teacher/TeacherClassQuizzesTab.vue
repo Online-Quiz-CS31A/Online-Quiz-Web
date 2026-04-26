@@ -5,7 +5,7 @@ import type { TeacherQuizItem } from '@/interfaces/interfaces'
 
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 
-const props = defineProps<{ 
+const props = defineProps<{
   quizzes: TeacherQuizItem[],
   viewMode: 'cards' | 'rows',
   isArchived?: boolean,
@@ -13,7 +13,7 @@ const props = defineProps<{
   archivedSectionId?: number | null,
 }>()
 
-const emit = defineEmits<{ 
+defineEmits<{
   (e: 'update:viewMode', value: 'cards' | 'rows'): void,
   (e: 'create-quiz'): void,
 }>()
@@ -75,7 +75,7 @@ const emit = defineEmits<{
           <span v-if="!props.isArchived"> Click the "Create Quiz" button above to get started and engage your students.</span>
           <span v-else> This class is archived, so new quizzes can no longer be created.</span>
         </p>
-        <button 
+        <button
           @click="$emit('create-quiz')"
           :disabled="props.isArchived"
           :title="props.isArchived ? `Can't edit archived` : 'Create a new quiz'"
@@ -98,7 +98,7 @@ const emit = defineEmits<{
       <ActiveQuizzes
         v-else
         :quizzes="props.quizzes"
-        :hideHeader="true"
+        :hideAppHeader="true"
         :viewMode="props.viewMode"
         :archivedMode="props.isArchived"
         :archivedContextType="props.archivedContextType || null"

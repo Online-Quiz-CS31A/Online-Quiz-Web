@@ -168,7 +168,7 @@ const clearPasswordError = () => {
           <p class="text-blue-600 font-medium">Online Quiz System</p>
         </div>
 
-        <!-- Login Form Header -->
+        <!-- Login Form AppHeader -->
         <div class="mb-8">
           <h2 class="text-3xl font-bold text-gray-900 mb-2">Sign In</h2>
           <p class="text-gray-600">Enter your credentials to access your account</p>

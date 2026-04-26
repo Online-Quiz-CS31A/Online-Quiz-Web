@@ -4,12 +4,8 @@ import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
-import type { HeaderProps } from '@/interfaces/interfaces'
 
 const NotificationDropdown = defineAsyncComponent(() => import('./NotificationDropdown.vue'))
-
-// TYPES
-interface Props extends HeaderProps {}
 
 // CONSTANTS
 const router = useRouter()
@@ -107,9 +103,9 @@ function settings() {
   closeProfileDropdown()
   const role = store.userRole
   if (role === 'teacher') {
-    router.push({ name: 'teacher-profile', query: { tab: 'account' } })
+    router.push({ name: 'teacher-settings' })
   } else {
-    router.push({ name: 'student-profile', query: { tab: 'account' } })
+    router.push({ name: 'student-settings' })
   }
 }
 

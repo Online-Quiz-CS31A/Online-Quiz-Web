@@ -4,7 +4,7 @@ import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useCoursesStore } from '@/stores/coursesStore'
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
 const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCalendar.vue'))
@@ -55,10 +55,10 @@ const activeQuizzes = computed(() => {
   return allQuizzes.sort((a, b) => {
     const aStatus = a.status || 'published'
     const bStatus = b.status || 'published'
-    
+
     if (aStatus === 'draft' && bStatus !== 'draft') return -1
     if (aStatus !== 'draft' && bStatus === 'draft') return 1
-    
+
     const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime()
     const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime()
     return bDate - aDate
@@ -175,7 +175,7 @@ onMounted(async () => {
   if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
     currentSection.value = section as typeof currentSection.value
   }
-  
+
   await Promise.all([
     coursesStore.fetchTeacherCourses(),
     quizzesStore.fetchTeacherQuizzes()
@@ -197,7 +197,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Sidebar -->
-    <Sidebar 
+    <Sidebar
       :isActive="sidebarActive"
       :activeSection="currentSection"
       @close="closeSidebar"
@@ -216,8 +216,8 @@ onUnmounted(() => {
 
     <!-- Main Content -->
     <div class="md:ml-64 min-h-screen">
-      <!-- Header -->
-      <Header />
+      <!-- AppHeader -->
+      <AppHeader />
 
       <!-- Main Dashboard -->
       <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">

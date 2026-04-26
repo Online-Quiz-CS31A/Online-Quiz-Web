@@ -31,7 +31,7 @@ const archivedCourses = computed(() => coursesStore.allCourses.filter(c => c.sta
       </p>
     </div>
     <div v-else>
-      <TeacherCourses :classes="archivedCourses" :show-header="false" mode="archived" />
+      <TeacherCourses :classes="archivedCourses" :show-AppHeader="false" mode="archived" />
     </div>
   </div>
 </template>

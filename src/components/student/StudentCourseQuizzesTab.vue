@@ -76,7 +76,7 @@ const myCourseQuizzes = computed<StudentQuiz[]>(() => {
 
     <!-- Quiz List -->
     <div v-else class="p-6">
-      <StudentQuizList :quizzes="myCourseQuizzes" :hideHeader="true" :viewMode="quizViewMode" />
+      <StudentQuizList :quizzes="myCourseQuizzes" :hideAppHeader="true" :viewMode="quizViewMode" />
     </div>
   </div>
 </template>

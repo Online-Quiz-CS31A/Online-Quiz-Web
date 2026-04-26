@@ -66,7 +66,7 @@ const archivedQuizzes = computed(() => {
     <div v-else>
       <TeacherQuiz
         :quizzes="archivedQuizzes"
-        :hide-header="true"
+        :hide-AppHeader="true"
         :show-filters="false"
         :archived-mode="true"
         archived-context-type="course"

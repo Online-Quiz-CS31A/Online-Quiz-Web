@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import type { ScoreReviewQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -442,10 +442,10 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <div class="max-w-6xl mx-auto p-4 mt-8">
-      <!-- Quiz Header Info -->
+      <!-- Quiz AppHeader Info -->
       <div class="mb-6 flex items-start gap-6">
         <!-- Title Block -->
         <div class="shrink-0">

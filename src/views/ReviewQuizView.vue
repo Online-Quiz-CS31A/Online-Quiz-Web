@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
-import Header from '@/components/Header.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import ConfirmUnansweredModal from '@/components/modals/ConfirmUnansweredModal.vue'
 import type { QuizQuestion } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
@@ -319,10 +319,10 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <div class="max-w-5xl mx-auto px-4 py-12">
-      <!-- Header -->
+      <!-- AppHeader -->
       <div class="text-center mb-12">
         <h1 class="text-3xl md:text-4xl font-bold text-[#4285f4] mb-2">Review Your Answers</h1>
         <p class="text-gray-600">Please verify your answers before final submission</p>

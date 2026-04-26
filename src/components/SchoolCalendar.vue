@@ -219,7 +219,7 @@ onMounted(() => {
 <template>
   <div class="min-h-screen">
     <div class="container mx-auto px-4 py-6 max-w-7xl">
-      <!-- Header Section -->
+      <!-- AppHeader Section -->
       <div class="mb-6">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -251,18 +251,18 @@ onMounted(() => {
 
       <!-- Calendar Card -->
       <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
-        <!-- Calendar Header -->
+        <!-- Calendar AppHeader -->
         <div class="flex items-center justify-between px-6 py-4 bg-white">
-        <button 
-          @click="prevMonth" 
+        <button
+          @click="prevMonth"
           class="p-2 rounded-lg bg-white/10 text-blue-500 transition-all duration-200 hover:scale-110 cursor-pointer"
           aria-label="Previous month"
         >
           <i class="fas fa-chevron-left text-lg"></i>
         </button>
         <h2 class="text-2xl font-bold text-blue-500 tracking-wide">{{ monthYearLabel }}</h2>
-        <button 
-          @click="nextMonth" 
+        <button
+          @click="nextMonth"
           class="p-2 rounded-lg bg-white/10 text-blue-500 transition-all duration-200 hover:scale-110 cursor-pointer"
           aria-label="Next month"
         >
@@ -270,7 +270,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Weekday Headers -->
+      <!-- Weekday AppHeaders -->
       <div class="grid grid-cols-7 gap-px bg-gray-100">
         <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Sun</div>
         <div class="bg-gradient-to-br from-blue-50 to-indigo-50 py-3 text-center font-semibold text-blue-900 text-sm uppercase tracking-wider">Mon</div>
@@ -287,7 +287,7 @@ onMounted(() => {
           v-for="(cell, idx) in calendarCells"
           :key="idx"
           class="bg-white min-h-28 p-3 relative cursor-pointer transition-all duration-200 hover:bg-blue-50 hover:shadow-md group"
-          :class="{ 
+          :class="{
             'bg-gray-50/50 text-gray-400': !cell.inCurrentMonth,
             'bg-blue-50/30': isToday(cell.date) && cell.inCurrentMonth
           }"

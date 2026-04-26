@@ -1,7 +1,7 @@
   <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Header from '@/components/Header.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import type { QuizQuestion, QuestionOption } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -474,7 +474,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
 <template>
     <div class="min-h-screen">
-      <Header :breadcrumb="breadcrumb" />
+      <AppHeader :breadcrumb="breadcrumb" />
       <div class="max-w-6xl mx-auto p-4 mt-8">
 
       <!-- No Questions Available -->

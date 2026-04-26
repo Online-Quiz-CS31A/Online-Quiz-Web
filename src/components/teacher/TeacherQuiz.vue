@@ -17,7 +17,7 @@ import quiz5 from '@/assets/image/quiz_bg/subtle-prism.webp'
 // TYPES
 interface Props {
   quizzes: TeacherQuizItem[]
-  hideHeader?: boolean
+  hideAppHeader?: boolean
   viewMode?: 'cards' | 'rows'
   showFilters?: boolean
   initialFilter?: 'all' | 'draft' | 'published'
@@ -34,7 +34,7 @@ const sectionsStore = useSectionsStore()
 
 // PROPS
 const props = withDefaults(defineProps<Props>(), {
-  hideHeader: false,
+  hideAppHeader: false,
   viewMode: 'cards',
   showFilters: false,
   initialFilter: 'all',
@@ -240,7 +240,7 @@ const formatDueDate = (dateStr: string) => {
 
 <template>
   <div class="mb-8">
-    <div v-if="!props.hideHeader" class="flex justify-between items-center mb-4">
+    <div v-if="!props.hideAppHeader" class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-bold text-gray-800">Quizzes</h2>
       <button @click="emit('view-all')" type="button" class="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View All</button>
     </div>

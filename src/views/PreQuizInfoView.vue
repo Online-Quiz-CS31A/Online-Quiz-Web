@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Book, Info, FileText, Clock, List, Award, AlertCircle, CheckCircle, XCircle, HelpCircle, Play, BarChart2, Tag } from 'lucide-vue-next'
-import Header from '@/components/Header.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
@@ -392,7 +392,7 @@ const reviewAttempt = async (attemptId: number) => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Header :breadcrumb="breadcrumb" />
+    <AppHeader :breadcrumb="breadcrumb" />
 
     <!-- Main -->
     <main class="container mx-auto px-4 py-8">

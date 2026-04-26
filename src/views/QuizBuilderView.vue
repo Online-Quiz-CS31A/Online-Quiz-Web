@@ -4,7 +4,7 @@ import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
-const Header = defineAsyncComponent(() => import('@/components/Header.vue'))
+const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
 // CONSTANTS
@@ -73,10 +73,10 @@ async function onPublish() {
   const hasAssignedSections = checkHasAssignedSections()
   if (!hasAssignedSections) {
     alert('Please assign the quiz to at least one section before publishing.')
-    onAssign() 
+    onAssign()
     return
   }
-  
+
   await creatorRef.value?.publishQuiz?.()
   published.value = true
   router.push({ name: 'quiz-builder', params: route.params, query: route.query })
@@ -101,10 +101,10 @@ function onPreview() {
 function checkHasAssignedSections(): boolean {
   const id = quizzesStore.currentQuiz.id
   if (!id) return false
-  
+
   const quiz = quizzesStore.myTeacherQuizzes.find(q => q.id === id)
   if (!quiz) return false
-  
+
   const assignedSections = (quiz as any).assignedSections
   return Array.isArray(assignedSections) && assignedSections.length > 0
 }
@@ -136,7 +136,7 @@ watch(() => quizzesStore.currentQuiz.id, (id) => {
 <template>
   <div class="bg-gray-50 font-sans h-screen overflow-hidden flex flex-col">
     <div class="shrink-0">
-      <Header
+      <AppHeader
       breadcrumb="Dashboard > Create Quiz"
       :show-notification="false"
       :action-buttons="true"
@@ -173,7 +173,7 @@ watch(() => quizzesStore.currentQuiz.id, (id) => {
             </div>
           </div>
         </template>
-      </Header>
+      </AppHeader>
     </div>
 
     <div class="flex-1 flex flex-col overflow-hidden">

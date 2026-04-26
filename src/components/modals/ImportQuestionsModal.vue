@@ -74,19 +74,19 @@ function handleDrop(event: DragEvent) {
 
 function validateAndSetFile(file: File) {
   const extension = '.' + file.name.split('.').pop()?.toLowerCase()
-  
+
   if (!acceptedFormats.includes(extension)) {
     uploadStatus.value = 'error'
     errorMessage.value = `Invalid file format. Please upload ${acceptedFormats.join(', ')} files only.`
     return
   }
-  
-  if (file.size > 10 * 1024 * 1024) { 
+
+  if (file.size > 10 * 1024 * 1024) {
     uploadStatus.value = 'error'
     errorMessage.value = 'File size exceeds 10MB limit.'
     return
   }
-  
+
   selectedFile.value = file
   uploadStatus.value = 'idle'
   errorMessage.value = ''
@@ -111,16 +111,16 @@ function handleDragLeave() {
 
 async function handleImport() {
   if (!selectedFile.value) return
-  
+
   uploadStatus.value = 'uploading'
   uploadProgress.value = 0
-  
+
   const interval = setInterval(() => {
     uploadProgress.value += 10
     if (uploadProgress.value >= 100) {
       clearInterval(interval)
       uploadStatus.value = 'success'
-      
+
       setTimeout(() => {
         emit('import', selectedFile.value!)
       }, 800)
@@ -137,7 +137,7 @@ function downloadTemplate() {
     'essay,Explain photosynthesis.,5,,,,,,No',
     'fill-blank,The capital of Japan is _____.,1,,,,,,Yes'
   ].join('\n')
-  
+
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -154,14 +154,14 @@ function closeModal() {
 
 <template>
   <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div 
+    <div
       class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
       @click="closeModal"
     ></div>
-    
+
     <!-- Modal -->
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto overflow-hidden animate-slideUp">
-      <!-- Header -->
+      <!-- AppHeader -->
       <div class="relative px-6 py-5 border-b border-gray-100">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -173,7 +173,7 @@ function closeModal() {
               <p class="text-sm text-gray-600 mt-0.5">Upload your question bank file</p>
             </div>
           </div>
-          <button 
+          <button
             @click="closeModal"
             class="w-8 h-8 rounded-lg hover:bg-white/50 flex items-center justify-center transition-colors cursor-pointer"
           >
@@ -181,7 +181,7 @@ function closeModal() {
           </button>
         </div>
       </div>
-      
+
       <!-- Body -->
       <div class="p-6 space-y-4">
         <!-- Upload Area -->
@@ -204,7 +204,7 @@ function closeModal() {
             @change="handleFileSelect"
             class="hidden"
           />
-          
+
           <!-- Upload State -->
           <div v-if="!hasFile" class="text-center">
             <div class="mx-auto w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-3">
@@ -226,11 +226,11 @@ function closeModal() {
               Excel or CSV files only (Max 10MB)
             </p>
           </div>
-          
+
           <!-- File Selected -->
           <div v-else class="flex items-start gap-4">
             <div class="flex-shrink-0">
-              <div 
+              <div
                 class="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm"
                 :class="{
                   'bg-gradient-to-br from-blue-500 to-indigo-600': uploadStatus !== 'error',
@@ -256,7 +256,7 @@ function closeModal() {
                   <X class="w-4 h-4 text-gray-500" />
                 </button>
               </div>
-              
+
               <!-- Progress Bar -->
               <div v-if="uploadStatus === 'uploading'" class="mt-3">
                 <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
@@ -264,13 +264,13 @@ function closeModal() {
                   <span>{{ uploadProgress }}%</span>
                 </div>
                 <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     class="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-300 rounded-full"
                     :style="{ width: `${uploadProgress}%` }"
                   ></div>
                 </div>
               </div>
-              
+
               <!-- Success Message -->
               <div v-if="uploadStatus === 'success'" class="mt-3 flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle class="w-4 h-4" />
@@ -278,14 +278,14 @@ function closeModal() {
               </div>
             </div>
           </div>
-          
+
           <!-- Error Message -->
           <div v-if="uploadStatus === 'error'" class="mt-4 flex items-start gap-2 p-3 bg-red-100 border border-red-200 rounded-lg">
             <AlertCircle class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <p class="text-sm text-red-700">{{ errorMessage }}</p>
           </div>
         </div>
-        
+
         <!-- Template Download -->
         <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-3 border border-gray-200">
           <div class="flex items-center gap-3">
@@ -305,7 +305,7 @@ function closeModal() {
             </button>
           </div>
         </div>
-        
+
         <!-- Info -->
         <div class="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
           <AlertCircle class="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -314,7 +314,7 @@ function closeModal() {
           </div>
         </div>
       </div>
-      
+
       <!-- Footer -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
         <button

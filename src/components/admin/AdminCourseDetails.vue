@@ -333,7 +333,7 @@ onMounted(() => {
 
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
+    <!-- AppHeader -->
     <div class="bg-white rounded-xl shadow-md p-6 mb-8">
       <div class="flex flex-col md:flex-row">
         <div class="md:w-1/4 flex justify-center mb-6 md:mb-0">
@@ -664,7 +664,7 @@ onMounted(() => {
           </div>
 
           <div class="px-6 py-4 overflow-y-auto">
-            <!-- Header: Teachers + Search -->
+            <!-- AppHeader: Teachers + Search -->
             <div class="flex justify-between items-center mb-4">
               <h4 class="font-medium text-gray-800">Teachers ({{ filteredTeachers.length }})</h4>
               <div class="relative w-full max-w-sm">
