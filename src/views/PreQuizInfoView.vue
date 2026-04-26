@@ -81,20 +81,26 @@ const attemptHistory = ref<AttemptHistoryItem[]>([])
 const isLoadingAttempts = ref(false)
 const isLoadingQuiz = ref(false)
 const quizQuestions = ref<QuizQuestion[]>([])
+const isLoading = ref(true)
 
 onMounted(async () => {
-  const current = quizzesStore.currentAttempt
-  const id = Number((route.params as unknown as RouteParams)?.quizId)
+  try {
+    isLoading.value = true
+    const current = quizzesStore.currentAttempt
+    const id = Number((route.params as unknown as RouteParams)?.quizId)
 
-  if (current && current.isOngoing && current.quizId === id) {
-    const remaining = quizzesStore.getRemainingSeconds()
-    if (remaining <= 0 && current.durationSeconds > 0) {
-      quizzesStore.finishAttempt()
-      quizzesStore.clearAttemptStorage()
+    if (current && current.isOngoing && current.quizId === id) {
+      const remaining = quizzesStore.getRemainingSeconds()
+      if (remaining <= 0 && current.durationSeconds > 0) {
+        quizzesStore.finishAttempt()
+        quizzesStore.clearAttemptStorage()
+      }
     }
-  }
 
-  await Promise.all([loadAttemptHistory(), loadQuizQuestions()])
+    await Promise.all([loadAttemptHistory(), loadQuizQuestions()])
+  } finally {
+    isLoading.value = false
+  }
 })
 
 const loadAttemptHistory = async () => {
@@ -364,15 +370,9 @@ const reviewAttempt = async (attemptId: number) => {
             const qType = (question.type || '').toLowerCase()
 
             if (answer.choiceId != null && Array.isArray(question.options)) {
-              const choiceIndex = question.options.findIndex((opt) => {
-                const apiQ = questions[questionIndex]
-                const choices = apiQ.choices || []
-                const matchingChoice = choices.find((c) => c.choiceId === answer.choiceId)
-                if (matchingChoice) {
-                  return opt.text === matchingChoice.body || opt.text === matchingChoice.text
-                }
-                return false
-              })
+              const choiceIndex = question.options.findIndex((opt) =>
+                opt.choiceId === answer.choiceId
+              )
 
               if (choiceIndex >= 0) {
                 quizzesStore.setAnswer(questionIndex, choiceIndex)
@@ -424,7 +424,17 @@ const reviewAttempt = async (attemptId: number) => {
     <!-- Main -->
     <main class="container mx-auto px-4 py-8">
       <div class="max-w-5xl mx-auto">
-        <div class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
+
+        <!-- Loading State -->
+        <div v-if="isLoading" class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4]">
+          <div class="flex flex-col items-center justify-center py-12">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-[#4285f4] mb-4"></div>
+            <p class="text-gray-600 text-lg">Loading quiz information...</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div v-else class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-[#4285f4]">
           <div class="bg-[white] p-6 text-[#4285f4] border-b-2 border-[#4285f4]">
             <div class="flex items-center justify-between">
               <div>
@@ -547,7 +557,7 @@ const reviewAttempt = async (attemptId: number) => {
         </div>
 
         <!-- Attempts History -->
-        <div class="mt-8 bg-white rounded-3xl p-6 shadow-sm border-2 border-[#4285f4]">
+        <div v-if="!isLoading" class="mt-8 bg-white rounded-3xl p-6 shadow-sm border-2 border-[#4285f4]">
           <h3 class="text-xl font-bold text-[#4285f4] flex items-center">
             <BarChart2 class="w-5 h-5 mr-2" /> Attempts History
           </h3>
