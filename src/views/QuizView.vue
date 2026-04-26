@@ -6,6 +6,7 @@ import type { QuizQuestion, QuestionOption } from '@/interfaces/interfaces'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
+import { quizSecurityService, type SecurityViolation } from '@/services/quizSecurityService'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,6 +78,9 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   const isLoading = ref(false)
   const isSubmitting = ref(false)
   const quizMetadata = ref<QuizMetadata>({})
+  const showViolationWarning = ref(false)
+  const violationMessage = ref('')
+  const tabSwitchCount = ref(0)
 
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
@@ -521,7 +525,81 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
     }
 
-    router.push({ name: 'quiz-score' })
+    // Store quizId for score view
+    if (quizId.value) {
+      localStorage.setItem('lastQuizId', quizId.value.toString())
+    }
+
+    router.push({
+      name: 'quiz-score',
+      params: { quizId: quizId.value?.toString() || '' }
+    })
+  }
+
+  const handleSecurityViolation = (violation: SecurityViolation) => {
+    if (violation.type === 'tab_switch') {
+      tabSwitchCount.value = violation.count
+      violationMessage.value = `Warning: You switched tabs/windows (${violation.count}/2). The quiz will auto-submit after 2 violations.`
+      showViolationWarning.value = true
+
+      setTimeout(() => {
+        showViolationWarning.value = false
+      }, 5000)
+    } else if (violation.type === 'copy' || violation.type === 'paste') {
+      violationMessage.value = violation.type === 'copy' ? 'Copying is disabled during the quiz.' : 'Pasting is disabled during the quiz.'
+      showViolationWarning.value = true
+
+      setTimeout(() => {
+        showViolationWarning.value = false
+      }, 3000)
+    } else if (violation.type === 'right_click') {
+      violationMessage.value = 'Right-click is disabled during the quiz.'
+      showViolationWarning.value = true
+
+      setTimeout(() => {
+        showViolationWarning.value = false
+      }, 3000)
+    }
+  }
+
+  const handleMaxViolations = async () => {
+    // Stop the security service to prevent further violations
+    quizSecurityService.stop()
+
+    // Stop the timer
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+
+    // Show final warning message
+    violationMessage.value = 'Maximum violations reached! Quiz is being submitted automatically...'
+    showViolationWarning.value = true
+
+    try {
+      // Submit the attempt
+      await submitAttempt()
+      quizzesStore.saveAttemptToHistory()
+
+      // Mark quiz as submitted
+      if (quizzesStore.currentAttempt.quizId) {
+        quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+      }
+
+      // Store quizId for score view
+      if (quizId.value) {
+        localStorage.setItem('lastQuizId', quizId.value.toString())
+      }
+
+      // Redirect to score page
+      router.push({
+        name: 'quiz-score',
+        params: { quizId: quizId.value?.toString() || '' }
+      })
+    } catch (error) {
+      console.error('Failed to auto-submit on max violations:', error)
+      alert('Failed to submit quiz. Please try again manually.')
+    }
   }
 
   const parseTimeLimitToSeconds = (tl: string | undefined): number => {
@@ -700,6 +778,16 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       } else if (durationSeconds.value > 0 && timer.value > 0) {
         startTimer()
       }
+
+      // Start security monitoring
+      quizSecurityService.configure({
+        maxTabSwitches: 2,
+        autoSubmitOnMaxViolations: true,
+        blockCopyPaste: true,
+        blockRightClick: true
+      })
+      quizSecurityService.setCallbacks(handleSecurityViolation, handleMaxViolations)
+      quizSecurityService.start()
     } finally {
       isLoading.value = false
     }
@@ -709,12 +797,52 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     if (timerInterval.value) {
       clearInterval(timerInterval.value)
     }
+    quizSecurityService.stop()
   })
   </script>
 
+<style scoped>
+.quiz-container .no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-down-enter-from {
+  transform: translate(-50%, -100%);
+  opacity: 0;
+}
+
+.slide-down-leave-to {
+  transform: translate(-50%, -100%);
+  opacity: 0;
+}
+</style>
+
 <template>
-    <div class="min-h-screen">
+    <div class="min-h-screen quiz-container">
       <AppHeader :breadcrumb="breadcrumb" />
+
+      <!-- Security Violation Warning Banner -->
+      <transition name="slide-down">
+        <div
+          v-if="showViolationWarning"
+          :class="[
+            'fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 max-w-2xl',
+            tabSwitchCount >= 2 ? 'bg-red-500' : 'bg-yellow-500'
+          ]"
+        >
+          <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+          <span class="text-white font-medium">{{ violationMessage }}</span>
+        </div>
+      </transition>
+
       <div class="max-w-6xl mx-auto p-4 mt-8">
 
       <!-- Loading Indicator -->
@@ -741,7 +869,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       <main v-else class="grid grid-cols-3 gap-6">
         <!-- Left Panel-->
         <div class="col-span-2">
-          <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative">
+          <div class="bg-white rounded-3xl shadow-sm p-8 border-2 border-[#4285f4] relative no-select">
             <!-- Timer -->
             <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
               <div class="bg-[#4285f4] text-white px-6 py-2 rounded-full text-sm font-semibold">
@@ -751,7 +879,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
-              <p class="text-base text-gray-700 leading-relaxed mb-6">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6 no-select">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
               <div v-if="questions[currentQuestion].mediaUrl" class="mb-6">
                 <img
                   :src="questions[currentQuestion].mediaUrl"
