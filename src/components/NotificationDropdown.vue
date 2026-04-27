@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 import type { NotificationDisplay } from '@/interfaces/interfaces'
 
 // TYPES
@@ -23,6 +25,10 @@ const emit = defineEmits<{
   markAllAsRead: []
   delete: [id: number]
 }>()
+
+// ROUTER & STORE
+const router = useRouter()
+const authStore = useAuthStore()
 
 // COMPUTED
 const unreadCount = computed(() => {
@@ -52,6 +58,18 @@ function getNotificationIcon(type: string): string {
 
 function getNotificationColor(type: string): string {
   return notificationColors[type] || 'text-gray-600'
+}
+
+function viewAllNotifications() {
+  emit('close')
+  const role = authStore.userRole
+  if (role === 'admin') {
+    router.push({ name: 'admin-notifications' })
+  } else if (role === 'teacher') {
+    router.push({ name: 'teacher-notifications' })
+  } else {
+    router.push({ name: 'student-notifications' })
+  }
 }
 </script>
 
@@ -162,7 +180,10 @@ function getNotificationColor(type: string): string {
 
     <!-- Footer -->
     <div v-if="!isLoading && !error" class="px-5 py-3 border-t border-gray-100 bg-gradient-to-b from-white to-gray-50">
-      <button class="text-sm text-blue-600 hover:text-blue-700 font-semibold w-full text-center py-2 rounded-lg hover:bg-blue-50 transition-all cursor-pointer">
+      <button
+        @click="viewAllNotifications"
+        class="text-sm text-blue-600 hover:text-blue-700 font-semibold w-full text-center py-2 rounded-lg hover:bg-blue-50 transition-all cursor-pointer"
+      >
         View all notifications →
       </button>
     </div>
