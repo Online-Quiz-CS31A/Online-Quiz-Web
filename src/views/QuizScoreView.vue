@@ -125,6 +125,26 @@ const finishReview = () => {
   }
 }
 
+const isQuestionUnanswered = (q: ScoreReviewQuestion | undefined | null): boolean => {
+  if (!q) return true
+  
+  if (q.questionType === 'multiple-choice') {
+    return !q.userAnswer || (q.userAnswer as unknown[]).length === 0
+  }
+  
+  if (q.questionType === 'enumeration') {
+    if (!Array.isArray(q.userAnswer) || q.userAnswer.length === 0) return true
+    return (q.userAnswer as string[]).every((ans: string | null | undefined) => ans == null || String(ans).trim() === '')
+  }
+  
+  if (q.questionType === 'matching') {
+    if (!Array.isArray(q.matchingPairs) || q.matchingPairs.length === 0) return true
+    return q.matchingPairs.every((pair) => !pair.userRight || String(pair.userRight).trim() === '')
+  }
+  
+  return q.userAnswer == null || String(q.userAnswer).trim() === ''
+}
+
 const getQuestionButtonClass = (index: number) => {
   const question = questions.value[index]
   if (!question) return 'border-[#7B90DF] bg-[#F4F7F9] text-gray-800'
@@ -397,8 +417,17 @@ const loadScoreData = async () => {
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
           console.log('Answers response:', answersResponse.data)
 
-          if (answersResponse.data && Array.isArray(answersResponse.data)) {
-            answersResponse.data.forEach((answer: AnswerResponse) => {
+          let answersList: AnswerResponse[] = []
+          if (answersResponse.data) {
+            if (Array.isArray(answersResponse.data)) {
+              answersList = answersResponse.data
+            } else if (Array.isArray(answersResponse.data.answers)) {
+              answersList = answersResponse.data.answers
+            }
+          }
+
+          if (answersList.length > 0) {
+            answersList.forEach((answer: AnswerResponse) => {
               const questionIndex = mappedQuestions.findIndex((q: QuestionResponse) =>
                 (q.questionId || q.id) === answer.questionId
               )
@@ -579,6 +608,11 @@ onMounted(async () => {
                 </span>
               </div>
               <p class="text-base text-gray-700 leading-relaxed mb-6">{{ currentQuestionData.question }}</p>
+            </div>
+
+            <div v-if="isQuestionUnanswered(currentQuestionData)" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold flex items-center gap-2">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>Unanswered</span>
             </div>
 
             <div class="space-y-3">
