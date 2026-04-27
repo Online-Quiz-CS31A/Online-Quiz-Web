@@ -247,7 +247,7 @@ function closePreview() {
                     class="mb-2"
                   >
                     <select
-                      v-model="matchingAnswers[leftIndex]"
+                      v-model="matchingAnswers[Number(leftIndex)]"
                       disabled
                       :class="[
                         'w-full p-3 border-2 rounded-xl cursor-default',
