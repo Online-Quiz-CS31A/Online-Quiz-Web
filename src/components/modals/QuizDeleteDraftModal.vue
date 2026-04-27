@@ -50,7 +50,7 @@ const handleCancel = () => {
         <h3 class="text-xl font-semibold text-gray-900" v-else>
           Confirm draft archive
         </h3>
-        <p class="mt-2 text-gray-600" v-else>
+        <p class="mt-2 text-gray-600" v-if="isVerify">
           Please type <span class="font-semibold text-blue-600">ARCHIVE</span> to confirm. This will move the quiz to your archived quizzes.
         </p>
       </div>
