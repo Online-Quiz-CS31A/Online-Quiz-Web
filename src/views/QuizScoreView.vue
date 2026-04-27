@@ -128,7 +128,7 @@ const finishReview = () => {
 const isQuestionUnanswered = (q: ScoreReviewQuestion | undefined | null): boolean => {
   if (!q) return true
   
-  if (q.questionType === 'multiple-choice' || Array.isArray(q.userAnswer)) {
+  if (q.questionType === 'multiple-choice') {
     return !q.userAnswer || (q.userAnswer as unknown[]).length === 0
   }
   
