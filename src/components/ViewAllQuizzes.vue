@@ -121,7 +121,7 @@ const filtered = computed(() => {
     />
 
     <TeacherQuizList v-if="isTeacher" :quizzes="filtered as TeacherQuizItem[]" :hide-AppHeader="true" :show-filters="false" />
-    <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-AppHeader="true" />
+    <StudentQuizList v-else :quizzes="filtered as StudentQuizItem[]" :hide-AppHeader="true" :is-loading="quizzesStore.isLoading" />
 
     <!-- Only show this message when there's a search query with no results -->
     <div v-if="filtered.length === 0 && query && !quizzesStore.isLoading" class="text-center text-gray-500 py-12">
