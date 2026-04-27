@@ -87,7 +87,7 @@ const questions = computed(() => {
     } else if (qType === 'enumeration') {
       isAnswered = Array.isArray(userAnswer) && userAnswer.some(item => item && String(item).trim().length > 0)
     } else if (qType === 'matching') {
-      isAnswered = typeof userAnswer === 'object' && !Array.isArray(userAnswer) && Object.keys(userAnswer).length > 0
+      isAnswered = typeof userAnswer === 'object' && userAnswer !== null && !Array.isArray(userAnswer) && Object.keys(userAnswer as object).length > 0
     } else if (qType === 'fillblank' || qType === 'fill-blank' || qType === 'fill_blank') {
       isAnswered = Array.isArray(userAnswer) && userAnswer.some(blank => blank && String(blank).trim().length > 0)
     } else {
@@ -97,7 +97,7 @@ const questions = computed(() => {
     return {
       id: idx + 1,
       answered: isAnswered,
-      questionText: q.body || q.text || '',
+      questionText: (q as { body?: string }).body || q.text || '',
       questionType: q.type || ''
     }
   })
@@ -141,12 +141,14 @@ const editQuestion = (questionId: number) => {
 
   router.push({
     name: 'quiz',
+    params: {
+      quizId: String(qid),
+      questionIndex: String(index)
+    },
     state: {
       quizId: qid,
       quizTitle: current.quizTitle || studentQuiz?.title || 'Quiz',
       quizSubject: studentQuiz?.subject || 'Quiz',
-      questions,
-      questionIndex: index,
     },
   })
 }
@@ -343,7 +345,8 @@ const fetchQuizQuestions = async () => {
                       }
                     })
                     if (selectedIndices.length > 0) {
-                      quizzesStore.setAnswer(questionIndex, selectedIndices)
+                      // For multiple-choice, store array directly in answers
+                      quizzesStore.currentAttempt.answers[questionIndex] = selectedIndices
                       quizzesStore.markAnswered(questionIndex)
                     }
                   }
