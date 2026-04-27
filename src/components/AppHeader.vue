@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 
 const NotificationDropdown = defineAsyncComponent(() => import('./NotificationDropdown.vue'))
+const LogoutConfirmModal = defineAsyncComponent(() => import('./modals/LogoutConfirmModal.vue'))
 
 // CONSTANTS
 const router = useRouter()
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 const showProfileDropdown = ref(false)
 const showPublishModal = ref(false)
 const showNotificationDropdown = ref(false)
+const showLogoutModal = ref(false)
 
 // REACTIVE
 const store = useAuthStore()
@@ -96,9 +98,18 @@ function closeProfileDropdown() {
   showProfileDropdown.value = false
 }
 
-function logout() {
-  store.logout()
+function openLogoutModal() {
+  showLogoutModal.value = true
   closeProfileDropdown()
+}
+
+function closeLogoutModal() {
+  showLogoutModal.value = false
+}
+
+function confirmLogout() {
+  store.logout()
+  closeLogoutModal()
   router.push({ name: 'login' })
 }
 
@@ -336,7 +347,7 @@ function deleteNotification(id: number) {
               View Profile
             </button>
             <hr class="my-1">
-            <button @click="logout"
+            <button @click="openLogoutModal"
                     class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center cursor-pointer">
               <i class="fas fa-sign-out-alt mr-3"></i>
               Logout
@@ -381,5 +392,12 @@ function deleteNotification(id: number) {
         </div>
       </div>
     </div>
+
+    <!-- Logout confirmation modal -->
+    <LogoutConfirmModal
+      :open="showLogoutModal"
+      @cancel="closeLogoutModal"
+      @confirm="confirmLogout"
+    />
   </header>
 </template>

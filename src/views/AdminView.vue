@@ -5,11 +5,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { Bell, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/authStore'
 const AdminSidebar = defineAsyncComponent(() => import('@/components/admin/AdminSidebar.vue'))
+const LogoutConfirmModal = defineAsyncComponent(() => import('@/components/modals/LogoutConfirmModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const showProfileDropdown = ref(false)
+const showLogoutModal = ref(false)
 
 // CONSTANTS
 const titleMap: Record<string, string> = {
@@ -39,9 +41,18 @@ function closeProfileDropdown() {
   showProfileDropdown.value = false
 }
 
+function openLogoutModal() {
+  showLogoutModal.value = true
+  closeProfileDropdown()
+}
+
+function closeLogoutModal() {
+  showLogoutModal.value = false
+}
+
 async function logout() {
   await authStore.logout()
-  closeProfileDropdown()
+  closeLogoutModal()
   router.push({ name: 'login' })
 }
 
@@ -108,7 +119,7 @@ onUnmounted(() => {
                   </div>
                   <div class="py-1">
                     <button
-                      @click="logout"
+                      @click="openLogoutModal"
                       class="flex items-center w-full px-4 py-2 text-sm text-left text-red-700 hover:bg-red-50 transition-colors"
                     >
                       <LogOut class="w-4 h-4 mr-3" />
@@ -135,6 +146,13 @@ onUnmounted(() => {
         </div>
       </main>
     </div>
+
+    <!-- Logout confirmation modal -->
+    <LogoutConfirmModal
+      :open="showLogoutModal"
+      @cancel="closeLogoutModal"
+      @confirm="logout"
+    />
   </div>
 </template>
 
