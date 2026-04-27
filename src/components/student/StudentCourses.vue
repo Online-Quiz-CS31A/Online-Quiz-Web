@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
@@ -17,7 +17,7 @@ const coverImages = [bg1, bg2, bg3, bg4, bg5]
 const props = defineProps<{ classes?: ClassItem[]; showViewAll?: boolean; showAppHeader?: boolean; maxItems?: number }>()
 
 // EMITS
-const emit = defineEmits<{
+defineEmits<{
   (e: 'leave-class', classItem: ClassItem): void
   (e: 'view-all'): void
 }>()
@@ -27,7 +27,6 @@ const classesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 
 // REFS
-const menuOpenForId = ref<number | null>(null)
 const router = useRouter()
 const isLoading = ref(false)
 
@@ -39,27 +38,8 @@ const displayedClasses = computed<ClassItem[]>(() => {
 })
 
 // METHODS
-const toggleMenu = (id: number) => {
-  menuOpenForId.value = menuOpenForId.value === id ? null : id
-}
-
-const onDocClick = (e: MouseEvent) => {
-  const target = e.target as HTMLElement
-  if (!target.closest('.actions-menu')) {
-    menuOpenForId.value = null
-  }
-}
-
 const handleEnterClass = (classItem: ClassItem) => {
   router.push({ name: 'student-course-dashboard', params: { id: classItem.id } })
-}
-
-const handleLeaveClass = (classItem: ClassItem) => {
-  const ok = confirm(`Leave class ${classItem.name}?`)
-  if (ok) {
-    emit('leave-class', classItem)
-  }
-  menuOpenForId.value = null
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -149,17 +129,12 @@ const getStudentCount = (courseId: number) => {
 
 // LIFECYCLE
 onMounted(async () => {
-  document.addEventListener('click', onDocClick)
   // Only show loading and fetch if we don't have data yet
   if (classesStore.myClasses.length === 0) {
     isLoading.value = true
     await classesStore.fetchStudentCourses()
     isLoading.value = false
   }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClick)
 })
 </script>
 
@@ -220,31 +195,6 @@ onBeforeUnmount(() => {
             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm text-white border border-white/30">
               {{ classItem.code }}
             </span>
-          </div>
-
-          <!-- Menu button -->
-          <div class="absolute top-3 right-3 actions-menu">
-            <button
-              @click.stop="toggleMenu(classItem.id)"
-              class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white flex items-center justify-center transition-colors border border-white/30"
-              aria-label="More options"
-            >
-              <i class="fas fa-ellipsis-vertical text-sm"></i>
-            </button>
-            <div
-              v-if="menuOpenForId === classItem.id"
-              class="absolute right-0 top-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-20"
-            >
-              <button
-                @click.stop="handleLeaveClass(classItem)"
-                class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
-              >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Leave class
-              </button>
-            </div>
           </div>
 
           <!-- Course title -->
