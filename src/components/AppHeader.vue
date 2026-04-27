@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
@@ -74,6 +74,19 @@ const breadcrumbSegments = computed(() => {
 
 const unreadCount = computed(() => notificationsStore.unreadCount)
 
+// LIFECYCLE
+onMounted(() => {
+  if (store.isAuthenticated) {
+    notificationsStore.fetchNotifications()
+    // Optional: Uncomment to enable auto-refresh every 5 minutes
+    // notificationsStore.startPolling(300000)
+  }
+})
+
+onUnmounted(() => {
+  notificationsStore.stopPolling()
+})
+
 // METHODS
 function toggleProfileDropdown() {
   showProfileDropdown.value = !showProfileDropdown.value
@@ -142,6 +155,10 @@ function markAsRead(id: number) {
 
 function markAllAsRead() {
   notificationsStore.markAllAsRead()
+}
+
+function deleteNotification(id: number) {
+  notificationsStore.removeNotification(id)
 }
 </script>
 
@@ -289,9 +306,12 @@ function markAllAsRead() {
           <NotificationDropdown
             :notifications="notificationsStore.notifications"
             :show="showNotificationDropdown"
+            :is-loading="notificationsStore.isLoading"
+            :error="notificationsStore.error"
             @close="closeNotificationDropdown"
             @mark-as-read="markAsRead"
             @mark-all-as-read="markAllAsRead"
+            @delete="deleteNotification"
           />
         </div>
 

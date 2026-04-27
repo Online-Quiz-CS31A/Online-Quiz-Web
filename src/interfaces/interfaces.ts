@@ -390,11 +390,17 @@ export interface ScoreReviewQuestion {
 }
 
 export interface Notification {
-  id: number
+  notificationId: number
+  userId: number
+  type: string // "Quiz" | "Course" | "System" | "Reminder" | "Announcement"
   title: string
   message: string
-  time: string
-  read: boolean
+  isRead: boolean
+  createdAt: string // ISO datetime string from backend
+}
+
+export interface NotificationDisplay extends Notification {
+  timeAgo: string // Computed: "5 min ago"
 }
 
 // CLASSROOM DASHBOARD/TABS SHARED TYPES
