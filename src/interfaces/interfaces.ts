@@ -262,6 +262,9 @@ export interface StudentQuiz {
   timeLimit: string
   status: string
   color: string
+  courseName?: string
+  courseCode?: string
+  courseSection?: string
 }
 
 export interface QuizAttempt {
@@ -373,7 +376,7 @@ export interface ReviewQuestion {
 export interface ScoreReviewQuestion {
   question: string
   options: string[]
-  correctAnswer: number
+  correctAnswer: number | number[]
   userAnswer: number | string | string[] | Record<number, number> | null
   isCorrect: boolean
   points: number
@@ -445,6 +448,7 @@ export interface TeacherCourseDto {
   section: string
   createdAt: string
   students?: number
+  description?: string
 }
 
 // BIOMETRIC INTERFACES

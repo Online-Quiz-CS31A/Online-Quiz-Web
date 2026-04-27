@@ -3,6 +3,9 @@ interface SectionCardData {
   id: number
   name: string
   students: number
+  scheduleDay?: string
+  scheduleTime?: string
+  classroom?: string
 }
 
 const props = defineProps<{

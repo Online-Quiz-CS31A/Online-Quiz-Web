@@ -226,7 +226,7 @@ const isCorrectOption = (optionIndex: number) => {
   return question.correctAnswer === optionIndex
 }
 
-const isShortAnswerCorrect = (answer: string | string[] | number | null | undefined) => {
+const isShortAnswerCorrect = (answer: string | string[] | number | Record<number, number> | null | undefined) => {
   if (!answer) return false
   const text = String(answer).trim()
   if (!text) return false
@@ -246,6 +246,23 @@ const isShortAnswerCorrect = (answer: string | string[] | number | null | undefi
   })
 
   return allSentencesLongEnough
+}
+
+// Helper to check if an array of numbers includes a number
+const includesNumber = (arr: unknown, num: number): boolean => {
+  if (!Array.isArray(arr)) return false
+  return (arr as number[]).includes(num)
+}
+
+// Helper to safely get value from userAnswer (which can be array, Record, or other types)
+const getUserAnswerAtIndex = (userAnswer: unknown, index: number): string | number | null => {
+  if (Array.isArray(userAnswer)) {
+    return userAnswer[index] ?? null
+  }
+  if (typeof userAnswer === 'object' && userAnswer !== null) {
+    return (userAnswer as Record<number, number>)[index] ?? null
+  }
+  return null
 }
 
 const getQuestionScore = (index: number) => {
@@ -401,7 +418,7 @@ const loadScoreData = async () => {
           console.log('Mapped questions:', mappedQuestions)
 
           const username = authStore.currentUser?.username
-          if (username) {
+          if (username && quizData.value) {
             quizzesStore.setQuizQuestionsForScore(
               quizId,
               quizData.value.title,
@@ -412,6 +429,10 @@ const loadScoreData = async () => {
 
           if (mappedQuestions.length > 0) {
             quizzesStore.currentAttempt.questionsLength = mappedQuestions.length
+          }
+
+          if (!attemptData.value) {
+            throw new Error('Attempt data is not available')
           }
 
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
@@ -468,7 +489,8 @@ const loadScoreData = async () => {
                       })
                       console.log('Multiple-choice selectedIndices:', selectedIndices)
                       if (selectedIndices.length > 0) {
-                        quizzesStore.setAnswer(questionIndex, selectedIndices)
+                        // For multiple-choice, store array directly in answers
+                        quizzesStore.currentAttempt.answers[questionIndex] = selectedIndices
                         quizzesStore.markAnswered(questionIndex)
                       }
                     }
@@ -508,6 +530,10 @@ const loadScoreData = async () => {
                 }
               }
             })
+          }
+
+          if (!quizData.value || !attemptData.value) {
+            throw new Error('Quiz or attempt data is not available')
           }
 
           quizzesStore.currentAttempt.quizId = quizId
@@ -662,17 +688,17 @@ onMounted(async () => {
                   :key="index"
                   :class="[
                     'relative flex items-center p-2 rounded-xl transition-all border-1',
-                    Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index)
-                      ? (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index)
+                    includesNumber(currentQuestionData.userAnswer, index)
+                      ? (includesNumber(currentQuestionData.correctAnswer, index)
                         ? 'bg-[#86efac] border-[#4ade80]'
                         : 'bg-[#fca5a5] border-[#f87171]')
-                      : (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index)
+                      : (includesNumber(currentQuestionData.correctAnswer, index)
                         ? 'bg-[#F4F7F9] border-[#4ade80]'
                         : 'bg-[#F4F7F9] border-[#7B90DF]')
                   ]"
                 >
                   <div
-                    v-if="Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index) && !(Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index))"
+                    v-if="includesNumber(currentQuestionData.correctAnswer, index) && !includesNumber(currentQuestionData.userAnswer, index)"
                     class="absolute -top-3 left-3 bg-white text-[#16a34a] border border-[#4ade80] rounded-md px-2 py-0.5 text-xs font-semibold"
                   >
                     Correct
@@ -681,20 +707,20 @@ onMounted(async () => {
                     <div
                       :class="[
                         'w-6 h-6 rounded-sm border-1 flex items-center justify-center text-sm font-semibold',
-                        (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index) && Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index))
+                        (includesNumber(currentQuestionData.correctAnswer, index) && includesNumber(currentQuestionData.userAnswer, index))
                           ? 'bg-[#4ade80] border-[#4ade80] text-white'
-                          : (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index))
+                          : (includesNumber(currentQuestionData.correctAnswer, index))
                           ? 'bg-[#F4F7F9] border-[#4ade80] text-[#4ade80]'
-                          : (Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index))
+                          : (includesNumber(currentQuestionData.userAnswer, index))
                           ? 'bg-[#f87171] border-[#f87171] text-white'
                           : 'bg-[#F4F7F9] border-[#7B90DF] text-black'
                       ]"
                     >
                       <i
-                        v-if="(Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index)) || (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index))"
+                        v-if="includesNumber(currentQuestionData.userAnswer, index) || includesNumber(currentQuestionData.correctAnswer, index)"
                         :class="[
                           'fas',
-                          (Array.isArray(currentQuestionData.correctAnswer) && currentQuestionData.correctAnswer.includes(index)) ? 'fa-check' : 'fa-times',
+                          includesNumber(currentQuestionData.correctAnswer, index) ? 'fa-check' : 'fa-times',
                           'text-xs'
                         ]"
                       ></i>
@@ -704,7 +730,7 @@ onMounted(async () => {
                   <span
                     :class="[
                       'text-base font-medium',
-                      (Array.isArray(currentQuestionData.userAnswer) && currentQuestionData.userAnswer.includes(index)) ? 'text-[#4866DA]' : 'text-gray-800'
+                      includesNumber(currentQuestionData.userAnswer, index) ? 'text-[#4866DA]' : 'text-gray-800'
                     ]"
                   >{{ option }}</span>
                 </div>
@@ -751,11 +777,11 @@ onMounted(async () => {
                           Your answer:
                           <span
                             v-if="
-                              (currentQuestionData.userAnswer || [])[index] &&
-                              String((currentQuestionData.userAnswer || [])[index]).trim() !== ''
+                              getUserAnswerAtIndex(currentQuestionData.userAnswer, index) &&
+                              String(getUserAnswerAtIndex(currentQuestionData.userAnswer, index)).trim() !== ''
                             "
                           >
-                            {{ (currentQuestionData.userAnswer || [])[index] }}
+                            {{ getUserAnswerAtIndex(currentQuestionData.userAnswer, index) }}
                           </span>
                           <span v-else class="italic">(unanswered)</span>
                         </span>

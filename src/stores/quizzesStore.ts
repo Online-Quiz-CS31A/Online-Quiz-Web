@@ -858,7 +858,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   interface ScoreItem {
     question: string
     options: string[]
-    correctAnswer: number
+    correctAnswer: number | number[]
     userAnswer: unknown
     isCorrect: boolean
     points: number
