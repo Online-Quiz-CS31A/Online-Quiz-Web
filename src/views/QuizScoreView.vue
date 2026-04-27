@@ -397,8 +397,17 @@ const loadScoreData = async () => {
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
           console.log('Answers response:', answersResponse.data)
 
-          if (answersResponse.data && Array.isArray(answersResponse.data)) {
-            answersResponse.data.forEach((answer: AnswerResponse) => {
+          let answersList: AnswerResponse[] = []
+          if (answersResponse.data) {
+            if (Array.isArray(answersResponse.data)) {
+              answersList = answersResponse.data
+            } else if (Array.isArray(answersResponse.data.answers)) {
+              answersList = answersResponse.data.answers
+            }
+          }
+
+          if (answersList.length > 0) {
+            answersList.forEach((answer: AnswerResponse) => {
               const questionIndex = mappedQuestions.findIndex((q: QuestionResponse) =>
                 (q.questionId || q.id) === answer.questionId
               )
