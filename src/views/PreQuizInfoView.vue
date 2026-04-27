@@ -7,6 +7,7 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
 import type { QuizQuestion } from '@/interfaces/interfaces'
+import BiometricVerifyGate from '@/components/biometric/BiometricVerifyGate.vue'
 
 // Types
 interface AttemptHistoryItem {
@@ -94,6 +95,7 @@ const quizQuestions = ref<QuizQuestion[]>([])
 const isLoading = ref(true)
 const showStartQuizModal = ref(false)
 const quizMetadata = ref<QuizApiResponse | null>(null)
+const isBiometricVerified = ref(false)
 
 onMounted(async () => {
   try {
@@ -169,7 +171,9 @@ const loadQuizQuestions = async () => {
         try {
           const courseResponse = await api.get(`/Course/${response.data.courseId}`)
           if (courseResponse.data) {
-            quizMetadata.value.courseName = courseResponse.data.name || courseResponse.data.title
+            if (quizMetadata.value) {
+              quizMetadata.value.courseName = courseResponse.data.name || courseResponse.data.title
+            }
           }
         } catch (error) {
           console.error('Failed to load course name:', error)
@@ -316,8 +320,15 @@ const quiz = computed((): QuizData => {
 })
 
 const canStartQuiz = computed(() => {
-  return quiz.value.attemptsAvailable > 0 && !hasOngoingAttempt.value
+  return quiz.value.attemptsAvailable > 0 && !hasOngoingAttempt.value && isBiometricVerified.value
 })
+
+const onBiometricVerified = () => {
+  isBiometricVerified.value = true
+  if (quizId.value) {
+    sessionStorage.setItem(`biometricVerifiedQuiz_${quizId.value}`, 'true')
+  }
+}
 
 const hasOngoingAttempt = computed(() => {
   const attempt = quizzesStore.currentAttempt
@@ -365,7 +376,8 @@ const startQuiz = () => {
       quizId: quizId.value,
       quizTitle: quiz.value.title,
       quizSubject: quiz.value.subject,
-      questions
+      questions,
+      biometricVerified: true
     }
   })
 }
@@ -379,7 +391,8 @@ const continueQuiz = () => {
       quizId: quizId.value,
       quizTitle: quiz.value.title,
       quizSubject: quiz.value.subject,
-      questions
+      questions,
+      biometricVerified: true
     }
   })
 }
@@ -602,6 +615,14 @@ const reviewAttempt = async (attemptId: number) => {
               </div>
             </div>
 
+            <!-- Biometric Verification Gate -->
+            <div class="bg-[#F4F7F9] p-4 rounded-xl border border-[#7B90DF]">
+              <BiometricVerifyGate
+                :quiz-id="quizId"
+                @verified="onBiometricVerified"
+              />
+            </div>
+
             <!-- Footer actions -->
             <div class="flex justify-between items-center pt-4 border-t border-gray-200">
               <div class="flex items-center text-gray-600">
@@ -611,7 +632,8 @@ const reviewAttempt = async (attemptId: number) => {
               <div class="flex flex-col items-end gap-2">
                 <div v-if="!canStartQuiz && !hasOngoingAttempt" class="text-red-600 text-sm flex items-center">
                   <XCircle class="w-4 h-4 mr-2" />
-                  Quiz already completed
+                  <template v-if="!isBiometricVerified && quiz.attemptsAvailable > 0">Verify your identity to start</template>
+                  <template v-else>Quiz already completed</template>
                 </div>
                 <button
                   v-if="!hasOngoingAttempt"
