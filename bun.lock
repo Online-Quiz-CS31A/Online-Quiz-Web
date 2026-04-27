@@ -13,7 +13,6 @@
         "@tailwindcss/vite": "^4.1.7",
         "@vueuse/core": "^13.3.0",
         "axios": "^1.12.2",
-        "lucide-vue": "^0.517.0",
         "lucide-vue-next": "^0.511.0",
         "pinia": "^3.0.3",
         "reka-ui": "^2.3.0",
@@ -930,8 +929,6 @@
     "loupe": ["loupe@3.2.0", "", {}, "sha512-2NCfZcT5VGVNX9mSZIxLRkEAegDGBpuQZBy13desuHeVORmBDyAET4TkJr4SjqQy3A8JDofMN6LpkK8Xcm/dlw=="],
 
     "lru-cache": ["lru-cache@10.4.3", "", {}, "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="],
-
-    "lucide-vue": ["lucide-vue@0.517.0", "", { "peerDependencies": { "vue": "^2.6.12" } }, "sha512-ctSLCEslH5DchFq+/jku2cjQoBago2Q8EkK5i32hZaFVPV/6iUe1NjycwmIQLdprvEhnvNQxJbmEHUO5v41myw=="],
 
     "lucide-vue-next": ["lucide-vue-next@0.511.0", "", { "peerDependencies": { "vue": ">=3.0.1" } }, "sha512-VSv0F3pHniGN7JMMzDcLFNMQbl8381+shNnHwV8hi+El7xl2ZL8qdNuzPoiBViKk8mTKK5K3ZDfmE/wEcTZVIQ=="],
 
