@@ -5,6 +5,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import { Fingerprint } from 'lucide-vue-next'
 const ImportQuestionsModal = defineAsyncComponent(() => import('@/components/modals/ImportQuestionsModal.vue'))
 
 // eslint-disable-next-line vue/multi-word-component-names
@@ -341,6 +342,20 @@ async function handleImport(file: File) {
                 </button>
               </li>
             </ul>
+          </li>
+
+          <!-- Biometric Enrollment -->
+          <li v-if="isTeacher">
+            <RouterLink
+              to="/teacher/biometric"
+              class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="route.path === '/teacher/biometric'
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
+            >
+              <Fingerprint class="w-5 h-5 mr-3" :class="route.path === '/teacher/biometric' ? 'text-blue-500' : 'text-gray-400'" />
+              Biometrics
+            </RouterLink>
           </li>
         </ul>
       </div>

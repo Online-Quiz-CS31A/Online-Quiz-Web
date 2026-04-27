@@ -446,3 +446,91 @@ export interface TeacherCourseDto {
   createdAt: string
   students?: number
 }
+
+// BIOMETRIC INTERFACES
+export type BiometricMode = 'Idle' | 'Enrollment' | 'Verification' | 'Connected' | 'Disconnected'
+
+export type BiometricOperationState = 'idle' | 'loading' | 'waiting-for-scan' | 'success' | 'failed'
+
+export interface BiometricStatus {
+  isConnected: boolean
+  currentMode: BiometricMode
+  activeUserId: number | null
+  activeUserName: string | null
+  lastActivity: string | null
+}
+
+export interface EnrollmentPayload {
+  userId: number
+  slotId?: number
+  message: string
+  success?: boolean
+  errorCode?: string
+}
+
+export interface VerificationPayload {
+  userId: number
+  slotId?: number
+  quizId?: number
+  message: string
+  matched?: boolean
+  success?: boolean
+  errorCode?: string
+}
+
+export interface DeviceStatusChangedPayload {
+  status: string
+  timestamp: string
+}
+
+export interface BiometricLogEntry {
+  id: number
+  userId: number
+  userName: string
+  actionType: string
+  success: boolean
+  slotId?: number
+  errorMessage?: string
+  ipAddress?: string
+  createdAt: string
+}
+
+export interface AvailableSlotsResponse {
+  availableSlots: number[]
+  totalSlots: number
+  usedSlots: number
+}
+
+export interface EnrollmentStatus {
+  userId: number
+  isEnrolled: boolean
+  slotId: number | null
+}
+
+export interface BiometricLogFilter {
+  userId?: number
+  actionType?: string
+  success?: boolean
+  startDate?: string
+  endDate?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface BiometricLogsResponse {
+  data: BiometricLogEntry[]
+  pagination: {
+    page: number
+    pageSize: number
+    totalCount: number
+    totalPages: number
+  }
+}
+
+export const BIOMETRIC_ERROR_CODES: Record<string, string> = {
+  '1001': 'Device not connected',
+  '2001': 'Poor scan quality — please try again',
+  '3001': 'Fingerprint not recognized',
+  '-1': 'Operation timed out',
+  '1': 'Hardware error',
+}

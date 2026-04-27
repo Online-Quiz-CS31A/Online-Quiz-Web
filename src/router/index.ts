@@ -116,7 +116,17 @@ const router = createRouter({
           name: 'admin-archived-users',
           component: () => import('../components/admin/AdminArchivedUsers.vue'),
         },
+        {
+          path: 'biometric',
+          name: 'admin-biometric',
+          component: () => import('../views/BiometricEnrollmentView.vue'),
+        },
       ],
+    },
+    {
+      path: '/teacher/biometric',
+      name: 'teacher-biometric',
+      component: () => import('../views/BiometricEnrollmentView.vue'),
     },
     {
       path: '/teacher/classes/:code',

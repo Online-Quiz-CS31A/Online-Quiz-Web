@@ -18,5 +18,8 @@ export * from './courseService'
 // Quiz service
 export * from './quizService'
 
+// Biometric service
+export * from './biometricService'
+
 // Service types
 export * from './types'

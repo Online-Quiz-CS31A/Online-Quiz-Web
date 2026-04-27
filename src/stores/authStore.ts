@@ -115,6 +115,13 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser.value = null
     saveUserToStorage(null)
     try {
+      const { useBiometricStore } = await import('./biometricStore')
+      const biometricStore = useBiometricStore()
+      await biometricStore.disposeBiometric()
+    } catch {
+      // biometric store may not be initialized
+    }
+    try {
       await authService.logout()
     } catch (err) {
       if (err && typeof err === 'object' && 'status' in err && err.status !== 401) {

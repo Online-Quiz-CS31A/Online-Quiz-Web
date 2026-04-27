@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { BookOpen, Home, Users, BookOpenCheck, Settings, Database, BarChart2, Archive, ChevronDown } from 'lucide-vue-next'
+import { Home, Users, BookOpenCheck, Settings, Database, BarChart2, Archive, ChevronDown, Fingerprint } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -151,6 +151,25 @@ const toggleArchived = () => {
             ]"
           />
           Analytics
+        </router-link>
+
+        <!-- Biometric -->
+        <router-link
+          to="/admin/biometric"
+          :class="[
+            'flex items-center px-2 py-3 text-sm font-medium rounded-md cursor-pointer transition-all sidebar-item group',
+            route.name === 'admin-biometric'
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+          ]"
+        >
+          <Fingerprint
+            :class="[
+              'w-5 h-5 mr-3 transition-all duration-200 sidebar-icon',
+              route.name === 'admin-biometric' ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'
+            ]"
+          />
+          Biometrics
         </router-link>
 
         <!-- Archived Dropdown -->
