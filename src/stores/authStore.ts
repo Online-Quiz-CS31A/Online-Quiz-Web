@@ -77,9 +77,19 @@ export const useAuthStore = defineStore('auth', () => {
       currentUser.value = user
       saveUserToStorage(user)
 
+      // Fetch notifications after successful login
+      try {
+        const { useNotificationsStore } = await import('./notificationsStore')
+        const notificationsStore = useNotificationsStore()
+        await notificationsStore.fetchNotifications()
+      } catch (notifError) {
+        console.warn('Failed to fetch notifications on login:', notifError)
+        // Don't fail login if notifications fail
+      }
+
       return { success: true, role }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Invalid email or password'
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid email or password'
       error.value = errorMessage
       return { success: false, message: errorMessage }
     } finally {
@@ -105,9 +115,16 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser.value = null
     saveUserToStorage(null)
     try {
+      const { useBiometricStore } = await import('./biometricStore')
+      const biometricStore = useBiometricStore()
+      await biometricStore.disposeBiometric()
+    } catch {
+      // biometric store may not be initialized
+    }
+    try {
       await authService.logout()
-    } catch (err: any) {
-      if (err?.status !== 401) {
+    } catch (err) {
+      if (err && typeof err === 'object' && 'status' in err && err.status !== 401) {
         console.warn('Backend logout failed:', err)
       }
     }

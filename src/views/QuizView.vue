@@ -62,10 +62,10 @@ interface QuizMetadata {
 }
 
 // REFS
-const initialQuestionIndex = typeof (history.state as HistoryState)?.questionIndex === 'number'
-  ? (history.state as HistoryState).questionIndex
+const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIndex === 'number')
+  ? (history.state as HistoryState).questionIndex!
   : 0
-  const currentQuestion = ref(initialQuestionIndex)
+  const currentQuestion = ref<number>(initialQuestionIndex)
   const selectedOption = ref<number | null>(null)
   const selectedOptions = ref<Set<number>>(new Set()) // For multiple-choice checkboxes
   const textAnswer = ref('')
@@ -85,7 +85,9 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   // COMPUTED
   const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizTitle.value}`)
   const progress = computed(() => {
-    return ((currentQuestion.value + 1) / questions.value.length) * 100
+    return questions.value.length > 0
+      ? ((currentQuestion.value + 1) / questions.value.length) * 100
+      : 0
   })
 
   // METHODS
@@ -97,14 +99,16 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   }
 
   const selectOption = async (optionIndex: number) => {
+    const qi = currentQuestion.value
     selectedOption.value = optionIndex
-    quizzesStore.setAnswer(currentQuestion.value, optionIndex)
-    quizzesStore.markAnswered(currentQuestion.value)
+    quizzesStore.setAnswer(qi, optionIndex)
+    quizzesStore.markAnswered(qi)
 
-    await saveAnswerToBackend(currentQuestion.value, optionIndex)
+    await saveAnswerToBackend(qi, optionIndex)
   }
 
   const toggleOption = async (optionIndex: number) => {
+    const qi = currentQuestion.value
     if (selectedOptions.value.has(optionIndex)) {
       selectedOptions.value.delete(optionIndex)
     } else {
@@ -112,13 +116,13 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     }
 
     const selectedArray = Array.from(selectedOptions.value)
-    quizzesStore.setAnswer(currentQuestion.value, selectedArray)
+    quizzesStore.setAnswer(qi, selectedArray.length > 0 ? selectedArray[0] : -1)
 
     if (selectedArray.length > 0) {
-      quizzesStore.markAnswered(currentQuestion.value)
+      quizzesStore.markAnswered(qi)
     }
 
-    await saveAnswerToBackend(currentQuestion.value, selectedArray)
+    await saveAnswerToBackend(qi, selectedArray)
   }
 
   const isOptionSelected = (optionIndex: number): boolean => {
@@ -126,37 +130,41 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   }
 
   const updateTextAnswer = async () => {
-    quizzesStore.setTextAnswer(currentQuestion.value, textAnswer.value)
+    const qi = currentQuestion.value
+    quizzesStore.setTextAnswer(qi, textAnswer.value)
     if (textAnswer.value.trim()) {
-      quizzesStore.markAnswered(currentQuestion.value)
-      await saveAnswerToBackend(currentQuestion.value, textAnswer.value)
+      quizzesStore.markAnswered(qi)
+      await saveAnswerToBackend(qi, textAnswer.value)
     }
   }
 
   const updateEnumerationAnswer = async (index: number, value: string) => {
+    const qi = currentQuestion.value
     enumerationAnswers.value[index] = value
-    quizzesStore.setEnumerationAnswer(currentQuestion.value, enumerationAnswers.value)
+    quizzesStore.setEnumerationAnswer(qi, enumerationAnswers.value)
     if (enumerationAnswers.value.some(item => item.trim())) {
-      quizzesStore.markAnswered(currentQuestion.value)
-      await saveAnswerToBackend(currentQuestion.value, enumerationAnswers.value)
+      quizzesStore.markAnswered(qi)
+      await saveAnswerToBackend(qi, enumerationAnswers.value)
     }
   }
 
   const updateMatchingAnswer = async (leftIndex: number, rightIndex: number) => {
+    const qi = currentQuestion.value
     matchingAnswers.value[leftIndex] = rightIndex
-    quizzesStore.setMatchingAnswer(currentQuestion.value, matchingAnswers.value)
+    quizzesStore.setMatchingAnswer(qi, matchingAnswers.value)
     if (Object.keys(matchingAnswers.value).length > 0) {
-      quizzesStore.markAnswered(currentQuestion.value)
-      await saveAnswerToBackend(currentQuestion.value, matchingAnswers.value)
+      quizzesStore.markAnswered(qi)
+      await saveAnswerToBackend(qi, matchingAnswers.value)
     }
   }
 
   const updateFillBlankAnswer = async (index: number, value: string) => {
+    const qi = currentQuestion.value
     fillBlankAnswers.value[index] = value
-    quizzesStore.setFillBlankAnswer(currentQuestion.value, fillBlankAnswers.value)
+    quizzesStore.setFillBlankAnswer(qi, fillBlankAnswers.value)
     if (fillBlankAnswers.value.some(blank => blank.trim())) {
-      quizzesStore.markAnswered(currentQuestion.value)
-      await saveAnswerToBackend(currentQuestion.value, fillBlankAnswers.value)
+      quizzesStore.markAnswered(qi)
+      await saveAnswerToBackend(qi, fillBlankAnswers.value)
     }
   }
 
@@ -171,7 +179,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
 
   const loadCurrentQuestionAnswers = () => {
     const idx = currentQuestion.value
-    const answer = quizzesStore.currentAttempt.answers[idx]
+    const answer: unknown = quizzesStore.currentAttempt.answers[idx]
     const q = questions.value[idx]
     if (!q || answer === undefined) {
       clearAnswers()
@@ -197,7 +205,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
         enumerationAnswers.value = Array(items.length).fill('')
       }
     } else if (q.type === 'matching') {
-      matchingAnswers.value = (typeof answer === 'object' && !Array.isArray(answer)) ? answer : {}
+      matchingAnswers.value = (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) ? answer as Record<number, number> : {}
     } else if (q.type === 'fill-blank') {
       fillBlankAnswers.value = Array.isArray(answer) ? answer : []
     } else {
@@ -227,19 +235,20 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   const startAttemptInBackend = async () => {
     try {
       const userId = authStore.currentUser?.id
-      if (!quizId.value || !userId) {
+      const qid = quizId.value
+      if (!qid || !userId) {
         console.error('Missing quizId or userId:', { quizId: quizId.value, userId })
         return
       }
 
       const response = await api.post('/Attempt/start', {
-        quizId: quizId.value,
+        quizId: qid,
         studentId: userId
       })
 
       if (response.data && response.data.attemptId) {
         attemptId.value = response.data.attemptId
-        quizzesStore.currentAttempt.quizId = quizId.value
+        quizzesStore.currentAttempt.quizId = qid
         quizzesStore.currentAttempt.quizTitle = response.data.quizTitle || quizTitle.value
         quizzesStore.currentAttempt.startAtISO = response.data.startedAt
         quizzesStore.currentAttempt.isOngoing = true
@@ -263,7 +272,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       const question = questions.value[questionIndex]
       if (!question) return
 
-      const questionId = question.questionId || question.id
+      const questionId = question.questionId ?? question.id ?? 0
       const qType = (question.type || '').toLowerCase()
 
       // Single-choice (radio button) - one answer with choiceId
@@ -284,9 +293,9 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       // For now, save as JSON in textAnswer since backend doesn't support multiple answers per question easily
       else if (Array.isArray(answer) && qType === 'multiple-choice') {
         const choices = question.options
-        if (Array.isArray(choices) && answer.length > 0) {
+        if (Array.isArray(choices) && (answer as number[]).length > 0) {
           // Convert indices to choiceIds
-          const selectedChoiceIds = answer
+          const selectedChoiceIds = (answer as number[])
             .filter(idx => idx >= 0 && idx < choices.length)
             .map(idx => choices[idx].choiceId)
             .filter(id => id != null)
@@ -360,8 +369,9 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       quizzesStore.currentAttempt.isOngoing = false
 
       // Mark quiz as submitted
-      if (quizId.value) {
-        quizzesStore.markQuizAsSubmitted(quizId.value)
+      const qid = quizId.value
+      if (qid) {
+        quizzesStore.markQuizAsSubmitted(qid)
       }
 
     } catch (error) {
@@ -376,13 +386,14 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   const loadAttemptFromBackend = async () => {
     try {
       const userId = authStore.currentUser?.id
-      if (!userId || !quizId.value) return
+      const qid = quizId.value
+      if (!userId || !qid) return
 
       const response = await api.get(`/Attempt/student/${userId}`)
 
       if (response.data && Array.isArray(response.data)) {
         const ongoingAttempt = response.data.find((attempt: AttemptResponse) =>
-          attempt.quizId === quizId.value && !attempt.submittedAt
+          attempt.quizId === qid && !attempt.submittedAt
         )
 
         if (ongoingAttempt) {
@@ -424,7 +435,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
                         }
                       })
                       if (selectedIndices.length > 0) {
-                        quizzesStore.setAnswer(questionIndex, selectedIndices)
+                        quizzesStore.setAnswer(questionIndex, selectedIndices[0])
                         quizzesStore.markAnswered(questionIndex)
                       }
                     }
@@ -481,9 +492,10 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     }
 
     try {
+      const qid = quizId.value
       // Ensure the current attempt has all necessary data
-      if (quizId.value) {
-        quizzesStore.currentAttempt.quizId = quizId.value
+      if (qid) {
+        quizzesStore.currentAttempt.quizId = qid
         quizzesStore.currentAttempt.quizTitle = quizTitle.value
         quizzesStore.currentAttempt.questionsLength = questions.value.length
       }
@@ -509,13 +521,14 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     }
 
     // Store quizId for score view
-    if (quizId.value) {
-      localStorage.setItem('lastQuizId', quizId.value.toString())
+    const qid = quizId.value
+    if (qid) {
+      localStorage.setItem('lastQuizId', qid.toString())
     }
 
     router.push({
       name: 'quiz-score',
-      params: { quizId: quizId.value?.toString() || '' }
+      params: { quizId: qid?.toString() || '' }
     })
   }
 
@@ -570,14 +583,15 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       }
 
       // Store quizId for score view
-      if (quizId.value) {
-        localStorage.setItem('lastQuizId', quizId.value.toString())
+      const qidMax = quizId.value
+      if (qidMax) {
+        localStorage.setItem('lastQuizId', qidMax.toString())
       }
 
       // Redirect to score page
       router.push({
         name: 'quiz-score',
-        params: { quizId: quizId.value?.toString() || '' }
+        params: { quizId: qidMax?.toString() || '' }
       })
     } catch (error) {
       console.error('Failed to auto-submit on max violations:', error)
@@ -601,7 +615,8 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   }
 
   const initDuration = async () => {
-    if (quizId.value == null) {
+    const qid = quizId.value
+    if (qid == null) {
       console.warn('No quizId available')
       durationSeconds.value = 0
       timer.value = 0
@@ -615,13 +630,13 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
       sec = quizMetadata.value.timeLimitMinutes * 60
     } else {
       // Try to get time limit from myStudentQuizzes
-      const sq = quizzesStore.myStudentQuizzes.find(q => q.id === quizId.value)
+      const sq = quizzesStore.myStudentQuizzes.find(q => q.id === qid)
       sec = parseTimeLimitToSeconds(sq?.timeLimit)
 
       // If not found or zero, fetch from API
       if (sec === 0 && authStore.currentUser?.id) {
         try {
-          const detail = await quizzesStore.fetchQuizDetail(quizId.value, authStore.currentUser.id)
+          const detail = await quizzesStore.fetchQuizDetail(qid, authStore.currentUser.id)
 
           if (detail && detail.timeLimitMinutes) {
             sec = detail.timeLimitMinutes * 60
@@ -638,7 +653,7 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
     durationSeconds.value = sec > 0 ? sec : 0
 
     // Set durationSeconds in currentAttempt for ongoing attempts
-    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === quizId.value) {
+    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === qid) {
       // Update the durationSeconds if it wasn't set
       if (quizzesStore.currentAttempt.durationSeconds === 0) {
         quizzesStore.currentAttempt.durationSeconds = durationSeconds.value
@@ -675,8 +690,8 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
           enumerationAnswers.value = answer
         }
       } else if (q.type === 'matching') {
-        if (typeof answer === 'object' && !Array.isArray(answer)) {
-          matchingAnswers.value = answer
+        if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+          matchingAnswers.value = answer as Record<number, number>
         }
       } else if (q.type === 'fill-blank') {
         if (Array.isArray(answer)) {
@@ -704,11 +719,24 @@ const initialQuestionIndex = typeof (history.state as HistoryState)?.questionInd
   onMounted(async () => {
     isLoading.value = true
 
+    // Check biometric verification for students
+    const authLocal = useAuthStore()
+    const mountQid = quizId.value
+    if (authLocal.userRole === 'student' && mountQid != null) {
+      const biometricFlag = sessionStorage.getItem(`biometricVerifiedQuiz_${mountQid}`)
+      if (!biometricFlag && !history.state?.biometricVerified) {
+        router.replace({ name: 'student-prequiz', params: { quizId: mountQid.toString() } })
+        return
+      }
+      // Clear the flag after use
+      sessionStorage.removeItem(`biometricVerifiedQuiz_${mountQid}`)
+    }
+
     try {
-      if (questions.value.length === 0 && quizId.value != null) {
-        const authLocal = useAuthStore()
-        if (authLocal.currentUser?.id) {
-          const detail = await quizzesStore.fetchQuizDetail(quizId.value, authLocal.currentUser.id)
+      if (questions.value.length === 0 && mountQid != null) {
+        const authLocal2 = useAuthStore()
+        if (authLocal2.currentUser?.id) {
+          const detail = await quizzesStore.fetchQuizDetail(mountQid, authLocal2.currentUser.id)
 
           if (detail && Array.isArray(detail.questions)) {
             questions.value = detail.questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))

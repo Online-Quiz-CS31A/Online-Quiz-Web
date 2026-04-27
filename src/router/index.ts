@@ -68,6 +68,21 @@ const router = createRouter({
       props: true,
     },
     {
+      path: '/student/notifications',
+      name: 'student-notifications',
+      component: () => import('../views/NotificationsView.vue'),
+    },
+    {
+      path: '/teacher/notifications',
+      name: 'teacher-notifications',
+      component: () => import('../views/NotificationsView.vue'),
+    },
+    {
+      path: '/admin/notifications',
+      name: 'admin-notifications',
+      component: () => import('../views/NotificationsView.vue'),
+    },
+    {
       path: '/admin',
       component: () => import('../views/AdminView.vue'),
       redirect: '/admin/dashboard',
@@ -116,7 +131,17 @@ const router = createRouter({
           name: 'admin-archived-users',
           component: () => import('../components/admin/AdminArchivedUsers.vue'),
         },
+        {
+          path: 'biometric',
+          name: 'admin-biometric',
+          component: () => import('../views/BiometricEnrollmentView.vue'),
+        },
       ],
+    },
+    {
+      path: '/teacher/biometric',
+      name: 'teacher-biometric',
+      component: () => import('../views/BiometricEnrollmentView.vue'),
     },
     {
       path: '/teacher/classes/:code',

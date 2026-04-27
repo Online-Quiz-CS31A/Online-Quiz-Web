@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, LogOut, User } from 'lucide-vue-next'
+import { Bell, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/authStore'
 const AdminSidebar = defineAsyncComponent(() => import('@/components/admin/AdminSidebar.vue'))
 
@@ -19,7 +19,8 @@ const titleMap: Record<string, string> = {
   'admin-quiz-settings': 'Quiz Settings',
   'admin-data': 'Data Management',
   'admin-analytics': 'Analytics',
-  'admin-archived': 'Archived Courses'
+  'admin-archived': 'Archived Courses',
+  'admin-biometric': 'Biometrics',
 }
 
 // COMPUTED

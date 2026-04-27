@@ -6,14 +6,13 @@ const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const StudentClasses = defineAsyncComponent(() => import('@/components/student/StudentCourses.vue'))
 const StudentUpcomingQuizzes = defineAsyncComponent(() => import('@/components/student/StudentQuiz.vue'))
-const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCalendar.vue'))
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
 
 // REFS
 const sidebarActive = ref(false)
 const showJoinClass = ref(false)
-const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses'>('home')
+const currentSection = ref<'home' | 'quizzes' | 'courses'>('home')
 const isLoadingQuizzes = ref(true)
 
 // REACTIVE
@@ -43,11 +42,6 @@ const navigateToHome = () => {
 
 const navigateToQuizzes = () => {
   currentSection.value = 'quizzes'
-  closeSidebar()
-}
-
-const navigateToCalendar = () => {
-  currentSection.value = 'calendar'
   closeSidebar()
 }
 
@@ -95,7 +89,6 @@ onUnmounted(() => {
       @join-class="showJoinClassModal"
       @nav-home="navigateToHome"
       @nav-quizzes="navigateToQuizzes"
-      @nav-calendar="navigateToCalendar"
     />
 
     <!-- Main Content -->
@@ -112,7 +105,6 @@ onUnmounted(() => {
           <StudentUpcomingQuizzes :quizzes="upcomingQuizzes.slice(0, 3)" :is-loading="isLoadingQuizzes" @view-all="navigateToQuizzes" />
         </div>
         <ViewAllQuizzes v-else-if="currentSection === 'quizzes'" />
-        <SchoolCalendar v-else-if="currentSection === 'calendar'" />
         <ViewAllCourses v-else />
       </main>
     </div>

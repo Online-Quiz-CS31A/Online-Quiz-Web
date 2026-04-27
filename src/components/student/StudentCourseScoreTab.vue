@@ -16,14 +16,27 @@ const myScores = computed<MyScoreItem[]>(() => {
   return all.map((q) => {
     let total = 0
     let score = 0
+    let percent = 0
 
     const apiScore = quizzesStore.attemptScores[q.id]
     if (apiScore) {
-      score = apiScore.score
-      total = apiScore.totalPoints
+      const rawScore = apiScore.score
+      const rawTotal = apiScore.totalPoints
+      
+      // If score appears to be a percentage (greater than total), convert it back to points
+      if (rawScore > rawTotal && rawTotal > 0) {
+        // Score is likely a percentage, convert to actual points
+        percent = Math.round(rawScore)
+        score = Math.round((rawScore / 100) * rawTotal)
+        total = rawTotal
+      } else {
+        // Score is actual points
+        score = rawScore
+        total = rawTotal
+        percent = total > 0 ? Math.round((score / total) * 100) : 0
+      }
     }
 
-    const percent = total > 0 ? Math.round((score / total) * 100) : 0
     const hasSubmitted = quizzesStore.hasSubmittedAttempt(q.id)
     const status: 'Answered' | 'Unanswered' = hasSubmitted ? 'Answered' : 'Unanswered'
 

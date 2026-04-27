@@ -38,7 +38,25 @@ const emit = defineEmits<{
 const quizzesStore = useQuizzesStore()
 
 // COMPUTED
-const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
+const displayedQuizzes = computed(() => {
+  const quizzes = props.quizzes ?? quizzesStore.myStudentQuizzes
+  
+  // Sort quizzes: unanswered first, then answered, both sorted by date (newest to oldest)
+  return [...quizzes].sort((a, b) => {
+    const aAnswered = isAnswered(a.id)
+    const bAnswered = isAnswered(b.id)
+    
+    // If one is answered and the other is not, unanswered comes first
+    if (aAnswered !== bAnswered) {
+      return aAnswered ? 1 : -1
+    }
+    
+    // Both have the same answered status, sort by due date (newest to oldest)
+    const aDate = new Date(a.dueDate).getTime()
+    const bDate = new Date(b.dueDate).getTime()
+    return bDate - aDate
+  })
+})
 
 onMounted(() => {
   if (!props.quizzes) {
@@ -129,21 +147,65 @@ const getStatusClass = (quizId: number) => (isAnswered(quizId) ? 'text-green-700
     </div>
 
     <!-- Loading State -->
-    <div v-if="props.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div v-for="i in 3" :key="i" class="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
-        <div class="h-32 bg-gray-200"></div>
+    <div v-if="props.isLoading && props.viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="i in 6" :key="i" class="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+        <div class="h-32 bg-gradient-to-br from-gray-200 to-gray-300"></div>
         <div class="p-4 space-y-3">
-          <div class="flex items-center space-x-2">
-            <div class="w-4 h-4 bg-gray-200 rounded"></div>
-            <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+          <div class="bg-gray-100 rounded-lg px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-5 h-5 bg-gray-200 rounded"></div>
+              <div class="flex-1">
+                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
           </div>
-          <div class="flex items-center space-x-2">
-            <div class="w-4 h-4 bg-gray-200 rounded"></div>
-            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+          <div class="flex items-center">
+            <div class="w-5 h-5 bg-gray-200 rounded mr-2.5"></div>
+            <div class="h-3 bg-gray-200 rounded w-32"></div>
           </div>
-          <div class="flex items-center justify-between pt-2">
-            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
-            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+          <div class="flex items-center">
+            <div class="w-5 h-5 bg-gray-200 rounded mr-2.5"></div>
+            <div class="h-3 bg-gray-200 rounded w-24"></div>
+          </div>
+          <div class="pt-2 flex items-center justify-between">
+            <div class="h-4 bg-gray-200 rounded w-24"></div>
+            <div class="h-4 bg-gray-200 rounded w-20"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State - Rows View -->
+    <div v-else-if="props.isLoading && props.viewMode === 'rows'" class="space-y-3">
+      <div v-for="i in 6" :key="i" class="rounded-lg border border-gray-200 bg-white overflow-hidden animate-pulse">
+        <div class="flex items-stretch min-h-[140px]">
+          <div class="hidden md:block w-48 bg-gradient-to-br from-gray-200 to-gray-300"></div>
+          <div class="flex-1 p-5 flex items-center">
+            <div class="flex items-start justify-between w-full gap-4">
+              <div class="flex-1 space-y-3">
+                <div class="bg-gray-100 rounded-lg px-4 py-2.5 inline-flex items-center gap-2.5 w-2/3">
+                  <div class="w-5 h-5 bg-gray-200 rounded"></div>
+                  <div class="h-4 bg-gray-200 rounded flex-1"></div>
+                </div>
+                <div class="h-5 bg-gray-200 rounded w-3/4"></div>
+                <div class="flex items-center gap-6">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-4 h-4 bg-gray-200 rounded"></div>
+                    <div class="h-3 bg-gray-200 rounded w-32"></div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-4 h-4 bg-gray-200 rounded"></div>
+                    <div class="h-3 bg-gray-200 rounded w-20"></div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <div class="h-3 bg-gray-200 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div class="h-10 w-32 bg-gray-200 rounded-lg"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
