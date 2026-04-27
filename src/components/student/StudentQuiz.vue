@@ -38,7 +38,25 @@ const emit = defineEmits<{
 const quizzesStore = useQuizzesStore()
 
 // COMPUTED
-const displayedQuizzes = computed(() => props.quizzes ?? quizzesStore.myStudentQuizzes)
+const displayedQuizzes = computed(() => {
+  const quizzes = props.quizzes ?? quizzesStore.myStudentQuizzes
+  
+  // Sort quizzes: unanswered first, then answered, both sorted by date (newest to oldest)
+  return [...quizzes].sort((a, b) => {
+    const aAnswered = isAnswered(a.id)
+    const bAnswered = isAnswered(b.id)
+    
+    // If one is answered and the other is not, unanswered comes first
+    if (aAnswered !== bAnswered) {
+      return aAnswered ? 1 : -1
+    }
+    
+    // Both have the same answered status, sort by due date (newest to oldest)
+    const aDate = new Date(a.dueDate).getTime()
+    const bDate = new Date(b.dueDate).getTime()
+    return bDate - aDate
+  })
+})
 
 onMounted(() => {
   if (!props.quizzes) {

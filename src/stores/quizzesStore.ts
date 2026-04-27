@@ -85,100 +85,106 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const user = authLocal.currentUser
     if (!user || user.role !== 'student' || !user.id) return
 
-    const coursesStoreLocal = useCoursesStore()
-    const courses = coursesStoreLocal.allCourses.filter(c => c.status !== 'Archived')
+    isLoading.value = true
 
-    // Fetch submitted attempts from backend to determine quiz status
     try {
-      const attemptsResponse = await api.get(`/Attempt/student/${user.id}`)
+      const coursesStoreLocal = useCoursesStore()
+      const courses = coursesStoreLocal.allCourses.filter(c => c.status !== 'Archived')
 
-      if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
-        const newSubmittedIds = new Set<number>()
-        const newAttemptScores: Record<number, { score: number; totalPoints: number }> = {}
+      // Fetch submitted attempts from backend to determine quiz status
+      try {
+        const attemptsResponse = await api.get(`/Attempt/student/${user.id}`)
 
-        // Process attempts
-        attemptsResponse.data.forEach((attempt: { quizId: number; submittedAt: string | null; score?: number | null; totalPoints?: number | null }) => {
-          if (attempt.submittedAt) {
-            newSubmittedIds.add(attempt.quizId)
-          }
+        if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
+          const newSubmittedIds = new Set<number>()
+          const newAttemptScores: Record<number, { score: number; totalPoints: number }> = {}
 
-          // Backend returns score as earned points (not percentage) and totalPoints as sum of question points
-          if (attempt.score != null && attempt.totalPoints != null) {
-            const score = typeof attempt.score === 'number' ? attempt.score : Number(attempt.score)
-            const total = typeof attempt.totalPoints === 'number' ? attempt.totalPoints : Number(attempt.totalPoints)
+          // Process attempts
+          attemptsResponse.data.forEach((attempt: { quizId: number; submittedAt: string | null; score?: number | null; totalPoints?: number | null }) => {
+            if (attempt.submittedAt) {
+              newSubmittedIds.add(attempt.quizId)
+            }
 
-            if (total > 0) {
-              const actualScore = Math.round(score)
-              newAttemptScores[attempt.quizId] = {
-                score: actualScore,
-                totalPoints: total,
+            // Backend returns score as earned points (not percentage) and totalPoints as sum of question points
+            if (attempt.score != null && attempt.totalPoints != null) {
+              const score = typeof attempt.score === 'number' ? attempt.score : Number(attempt.score)
+              const total = typeof attempt.totalPoints === 'number' ? attempt.totalPoints : Number(attempt.totalPoints)
+
+              if (total > 0) {
+                const actualScore = Math.round(score)
+                newAttemptScores[attempt.quizId] = {
+                  score: actualScore,
+                  totalPoints: total,
+                }
               }
             }
+          })
+
+          submittedQuizIds.value = newSubmittedIds
+          attemptScores.value = newAttemptScores
+        }
+      } catch (error) {
+        console.error('Failed to fetch student attempts:', error)
+      }
+
+      // Fetch student's enrolled sections to get section information
+      const studentSections: Record<number, string> = {}
+      try {
+        const enrollmentsResponse = await api.get(`/Enrollment/student/${user.id}`)
+        if (enrollmentsResponse.data && Array.isArray(enrollmentsResponse.data)) {
+          // Map courseId to section name
+          enrollmentsResponse.data.forEach((enrollment: { courseId: number; section?: string; sectionName?: string }) => {
+            // The section is a direct string property, not nested
+            const sectionName = enrollment.section || enrollment.sectionName || ''
+            studentSections[enrollment.courseId] = sectionName
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch student enrollments:', error)
+      }
+
+      const results = await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const response = await quizService.getQuizzesForCourse(course.id, user.id!, true)
+            const quizzesData = response.data || response || []
+
+            const arr = Array.isArray(quizzesData) ? quizzesData : []
+            return arr.map((quiz: StudentQuizDto) => {
+              if (!quiz) return null
+
+              // Get section from student's enrollment or from quiz data
+              const sectionName = studentSections[course.id] ||
+                                 quiz.sectionName ||
+                                 (quiz.section && quiz.section.name) ||
+                                 ''
+
+              return {
+                id: quiz.quizId || quiz.id || 0,
+                subject: course.name,
+                title: quiz.title,
+                description: quiz.description || '',
+                dueDate: quiz.dueAt || quiz.dueDate || '',
+                class: '',
+                timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
+                status: 'Not Started',
+                color: 'blue',
+                maxAttempts: quiz.maxAttempts || 3,
+                courseCode: course.code || '',
+                courseSection: sectionName
+              }
+            }).filter(Boolean) as StudentQuizItem[]
+          } catch (e) {
+            console.error(`Failed to load quizzes for course ${course.id}`, e)
+            return []
           }
         })
+      )
 
-        submittedQuizIds.value = newSubmittedIds
-        attemptScores.value = newAttemptScores
-      }
-    } catch (error) {
-      console.error('Failed to fetch student attempts:', error)
+      studentQuizzesFromApi.value = results.flat()
+    } finally {
+      isLoading.value = false
     }
-
-    // Fetch student's enrolled sections to get section information
-    const studentSections: Record<number, string> = {}
-    try {
-      const enrollmentsResponse = await api.get(`/Enrollment/student/${user.id}`)
-      if (enrollmentsResponse.data && Array.isArray(enrollmentsResponse.data)) {
-        // Map courseId to section name
-        enrollmentsResponse.data.forEach((enrollment: { courseId: number; section?: string; sectionName?: string }) => {
-          // The section is a direct string property, not nested
-          const sectionName = enrollment.section || enrollment.sectionName || ''
-          studentSections[enrollment.courseId] = sectionName
-        })
-      }
-    } catch (error) {
-      console.error('Failed to fetch student enrollments:', error)
-    }
-
-    const results = await Promise.all(
-      courses.map(async (course) => {
-        try {
-          const response = await quizService.getQuizzesForCourse(course.id, user.id!, true)
-          const quizzesData = response.data || response || []
-
-          const arr = Array.isArray(quizzesData) ? quizzesData : []
-          return arr.map((quiz: StudentQuizDto) => {
-            if (!quiz) return null
-
-            // Get section from student's enrollment or from quiz data
-            const sectionName = studentSections[course.id] ||
-                               quiz.sectionName ||
-                               (quiz.section && quiz.section.name) ||
-                               ''
-
-            return {
-              id: quiz.quizId || quiz.id || 0,
-              subject: course.name,
-              title: quiz.title,
-              description: quiz.description || '',
-              dueDate: quiz.dueAt || quiz.dueDate || '',
-              class: '',
-              timeLimit: quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} min` : '30 min',
-              status: 'Not Started',
-              color: 'blue',
-              maxAttempts: quiz.maxAttempts || 3,
-              courseCode: course.code || '',
-              courseSection: sectionName
-            }
-          }).filter(Boolean) as StudentQuizItem[]
-        } catch (e) {
-          console.error(`Failed to load quizzes for course ${course.id}`, e)
-          return []
-        }
-      })
-    )
-
-    studentQuizzesFromApi.value = results.flat()
   }
 
   function loadArchivedSeedQuizzesFromStorage() {
