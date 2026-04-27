@@ -346,13 +346,13 @@ onMounted(() => {
       :selected-date-events="selectedDateEvents"
       @close="closeModal"
       @submit="onSubmit"
-      @update:form-title="val => (formTitle = val)"
-      @update:form-date="val => (formDate = val)"
-      @update:form-time="val => (formTime = val)"
-      @update:form-type="val => (formType = val)"
-      @update:form-is-deadline="val => (formIsDeadline = val)"
+      @update:form-title="(val: string) => (formTitle = val)"
+      @update:form-date="(val: string) => (formDate = val)"
+      @update:form-time="(val: string) => (formTime = val)"
+      @update:form-type="(val: CalendarEventType) => (formType = val)"
+      @update:form-is-deadline="(val: boolean) => (formIsDeadline = val)"
       @openEdit="openEdit"
-      @quickDelete="id => { editingEventId = id; onDelete() }"
+      @quickDelete="(id: number) => { editingEventId = id; onDelete() }"
     />
 
     <CalendarEventEditModal

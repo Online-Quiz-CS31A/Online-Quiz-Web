@@ -206,7 +206,7 @@ function closePreview() {
                 class="flex flex-col gap-1"
               >
                 <div class="flex items-center gap-3">
-                  <span class="text-gray-600 font-medium">{{ index + 1 }}.</span>
+                  <span class="text-gray-600 font-medium">{{ Number(index) + 1 }}.</span>
                   <input
                     type="text"
                     :value="showAnswers && item && String(item).trim() !== '' ? item : ''"
@@ -217,7 +217,7 @@ function closePreview() {
                         ? 'bg-[#86efac] border-[#4ade80] text-green-900'
                         : 'bg-gray-50 border-[#7B90DF]'
                     ]"
-                    :placeholder="`Item ${index + 1}`"
+                    :placeholder="`Item ${Number(index) + 1}`"
                   />
                 </div>
               </div>
@@ -234,7 +234,7 @@ function closePreview() {
                     :key="index"
                     class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg"
                   >
-                    {{ index + 1 }}. {{ pair.left }}
+                    {{ Number(index) + 1 }}. {{ pair.left }}
                   </div>
                 </div>
 
@@ -260,9 +260,9 @@ function closePreview() {
                       <option
                         v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as any).pairs || [])"
                         :key="rightIndex"
-                        :value="rightIndex"
+                        :value="Number(rightIndex)"
                       >
-                        {{ String.fromCharCode(65 + rightIndex) }}. {{ rightPair.right }}
+                        {{ String.fromCharCode(65 + Number(rightIndex)) }}. {{ rightPair.right }}
                       </option>
                     </select>
                     <p
@@ -284,13 +284,13 @@ function closePreview() {
                 class="flex flex-col gap-1"
               >
                 <div class="flex items-center gap-3">
-                  <span class="text-gray-600 font-medium">Blank {{ index + 1 }}:</span>
+                  <span class="text-gray-600 font-medium">Blank {{ Number(index) + 1 }}:</span>
                   <input
                     type="text"
-                    v-model="fillBlankAnswers[index]"
+                    v-model="fillBlankAnswers[Number(index)]"
                     readonly
                     class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl bg-gray-50 focus:outline-none cursor-default"
-                    :placeholder="`Fill in blank ${index + 1}`"
+                    :placeholder="`Fill in blank ${Number(index) + 1}`"
                   />
                 </div>
               </div>

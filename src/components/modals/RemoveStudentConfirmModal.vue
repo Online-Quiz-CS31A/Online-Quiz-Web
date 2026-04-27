@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, ref, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 
 const props = defineProps<{ 

@@ -979,13 +979,13 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                 :key="index"
                 class="flex items-center gap-3"
               >
-                <span class="text-gray-600 font-medium">{{ index + 1 }}.</span>
+                <span class="text-gray-600 font-medium">{{ Number(index) + 1 }}.</span>
                 <input
                   type="text"
-                  v-model="enumerationAnswers[index]"
-                  @input="updateEnumerationAnswer(index, enumerationAnswers[index])"
+                  v-model="enumerationAnswers[Number(index)]"
+                  @input="updateEnumerationAnswer(Number(index), enumerationAnswers[Number(index)])"
                   class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
-                  :placeholder="`Item ${index + 1}`"
+                  :placeholder="`Item ${Number(index) + 1}`"
                 />
               </div>
             </div>
@@ -1001,7 +1001,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                     :key="index"
                     class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg"
                   >
-                    {{ index + 1 }}. {{ pair.left }}
+                    {{ Number(index) + 1 }}. {{ pair.left }}
                   </div>
                 </div>
 
@@ -1014,17 +1014,17 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                     class="mb-2"
                   >
                     <select
-                      v-model.number="matchingAnswers[leftIndex]"
-                      @change="updateMatchingAnswer(leftIndex, matchingAnswers[leftIndex])"
+                      v-model.number="matchingAnswers[Number(leftIndex)]"
+                      @change="updateMatchingAnswer(Number(leftIndex), matchingAnswers[Number(leftIndex)])"
                       class="w-full p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
                     >
                       <option :value="undefined">Select answer...</option>
                       <option
                         v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as any).pairs || [])"
                         :key="rightIndex"
-                        :value="rightIndex"
+                        :value="Number(rightIndex)"
                       >
-                        {{ String.fromCharCode(65 + rightIndex) }}. {{ rightPair.right }}
+                        {{ String.fromCharCode(65 + Number(rightIndex)) }}. {{ rightPair.right }}
                       </option>
                     </select>
                   </div>
@@ -1035,13 +1035,13 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             <!-- Fill in the Blank -->
             <div v-else-if="questions[currentQuestion].type === 'fill-blank' || questions[currentQuestion].type === 'FillBlank'" class="space-y-3">
               <div v-for="(blank, index) in (((questions[currentQuestion] as any)?.blanks) || Array(1).fill({}))" :key="index" class="flex items-center gap-3">
-                <span class="text-gray-600 font-medium">Blank {{ index + 1 }}:</span>
+                <span class="text-gray-600 font-medium">Blank {{ Number(index) + 1 }}:</span>
                 <input
                   type="text"
-                  v-model="fillBlankAnswers[index]"
-                  @input="updateFillBlankAnswer(index, fillBlankAnswers[index])"
+                  v-model="fillBlankAnswers[Number(index)]"
+                  @input="updateFillBlankAnswer(Number(index), fillBlankAnswers[Number(index)])"
                   class="flex-1 p-3 border-2 border-[#7B90DF] rounded-xl focus:border-[#4285f4] focus:outline-none"
-                  :placeholder="`Fill in blank ${index + 1}`"
+                  :placeholder="`Fill in blank ${Number(index) + 1}`"
                 />
               </div>
             </div>
