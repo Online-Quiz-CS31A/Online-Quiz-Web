@@ -40,6 +40,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     isHistoricalReview: false
   })
 
+  // Timer state
+  const timerSeconds = ref(0)
+  const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
+
   const quizAttemptHistory = ref<QuizAttemptHistory[]>([])
   const quizDoneMap = ref<Record<string, boolean>>({})
   const quizzesVersion = ref(0)
@@ -1223,6 +1227,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function clearAttemptStorage() {
+    stopTimer()
     currentAttempt.quizId = null
     currentAttempt.quizTitle = ''
     currentAttempt.questionsLength = 0
@@ -1233,6 +1238,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentAttempt.durationSeconds = 0
     currentAttempt.isOngoing = false
     currentAttempt.isHistoricalReview = false
+    timerSeconds.value = 0
   }
 
   function getRemainingSeconds(): number {
@@ -1242,6 +1248,52 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const elapsed = Math.floor((now - start) / 1000)
     const remaining = currentAttempt.durationSeconds - elapsed
     return Math.max(0, remaining)
+  }
+
+  function initializeTimer(durationSeconds: number) {
+    currentAttempt.durationSeconds = durationSeconds
+    
+    if (currentAttempt.isOngoing && currentAttempt.startAtISO) {
+      // Calculate remaining time for ongoing attempt
+      timerSeconds.value = getRemainingSeconds()
+    } else {
+      // New attempt - use full duration
+      timerSeconds.value = durationSeconds
+    }
+  }
+
+  function startTimer(onTimeout?: () => void) {
+    // Clear any existing timer
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+
+    // Start new timer
+    timerInterval.value = setInterval(() => {
+      if (timerSeconds.value > 0) {
+        timerSeconds.value--
+        
+        // Auto-submit when timer reaches 0
+        if (timerSeconds.value === 0) {
+          stopTimer()
+          if (onTimeout) {
+            onTimeout()
+          }
+        }
+      }
+    }, 1000)
+  }
+
+  function stopTimer() {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+  }
+
+  function getTimerValue(): number {
+    return timerSeconds.value
   }
 
   function calculateScore(): { score: number; totalPoints: number; percentage: number } {
@@ -1801,6 +1853,12 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     markQuizAsSubmitted,
     attemptScores,
     loadStudentQuizzesFromStorage,
-    saveStudentQuizzesToStorage
+    saveStudentQuizzesToStorage,
+    // Timer methods
+    timerSeconds,
+    initializeTimer,
+    startTimer,
+    stopTimer,
+    getTimerValue
   }
 })

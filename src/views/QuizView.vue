@@ -72,9 +72,6 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   const enumerationAnswers = ref<string[]>([])
   const matchingAnswers = ref<Record<number, number>>({})
   const fillBlankAnswers = ref<string[]>([])
-  const timer = ref(0)
-  const timerInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  const durationSeconds = ref(0)
   const isLoading = ref(false)
   const isSubmitting = ref(false)
   const quizMetadata = ref<QuizMetadata>({})
@@ -487,10 +484,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   }
 
   const finishQuiz = async () => {
-    if (timerInterval.value) {
-      clearInterval(timerInterval.value)
-      timerInterval.value = null
-    }
+    quizzesStore.stopTimer()
 
     try {
       const qid = quizId.value
@@ -508,10 +502,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   }
 
   const autoSubmitOnTimeout = async () => {
-    if (timerInterval.value) {
-      clearInterval(timerInterval.value)
-      timerInterval.value = null
-    }
+    quizzesStore.stopTimer()
 
     await submitAttempt()
     quizzesStore.saveAttemptToHistory()
@@ -564,10 +555,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     quizSecurityService.stop()
 
     // Stop the timer
-    if (timerInterval.value) {
-      clearInterval(timerInterval.value)
-      timerInterval.value = null
-    }
+    quizzesStore.stopTimer()
 
     // Show final warning message
     violationMessage.value = 'Maximum violations reached! Quiz is being submitted automatically...'
@@ -618,8 +606,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   const initDuration = async () => {
     const qid = quizId.value
     if (qid == null) {
-      durationSeconds.value = 0
-      timer.value = 0
+      quizzesStore.initializeTimer(0)
       return
     }
 
@@ -648,18 +635,12 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       }
     }
 
-    durationSeconds.value = sec > 0 ? sec : 0
-
-    // Set durationSeconds in currentAttempt BEFORE calling getRemainingSeconds
+    // Initialize timer in store
+    quizzesStore.initializeTimer(sec > 0 ? sec : 0)
+    
+    // Restore answers if ongoing attempt
     if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === qid) {
-      // Always update the durationSeconds to ensure it's set
-      quizzesStore.currentAttempt.durationSeconds = durationSeconds.value
-      
-      // Now calculate remaining time
-      timer.value = quizzesStore.getRemainingSeconds()
       restoreAnswers()
-    } else {
-      timer.value = durationSeconds.value
     }
   }
 
@@ -699,19 +680,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     })
   }
 
-  const startTimer = () => {
-    if (timerInterval.value) clearInterval(timerInterval.value)
-    timerInterval.value = setInterval(() => {
-      if (timer.value > 0) {
-        timer.value--
-        if (timer.value === 0) {
-          if (timerInterval.value) clearInterval(timerInterval.value)
-          timerInterval.value = null
-          autoSubmitOnTimeout()
-        }
-      }
-    }, 1000)
-  }
+
 
   // LIFECYCLE
   onMounted(async () => {
@@ -767,10 +736,11 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
       // Only auto-submit if timer has actually run out during quiz-taking
       // Don't auto-submit when first loading the page
-      if (durationSeconds.value > 0 && timer.value <= 0 && hasOngoingAttempt) {
+      const timerValue = quizzesStore.getTimerValue()
+      if (quizzesStore.currentAttempt.durationSeconds > 0 && timerValue <= 0 && hasOngoingAttempt) {
         autoSubmitOnTimeout()
-      } else if (durationSeconds.value > 0 && timer.value > 0) {
-        startTimer()
+      } else if (quizzesStore.currentAttempt.durationSeconds > 0 && timerValue > 0) {
+        quizzesStore.startTimer(autoSubmitOnTimeout)
       }
 
       // Start security monitoring
@@ -789,9 +759,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   })
 
   onUnmounted(() => {
-    if (timerInterval.value) {
-      clearInterval(timerInterval.value)
-    }
+    quizzesStore.stopTimer()
     quizSecurityService.stop()
     
     // Clear biometric verification flag when leaving the quiz
@@ -874,7 +842,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             <!-- Timer -->
             <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
               <div class="bg-[#4285f4] text-white px-6 py-2 rounded-full text-sm font-semibold">
-                {{ formatTime(timer) }}
+                {{ formatTime(quizzesStore.timerSeconds) }}
               </div>
             </div>
 
