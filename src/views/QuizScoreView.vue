@@ -157,13 +157,6 @@ const isEssayPendingGrading = (questionIndex: number): boolean => {
   // Get the grading status from backend
   const gradingStatus = answerGradingStatus.value.get(questionIndex)
   
-  console.log(`isEssayPendingGrading for question ${questionIndex}:`, {
-    questionType: q.questionType,
-    gradingStatus,
-    isNull: gradingStatus === null,
-    isUndefined: gradingStatus === undefined
-  })
-  
   // If isCorrect is null or undefined, it's pending grading
   return gradingStatus === null || gradingStatus === undefined
 }
@@ -391,46 +384,34 @@ const loadScoreData = async () => {
       }
     }
 
-    console.log('=== QuizScoreView: loadScoreData ===')
-    console.log('userId:', userId, 'quizId:', quizId)
-
     if (!userId || !quizId) {
-      console.error('Missing userId or quizId')
       isLoading.value = false
       return
     }
 
     const attemptsResponse = await api.get(`/Attempt/student/${userId}`)
-    console.log('Attempts response:', attemptsResponse.data)
 
     if (attemptsResponse.data && Array.isArray(attemptsResponse.data)) {
       const submittedAttempts = attemptsResponse.data.filter((attempt: AttemptResponse) =>
         attempt.quizId === quizId && attempt.submittedAt
       )
 
-      console.log('Submitted attempts for quiz:', submittedAttempts)
-
       if (submittedAttempts.length > 0) {
         submittedAttempts.sort((a: AttemptResponse, b: AttemptResponse) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
         )
         attemptData.value = submittedAttempts[0]
-        console.log('Using attempt:', attemptData.value)
 
         const quizResponse = await api.get(`/Quiz/${quizId}`, {
           params: { userId }
         })
 
-        console.log('Quiz response:', quizResponse.data)
-
         if (quizResponse.data) {
           quizData.value = quizResponse.data
 
           const questions = quizResponse.data.questions || []
-          console.log('Raw questions from API:', questions)
 
           const mappedQuestions = questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
-          console.log('Mapped questions:', mappedQuestions)
 
           const username = authStore.currentUser?.username
           if (username && quizData.value) {
@@ -451,7 +432,6 @@ const loadScoreData = async () => {
           }
 
           const answersResponse = await api.get(`/Answer/attempt/${attemptData.value.attemptId}?userId=${userId}`)
-          console.log('Answers response:', answersResponse.data)
 
           let answersList: AnswerResponse[] = []
           if (answersResponse.data) {
@@ -468,12 +448,9 @@ const loadScoreData = async () => {
                 (q.questionId || q.id) === answer.questionId
               )
 
-              console.log(`Processing answer for questionId ${answer.questionId}:`, answer, 'questionIndex:', questionIndex)
-
               if (questionIndex >= 0) {
                 const question = mappedQuestions[questionIndex]
                 const qType = (question.type || '').toLowerCase()
-                console.log(`Question type: ${qType}, isCorrect: ${answer.isCorrect}`)
 
                 // Store the grading status from backend
                 answerGradingStatus.value.set(questionIndex, answer.isCorrect)
@@ -484,8 +461,6 @@ const loadScoreData = async () => {
                     opt.choiceId === answer.choiceId
                   )
 
-                  console.log(`Single-choice: choiceId=${answer.choiceId}, choiceIndex=${choiceIndex}`)
-
                   if (choiceIndex != null && choiceIndex >= 0) {
                     quizzesStore.setAnswer(questionIndex, choiceIndex)
                     quizzesStore.markAnswered(questionIndex)
@@ -495,7 +470,6 @@ const loadScoreData = async () => {
                 else if (answer.textAnswer && qType === 'multiple-choice') {
                   try {
                     const parsed = JSON.parse(answer.textAnswer)
-                    console.log('Multiple-choice parsed:', parsed)
                     if (Array.isArray(parsed)) {
                       // parsed is array of choiceIds, convert to array of indices
                       const selectedIndices: number[] = []
@@ -505,7 +479,6 @@ const loadScoreData = async () => {
                           selectedIndices.push(idx)
                         }
                       })
-                      console.log('Multiple-choice selectedIndices:', selectedIndices)
                       if (selectedIndices.length > 0) {
                         // For multiple-choice, store array directly in answers
                         quizzesStore.currentAttempt.answers[questionIndex] = selectedIndices
@@ -518,7 +491,6 @@ const loadScoreData = async () => {
                 }
                 // Handle text/essay questions
                 else if (answer.textAnswer && (qType === 'text' || qType === 'essay')) {
-                  console.log('Text/essay answer:', answer.textAnswer, 'isCorrect:', answer.isCorrect)
                   quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
                   quizzesStore.markAnswered(questionIndex)
                 }
@@ -526,7 +498,6 @@ const loadScoreData = async () => {
                 else if (answer.textAnswer) {
                   try {
                     const parsed = JSON.parse(answer.textAnswer)
-                    console.log('Parsed JSON answer:', parsed)
                     if (qType === 'enumeration' && Array.isArray(parsed)) {
                       quizzesStore.setEnumerationAnswer(questionIndex, parsed)
                       quizzesStore.markAnswered(questionIndex)
@@ -539,9 +510,8 @@ const loadScoreData = async () => {
                       quizzesStore.setFillBlankAnswer(questionIndex, parsed)
                       quizzesStore.markAnswered(questionIndex)
                     }
-                  } catch (e) {
+                  } catch {
                     // If JSON parsing fails, treat as plain text
-                    console.warn('Failed to parse answer as JSON, treating as text:', e)
                     quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
                     quizzesStore.markAnswered(questionIndex)
                   }
@@ -559,13 +529,7 @@ const loadScoreData = async () => {
           quizzesStore.currentAttempt.startAtISO = attemptData.value.startedAt
           quizzesStore.currentAttempt.endAtISO = attemptData.value.submittedAt
           quizzesStore.currentAttempt.isOngoing = false
-
-          console.log('Final currentAttempt:', quizzesStore.currentAttempt)
-          console.log('Final questions from getScoreItems:', quizzesStore.getScoreItems())
-          console.log('Answer grading status:', answerGradingStatus.value)
         }
-      } else {
-        console.warn('No submitted attempts found for this quiz')
       }
     }
   } catch (error) {

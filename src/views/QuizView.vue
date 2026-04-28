@@ -237,7 +237,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       const userId = authStore.currentUser?.id
       const qid = quizId.value
       if (!qid || !userId) {
-        console.error('Missing quizId or userId:', { quizId: quizId.value, userId })
+        console.error('Missing quizId or userId')
         return
       }
 
@@ -252,7 +252,6 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         quizzesStore.currentAttempt.quizTitle = response.data.quizTitle || quizTitle.value
         quizzesStore.currentAttempt.startAtISO = response.data.startedAt
         quizzesStore.currentAttempt.isOngoing = true
-        // durationSeconds will be set in initDuration() after this function returns
       } else {
         console.error('No attemptId in response:', response.data)
       }
@@ -265,7 +264,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   const saveAnswerToBackend = async (questionIndex: number, answer: number | number[] | string | string[] | Record<number, number> | null) => {
     try {
       if (!attemptId.value || !authStore.currentUser?.id) {
-        console.warn('Cannot save answer: missing attemptId or userId')
+        console.error('Cannot save answer: missing attemptId or userId')
         return
       }
 
@@ -619,7 +618,6 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   const initDuration = async () => {
     const qid = quizId.value
     if (qid == null) {
-      console.warn('No quizId available')
       durationSeconds.value = 0
       timer.value = 0
       return
@@ -643,8 +641,6 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
           if (detail && detail.timeLimitMinutes) {
             sec = detail.timeLimitMinutes * 60
             quizMetadata.value.timeLimitMinutes = detail.timeLimitMinutes
-          } else {
-            console.warn('No timeLimitMinutes in API response')
           }
         } catch (error) {
           console.error('Failed to fetch quiz time limit:', error)
@@ -661,15 +657,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       
       // Now calculate remaining time
       timer.value = quizzesStore.getRemainingSeconds()
-      console.log('Timer initialized for ongoing attempt:', {
-        durationSeconds: durationSeconds.value,
-        remainingSeconds: timer.value,
-        startAtISO: quizzesStore.currentAttempt.startAtISO
-      })
       restoreAnswers()
     } else {
       timer.value = durationSeconds.value
-      console.log('Timer initialized for new attempt:', timer.value)
     }
   }
 
@@ -770,7 +760,12 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         await startAttemptInBackend()
       }
 
+      // Initialize duration and timer AFTER all async operations
       await initDuration()
+      
+      // Force reactivity update for timer
+      timer.value = timer.value
+      
       loadCurrentQuestionAnswers()
 
       // Only auto-submit if timer has actually run out during quiz-taking
