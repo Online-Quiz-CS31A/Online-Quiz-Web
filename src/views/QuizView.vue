@@ -696,25 +696,16 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   onMounted(async () => {
     isLoading.value = true
 
-    // Check biometric verification for students
-    const authLocal = useAuthStore()
-    const mountQid = quizId.value
-    if (authLocal.userRole === 'student' && mountQid != null) {
-      const biometricFlag = sessionStorage.getItem(`biometricVerifiedQuiz_${mountQid}`)
-      if (!biometricFlag && !history.state?.biometricVerified) {
-        router.replace({ name: 'student-prequiz', params: { quizId: mountQid.toString() } })
-        return
-      }
-    }
-
     try {
       // If we don't have a valid quizId, redirect to student home
+      const mountQid = quizId.value
       if (!mountQid) {
         console.error('No quizId available in QuizView')
         router.replace({ name: 'student' })
         return
       }
 
+      // Load questions first
       if (questions.value.length === 0) {
         const authLocal2 = useAuthStore()
         if (authLocal2.currentUser?.id) {
@@ -744,7 +735,18 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         }
       }
 
+      // Check if there's an ongoing attempt
       const hasOngoingAttempt = await loadAttemptFromBackend()
+
+      // Check biometric verification for students ONLY if no ongoing attempt
+      const authLocal = useAuthStore()
+      if (authLocal.userRole === 'student' && mountQid != null && !hasOngoingAttempt) {
+        const biometricFlag = sessionStorage.getItem(`biometricVerifiedQuiz_${mountQid}`)
+        if (!biometricFlag && !history.state?.biometricVerified) {
+          router.replace({ name: 'student-prequiz', params: { quizId: mountQid.toString() } })
+          return
+        }
+      }
 
       if (!hasOngoingAttempt) {
         await startAttemptInBackend()
