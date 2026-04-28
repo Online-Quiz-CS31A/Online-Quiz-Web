@@ -88,22 +88,38 @@ export const useBiometricStore = defineStore('biometric', () => {
 
   // SignalR event handlers
   function handleEnrollmentStarted(data: EnrollmentPayload) {
-    enrollmentState.value = 'waiting-for-scan'
-    enrollmentSlotId.value = data.slotId ?? null
-    enrollmentError.value = null
-    enrollmentErrorCode.value = null
-    toast.info('Please place your finger on the scanner')
-  }
-
-  function handleEnrollmentCompleted(data: EnrollmentPayload) {
-    if (data.success) {
-      enrollmentState.value = 'success'
+    // Only handle if this is for the user we're enrolling
+    if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
+      enrollmentState.value = 'waiting-for-scan'
       enrollmentSlotId.value = data.slotId ?? null
       enrollmentError.value = null
       enrollmentErrorCode.value = null
-      toast.success('Fingerprint saved successfully!')
-      refreshEnrollmentStatuses()
-    } else {
+      toast.info('Please place your finger on the scanner')
+    }
+  }
+
+  function handleEnrollmentCompleted(data: EnrollmentPayload) {
+    // Only handle if this is for the user we're enrolling
+    if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
+      if (data.success) {
+        enrollmentState.value = 'success'
+        enrollmentSlotId.value = data.slotId ?? null
+        enrollmentError.value = null
+        enrollmentErrorCode.value = null
+        toast.success('Fingerprint saved successfully!')
+        refreshEnrollmentStatuses()
+      } else {
+        enrollmentState.value = 'failed'
+        enrollmentError.value = data.message || 'Unable to save fingerprint. Please try again.'
+        enrollmentErrorCode.value = data.errorCode ?? null
+        toast.error(data.message || 'Unable to save fingerprint')
+      }
+    }
+  }
+
+  function handleEnrollmentFailed(data: EnrollmentPayload) {
+    // Only handle if this is for the user we're enrolling
+    if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
       enrollmentState.value = 'failed'
       enrollmentError.value = data.message || 'Unable to save fingerprint. Please try again.'
       enrollmentErrorCode.value = data.errorCode ?? null
@@ -111,43 +127,44 @@ export const useBiometricStore = defineStore('biometric', () => {
     }
   }
 
-  function handleEnrollmentFailed(data: EnrollmentPayload) {
-    enrollmentState.value = 'failed'
-    enrollmentError.value = data.message || 'Unable to save fingerprint. Please try again.'
-    enrollmentErrorCode.value = data.errorCode ?? null
-    toast.error(data.message || 'Unable to save fingerprint')
-  }
-
   function handleVerificationStarted(_data: VerificationPayload) {
-    void _data
-    verificationState.value = 'waiting-for-scan'
-    verificationError.value = null
-    verificationErrorCode.value = null
-    toast.info('Please place your finger on the scanner')
+    // Only handle if this is for the user we're verifying
+    if (verificationTargetUserId.value && _data.userId === verificationTargetUserId.value) {
+      verificationState.value = 'waiting-for-scan'
+      verificationError.value = null
+      verificationErrorCode.value = null
+      toast.info('Please place your finger on the scanner')
+    }
   }
 
   function handleVerificationCompleted(data: VerificationPayload) {
-    if (data.success && data.matched) {
-      verificationState.value = 'success'
-      verificationMatched.value = true
-      verificationError.value = null
-      verificationErrorCode.value = null
-      toast.success('Identity verified successfully!')
-    } else {
+    // Only handle if this is for the user we're verifying
+    if (verificationTargetUserId.value && data.userId === verificationTargetUserId.value) {
+      if (data.success && data.matched) {
+        verificationState.value = 'success'
+        verificationMatched.value = true
+        verificationError.value = null
+        verificationErrorCode.value = null
+        toast.success('Identity verified successfully!')
+      } else {
+        verificationState.value = 'failed'
+        verificationMatched.value = false
+        verificationError.value = data.message || 'Unable to verify identity. Please try again.'
+        verificationErrorCode.value = data.errorCode ?? null
+        toast.error(data.message || 'Unable to verify identity')
+      }
+    }
+  }
+
+  function handleVerificationFailed(data: VerificationPayload) {
+    // Only handle if this is for the user we're verifying
+    if (verificationTargetUserId.value && data.userId === verificationTargetUserId.value) {
       verificationState.value = 'failed'
       verificationMatched.value = false
       verificationError.value = data.message || 'Unable to verify identity. Please try again.'
       verificationErrorCode.value = data.errorCode ?? null
       toast.error(data.message || 'Unable to verify identity')
     }
-  }
-
-  function handleVerificationFailed(data: VerificationPayload) {
-    verificationState.value = 'failed'
-    verificationMatched.value = false
-    verificationError.value = data.message || 'Unable to verify identity. Please try again.'
-    verificationErrorCode.value = data.errorCode ?? null
-    toast.error(data.message || 'Unable to verify identity')
   }
 
   function handleDeviceStatusChanged(data: DeviceStatusChangedPayload) {
