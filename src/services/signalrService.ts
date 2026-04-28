@@ -40,7 +40,9 @@ let connection: HubConnection | null = null
 function getHubUrl(): string {
   const baseUrl = import.meta.env.VITE_API_BASE_URL as string
   if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured')
-  return baseUrl.replace(/\/$/, '') + '/hubs/biometric'
+  // Remove /api suffix if present, since SignalR hub is at root level
+  const rootUrl = baseUrl.replace(/\/api\/?$/, '')
+  return rootUrl.replace(/\/$/, '') + '/hubs/biometric'
 }
 
 export function getConnection(): HubConnection | null {
