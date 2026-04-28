@@ -278,29 +278,9 @@ const authStore = useAuthStore()
 const quizzesStore = useQuizzesStore()
 
 const activeQuizzes = computed<TeacherQuizItem[]>(() => {
-  const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
-  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes, ...apiQuizzes.value]
-
-  const courseName = currentCourse.value?.name || ''
-  const sectionName = currentSection.value?.name || ''
-
-  const base = allQuizzes
+  return apiQuizzes.value
     .filter(q => (q.status || 'published') !== 'draft')
     .filter(q => !(q as any).archived)
-
-  if (isArchivedForQuizzes.value) {
-    return base
-      .filter(q => (!sectionName || q.class === sectionName))
-      .sort((a, b) => {
-        const aDate = new Date(a.createdAt || 0).getTime()
-        const bDate = new Date(b.createdAt || 0).getTime()
-        return bDate - aDate
-      })
-  }
-
-  return base
-    .filter(q => (!courseName || q.subject === courseName || q.subject.includes(courseName)))
-    .filter(q => (!sectionName || q.class === sectionName || q.class.includes(sectionName)))
     .sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime()
       const bDate = new Date(b.createdAt || 0).getTime()
