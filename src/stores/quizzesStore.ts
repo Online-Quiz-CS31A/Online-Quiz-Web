@@ -1,4 +1,4 @@
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type { TeacherQuizItem, StudentQuizItem, QuizQuestion, ReviewQuestion, QuizAttemptHistory } from '../interfaces/interfaces'
 import { useAuthStore } from './authStore'
@@ -26,6 +26,57 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     assignedCourseIds: [] as number[],
     quizIdsGroup: [] as number[],
   })
+
+  function getDraftStorageKey(): string | null {
+    const auth = useAuthStore()
+    const userId = auth.currentUser?.id
+    if (!userId) return null
+    return `quiz_draft_${userId}`
+  }
+
+  function saveCurrentQuizDraftToStorage() {
+    const key = getDraftStorageKey()
+    if (!key) return
+    try {
+      localStorage.setItem(key, JSON.stringify(currentQuiz))
+    } catch (e) {
+      console.error('Failed to save quiz draft to localStorage:', e)
+    }
+  }
+
+  function loadCurrentQuizDraftFromStorage(): boolean {
+    const key = getDraftStorageKey()
+    if (!key) return false
+    try {
+      const stored = localStorage.getItem(key)
+      if (!stored) return false
+      const parsed = JSON.parse(stored)
+      Object.assign(currentQuiz, parsed)
+      return true
+    } catch (e) {
+      console.error('Failed to load quiz draft from localStorage:', e)
+      return false
+    }
+  }
+
+  function clearCurrentQuizDraftFromStorage() {
+    const key = getDraftStorageKey()
+    if (!key) return
+    try {
+      localStorage.removeItem(key)
+    } catch (e) {
+      console.error('Failed to clear quiz draft from localStorage:', e)
+    }
+  }
+
+  watch(
+    () => JSON.stringify(currentQuiz),
+    () => {
+      if (currentQuiz.title || currentQuiz.questions.length > 0) {
+        saveCurrentQuizDraftToStorage()
+      }
+    }
+  )
 
   const currentAttempt = reactive({
     quizId: null as number | null,
@@ -853,6 +904,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     currentQuiz.questions = []
     currentQuiz.currentQuestionIndex = -1
     currentQuiz.assignedSections = []
+    currentQuiz.assignedCourseIds = []
+    currentQuiz.quizIdsGroup = []
+    clearCurrentQuizDraftFromStorage()
   }
 
   function getAllQuizzes(): TeacherQuizItem[] {
@@ -1246,7 +1300,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
   function getRemainingSeconds(): number {
     if (!currentAttempt.startAtISO || !currentAttempt.isOngoing) return 0
-    const start = new Date(currentAttempt.startAtISO).getTime()
+    const startAtUTC = currentAttempt.startAtISO.endsWith('Z') ? currentAttempt.startAtISO : currentAttempt.startAtISO + 'Z'
+    const start = new Date(startAtUTC).getTime()
     const now = Date.now()
     const elapsed = Math.floor((now - start) / 1000)
     const remaining = currentAttempt.durationSeconds - elapsed
@@ -1873,12 +1928,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     attemptScores,
     loadStudentQuizzesFromStorage,
     saveStudentQuizzesToStorage,
-    // Timer methods
     timerSeconds,
     initializeTimer,
     startTimer,
     stopTimer,
     getTimerValue,
-    setTimerValue
+    setTimerValue,
+    loadCurrentQuizDraftFromStorage,
+    clearCurrentQuizDraftFromStorage
   }
 })

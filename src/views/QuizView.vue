@@ -370,7 +370,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       isSubmitting.value = true
 
       const startTime = quizzesStore.currentAttempt.startAtISO
-        ? new Date(quizzesStore.currentAttempt.startAtISO).getTime()
+        ? parseUTCDate(quizzesStore.currentAttempt.startAtISO).getTime()
         : Date.now()
       const timeSpent = Math.floor((Date.now() - startTime) / 1000)
 
@@ -424,7 +424,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
           }
           
           if (timeLimitMinutes && timeLimitMinutes > 0) {
-            const startTime = new Date(ongoingAttempt.startedAt).getTime()
+            // Backend sends UTC time without 'Z' suffix - add it to ensure correct timezone handling
+            const startTimeStr = ongoingAttempt.startedAt.endsWith('Z') ? ongoingAttempt.startedAt : ongoingAttempt.startedAt + 'Z'
+            const startTime = new Date(startTimeStr).getTime()
             const now = Date.now()
             const elapsed = Math.floor((now - startTime) / 1000)
             const durationSeconds = timeLimitMinutes * 60
@@ -666,6 +668,12 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     return 0
   }
 
+  const parseUTCDate = (dateStr: string | null): Date => {
+    if (!dateStr) return new Date()
+    const utcStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z'
+    return new Date(utcStr)
+  }
+
   const initDuration = async () => {
     const qid = quizId.value
     if (qid == null) {
@@ -887,7 +895,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         const timerValue = quizzesStore.getTimerValue()
         
         if (timerValue <= 0 && hasOngoingAttempt && quizzesStore.currentAttempt.startAtISO) {
-          const start = new Date(quizzesStore.currentAttempt.startAtISO).getTime()
+          const start = parseUTCDate(quizzesStore.currentAttempt.startAtISO).getTime()
           const now = Date.now()
           const elapsed = Math.floor((now - start) / 1000)
           const actualRemaining = quizzesStore.currentAttempt.durationSeconds - elapsed

@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 
 const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
-const QuizContent = defineAsyncComponent(() => import('@/components/quiz/QuizContent.vue'))
 
 // CONSTANTS
 const router = useRouter()
@@ -103,7 +102,10 @@ function checkHasAssignedSections(): boolean {
 // LIFECYCLE
 onMounted(() => {
   if (quizzesStore.currentQuiz.id === null && quizzesStore.currentQuiz.questions.length === 0) {
-    quizzesStore.resetCurrentQuiz()
+    const loaded = quizzesStore.loadCurrentQuizDraftFromStorage()
+    if (!loaded) {
+      quizzesStore.resetCurrentQuiz()
+    }
   }
   syncPublished()
 
