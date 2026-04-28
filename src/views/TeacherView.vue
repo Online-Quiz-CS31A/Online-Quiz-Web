@@ -7,7 +7,6 @@ import { useCoursesStore } from '@/stores/coursesStore'
 const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 const Sidebar = defineAsyncComponent(() => import('@/components/Sidebar.vue'))
 const ActiveQuizzes = defineAsyncComponent(() => import('@/components/teacher/TeacherQuiz.vue'))
-const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCalendar.vue'))
 const TeacherClasses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
@@ -21,7 +20,7 @@ const ArchivedQuizzes = defineAsyncComponent(() => import('@/components/teacher/
 const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
 const showImport = ref(false)
-const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
+const currentSection = ref<'home' | 'quizzes' | 'courses' | 'archived'>('home')
 const archivedView = ref<'quizzes'>('quizzes') 
 const archivedQuizzesTab = ref<'published' | 'draft'>('published')
 
@@ -73,7 +72,7 @@ watch(
   () => route.query.section,
   (val) => {
     const section = (val as string) || ''
-    if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
+    if (section === 'courses' || section === 'quizzes' || section === 'home' || section === 'archived') {
       currentSection.value = section as typeof currentSection.value
     }
     if (section === 'home' || !section) {
@@ -114,11 +113,6 @@ const showImportModal = () => {
 
 const navigateToQuizzes = () => {
   currentSection.value = 'quizzes'
-  closeSidebar()
-}
-
-const navigateToCalendar = () => {
-  currentSection.value = 'calendar'
   closeSidebar()
 }
 
@@ -176,7 +170,7 @@ onMounted(async () => {
   document.removeEventListener('click', handleClickOutside)
   document.addEventListener('click', handleClickOutside)
   const section = (route.query.section as string) || ''
-  if (section === 'courses' || section === 'quizzes' || section === 'calendar' || section === 'home' || section === 'archived') {
+  if (section === 'courses' || section === 'quizzes' || section === 'home' || section === 'archived') {
     currentSection.value = section as typeof currentSection.value
   }
 
@@ -209,7 +203,6 @@ onUnmounted(() => {
       @import-questions="showImportModal"
       @nav-home="navigateToHome"
       @nav-quizzes="navigateToQuizzes"
-      @nav-calendar="navigateToCalendar"
       @nav-archived="navigateToArchived"
       @nav-archived-quizzes="navigateToArchivedQuizzes"
       @nav-archived-quizzes-published="navigateToArchivedQuizzesPublished"
@@ -232,8 +225,6 @@ onUnmounted(() => {
         </div>
         <!-- Quizzes Section -->
         <ViewAllQuizzes v-else-if="currentSection === 'quizzes'" />
-        <!-- Calendar Section -->
-        <SchoolCalendar v-else-if="currentSection === 'calendar'" />
         <!-- Archived Section -->
         <div v-else-if="currentSection === 'archived'" class="space-y-6">
           <!-- ArchivedCourses - Admin-only -->

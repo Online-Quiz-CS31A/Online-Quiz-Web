@@ -14,7 +14,7 @@ defineOptions({ name: 'Sidebar' })
 // TYPES
 interface Props {
   isActive: boolean
-  activeSection?: 'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'
+  activeSection?: 'home' | 'quizzes' | 'courses' | 'archived'
 }
 type ImportedQuestion = {
   id: number
@@ -50,7 +50,6 @@ defineEmits<{
   'join-class': []
   'nav-home': []
   'nav-quizzes': []
-  'nav-calendar': []
   'nav-archived': []
   'nav-archived-courses': []
   'nav-archived-classes': []
@@ -81,7 +80,6 @@ const isCoursesActive = computed(() => {
 const isHomeActive = computed(() => route.name === 'home')
 const activeSection = computed(() => props.activeSection)
 const isQuizzesActive = computed(() => activeSection.value === 'quizzes')
-const isCalendarActive = computed(() => activeSection.value === 'calendar')
 const isArchivedActive = computed(() => activeSection.value === 'archived')
 const isTeacher = computed(() => auth.userRole === 'teacher')
 const myClasses = computed(() => classesStore.myClasses)
@@ -258,19 +256,6 @@ async function handleImport(file: File) {
             >
               <i class="fas fa-clipboard-list w-5"></i>
               <span class="ml-3">Quizzes</span>
-            </button>
-          </li>
-
-          <li v-if="isTeacher">
-            <button
-              @click="$emit('nav-calendar')"
-              class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
-              :class="isCalendarActive
-                ? 'bg-blue-50 text-blue-700 shadow-sm'
-                : 'text-gray-700 hover:bg-gray-50'"
-            >
-              <i class="fas fa-calendar-alt w-5"></i>
-              <span class="ml-3">Calendar</span>
             </button>
           </li>
 
