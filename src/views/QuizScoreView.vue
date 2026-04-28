@@ -154,10 +154,13 @@ const isEssayPendingGrading = (questionIndex: number): boolean => {
   const q = questions.value[questionIndex]
   if (!q || (q.questionType !== 'text' && q.questionType !== 'essay')) return false
   
+  // If the question is unanswered, it's not pending grading - it's just unanswered
+  if (isQuestionUnanswered(q)) return false
+  
   // Get the grading status from backend
   const gradingStatus = answerGradingStatus.value.get(questionIndex)
   
-  // If isCorrect is null or undefined, it's pending grading
+  // If isCorrect is null or undefined AND the question was answered, it's pending grading
   return gradingStatus === null || gradingStatus === undefined
 }
 
@@ -166,6 +169,14 @@ const getQuestionButtonClass = (index: number) => {
   if (!question) return 'border-[#7B90DF] bg-[#F4F7F9] text-gray-800'
 
   const isActive = currentQuestion.value === index
+
+  // Check if unanswered first
+  if (isQuestionUnanswered(question)) {
+    if (isActive) {
+      return 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
+    }
+    return 'border-[#f87171] bg-[#fca5a5] text-red-800 hover:bg-red-300'
+  }
 
   // Check if it's an essay question pending grading
   if (isEssayPendingGrading(index)) {
