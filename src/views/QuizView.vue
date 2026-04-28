@@ -445,13 +445,13 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             const elapsed = Math.floor((now - startTime) / 1000)
             const durationSeconds = timeLimitMinutes * 60
             const remaining = durationSeconds - elapsed
-            
+
             console.log('=== Checking ongoing attempt expiration ===')
             console.log('Start time:', ongoingAttempt.startedAt)
             console.log('Elapsed seconds:', elapsed)
             console.log('Duration seconds:', durationSeconds)
             console.log('Remaining seconds:', remaining)
-            
+
             if (remaining <= 0) {
               console.log('Found expired ongoing attempt, auto-submitting it')
               try {
@@ -465,6 +465,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                 return false
               }
             }
+
+            // Store the duration so timer can calculate remaining time correctly on refresh
+            quizzesStore.currentAttempt.durationSeconds = durationSeconds
           }
           
           // Restore the attempt state
@@ -688,8 +691,10 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
     let sec = 0
 
-    // First, try to use the metadata we fetched in onMounted
-    if (quizMetadata.value.timeLimitMinutes) {
+    // For ongoing attempts, preserve existing duration to prevent timer reset on refresh
+    if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.durationSeconds > 0) {
+      sec = quizzesStore.currentAttempt.durationSeconds
+    } else if (quizMetadata.value.timeLimitMinutes) {
       sec = quizMetadata.value.timeLimitMinutes * 60
     } else {
       // Try to get time limit from myStudentQuizzes
@@ -711,8 +716,11 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       }
     }
 
-    quizzesStore.currentAttempt.durationSeconds = sec > 0 ? sec : 0
-    
+    // Only update durationSeconds if not already set (for ongoing attempts)
+    if (!quizzesStore.currentAttempt.isOngoing) {
+      quizzesStore.currentAttempt.durationSeconds = sec > 0 ? sec : 0
+    }
+
     // Initialize timer in store
     quizzesStore.initializeTimer(sec > 0 ? sec : 0)
     
