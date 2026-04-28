@@ -108,11 +108,6 @@ const router = createRouter({
           component: () => import('../components/admin/AdminQuizSettings.vue'),
         },
         {
-          path: 'data',
-          name: 'admin-data',
-          component: () => import('../components/admin/AdminDataManagement.vue'),
-        },
-        {
           path: 'analytics',
           name: 'admin-analytics',
           component: () => import('../components/admin/AdminAnalytics.vue'),
