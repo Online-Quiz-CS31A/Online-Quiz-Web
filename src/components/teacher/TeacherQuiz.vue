@@ -32,6 +32,20 @@ const router = useRouter()
 const quizzesStore = useQuizzesStore()
 const sectionsStore = useSectionsStore()
 
+const getPrimarySection = (quiz: TeacherQuizItem) => {
+  if (Array.isArray(quiz.assignedSections) && quiz.assignedSections.length > 0) return String(quiz.assignedSections[0])
+  return quiz.class || ''
+}
+
+const getSectionLabel = (quiz: TeacherQuizItem) => {
+  if (Array.isArray(quiz.assignedSections) && quiz.assignedSections.length > 0) {
+    const arr = quiz.assignedSections
+    if (arr.length === 1) return String(arr[0])
+    return `${String(arr[0])} (+${arr.length - 1} more)`
+  }
+  return quiz.class || ''
+}
+
 // PROPS
 const props = withDefaults(defineProps<Props>(), {
   hideAppHeader: false,
@@ -108,7 +122,7 @@ const openQuizInBuilder = async (quiz: TeacherQuizItem) => {
   await quizzesStore.loadQuizForEditingAsync(quiz.id)
   router.push({
     name: 'quiz-builder',
-    params: { id: quiz.class || 'default' },
+    params: { id: getPrimarySection(quiz) || 'default' },
     query: {
       archivedContext: props.archivedContextType || undefined,
       sectionId:
@@ -192,7 +206,9 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
   const submitted = quizzesStore.getQuizUniqueSubmitterCount(quiz.id)
   const coursesStore = useCoursesStore()
 
-  const quizSection = quiz.class?.trim().toLowerCase() ?? ''
+  const quizSection = (Array.isArray(quiz.assignedSections) && quiz.assignedSections.length > 0
+    ? String(quiz.assignedSections[0])
+    : quiz.class || '').trim().toLowerCase() ?? ''
   const quizSubject = quiz.subject?.trim().toLowerCase() ?? ''
 
   let matchingCourse = coursesStore.rawTeacherCourses.find(
@@ -210,7 +226,9 @@ const getSubmissionStats = (quiz: TeacherQuizItem) => {
     ? (matchingCourse.students || 0)
     : (() => {
 
-        const name = (quiz.class || '').trim()
+        const name = ((Array.isArray(quiz.assignedSections) && quiz.assignedSections.length > 0)
+          ? String(quiz.assignedSections[0])
+          : (quiz.class || '')).trim()
         if (!name) return quiz.total || 0
 
         const matchedSections = sectionsStore.allSections.filter(s => (s.name || '').trim() === name)
@@ -442,8 +460,8 @@ const formatDueDate = (dateStr: string) => {
               <div class="flex-1 min-w-0">
                 <div class="text-base leading-relaxed">
                   <span class="font-semibold text-blue-700">{{ quiz.subject }}</span>
-                  <span v-if="quiz.class" class="text-gray-500 text-sm ml-2">
-                    ({{ quiz.class }})
+                  <span v-if="getSectionLabel(quiz)" class="text-gray-500 text-sm ml-2">
+                    ({{ getSectionLabel(quiz) }})
                   </span>
                 </div>
               </div>
@@ -509,7 +527,7 @@ const formatDueDate = (dateStr: string) => {
                   </span>
                 </div>
                 <div class="text-base font-semibold" :class="quiz.status === 'draft' ? 'text-slate-800' : 'text-gray-900'">{{ quiz.title }}</div>
-                <div class="text-sm" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-600'">{{ quiz.subject }}</div>
+                <div class="text-sm" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-600'">{{ quiz.subject }}<span v-if="getSectionLabel(quiz)" class="text-gray-500 ml-2">({{ getSectionLabel(quiz) }})</span></div>
                 <div v-if="quiz.status === 'draft'" class="mt-3">
                   <button v-if="!quiz.archived" class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
                     <i class="fas fa-edit"></i>
