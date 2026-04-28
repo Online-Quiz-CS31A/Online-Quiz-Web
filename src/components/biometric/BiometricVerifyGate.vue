@@ -129,6 +129,17 @@ onUnmounted(() => {
     <div v-else-if="isEnrolled === true">
       <!-- Idle State -->
       <div v-if="store.verificationState === 'idle'">
+        <!-- Connection Status Warning (when not connected) -->
+        <div v-if="!store.isConnected" class="mb-3 flex items-start gap-3 p-3 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+          <AlertTriangle class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-amber-800">Scanner Not Ready</p>
+            <p class="text-sm text-amber-700 mt-1">
+              The fingerprint scanner is not connected. Please wait or contact your instructor.
+            </p>
+          </div>
+        </div>
+        
         <button
           :disabled="!canStartVerification"
           class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-[#4285f4] rounded-lg hover:bg-[#1976d2] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors cursor-pointer"
