@@ -359,6 +359,20 @@ async function handleImport(file: File) {
               Biometrics
             </RouterLink>
           </li>
+
+          <!-- Manual Grading -->
+          <li v-if="isTeacher">
+            <RouterLink
+              to="/teacher/manual-grading"
+              class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="route.path === '/teacher/manual-grading'
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
+            >
+              <i class="fas fa-pen-to-square w-5" :class="route.path === '/teacher/manual-grading' ? 'text-blue-500' : 'text-gray-400'"></i>
+              <span class="ml-3">Manual Grading</span>
+            </RouterLink>
+          </li>
         </ul>
       </div>
 

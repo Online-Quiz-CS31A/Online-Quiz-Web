@@ -15,8 +15,8 @@ const emit = defineEmits<{
 const questionTypes = [
   { value: 'multiple-choice', label: 'Multiple Choice', icon: 'fas fa-list-ul' },
   { value: 'true-false', label: 'True/False', icon: 'fas fa-check' },
+  { value: 'text', label: 'Essay', icon: 'fas fa-align-left' },
   // { value: 'fill-blank', label: 'Fill in the Blank', icon: 'fas fa-pencil-alt' },
-  // { value: 'text', label: 'Text', icon: 'fas fa-align-left' },
   // { value: 'matching', label: 'Matching', icon: 'fas fa-random' },
   // { value: 'enumeration', label: 'Enumeration', icon: 'fas fa-list-ol' }
 ]
@@ -26,7 +26,7 @@ function getQuestionTypeDescription(type: string) {
     'multiple-choice': 'Question with multiple possible answers',
     'true-false': 'Question with true or false options',
     'fill-blank': 'Question with blank spaces to fill',
-    'text': 'Question requiring a text answer',
+    'text': 'Essay question requiring manual grading',
     'matching': 'Question to match items from two columns',
     'enumeration': 'Question requiring a list of items'
   }
