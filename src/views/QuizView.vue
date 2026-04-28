@@ -775,6 +775,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   onMounted(async () => {
     isLoading.value = true
 
+    // Track if user is returning from review for error handling
+    let returningFromReviewFlag: string | null = null
+
     // Add browser navigation warning and auto-submit
     const handlePopState = async (event: PopStateEvent) => {
       event.preventDefault()
@@ -865,18 +868,13 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       const authLocal = useAuthStore()
       if (authLocal.userRole === 'student' && mountQid != null) {
         const biometricFlag = sessionStorage.getItem(`biometricVerifiedQuiz_${mountQid}`)
-        const returningFromReview = sessionStorage.getItem(`returningFromReview_${mountQid}`)
+        returningFromReviewFlag = sessionStorage.getItem(`returningFromReview_${mountQid}`)
         const fromReviewState = history.state?.fromReview
-        const shouldAllowAccess = biometricFlag || returningFromReview || fromReviewState || hasOngoingAttempt || history.state?.biometricVerified
-        
+        const shouldAllowAccess = biometricFlag || returningFromReviewFlag || fromReviewState || hasOngoingAttempt || history.state?.biometricVerified
+
         if (!shouldAllowAccess) {
           router.replace({ name: 'student-prequiz', params: { quizId: mountQid.toString() } })
           return
-        }
-        
-        // Clear the returning from review flag after checking
-        if (returningFromReview) {
-          sessionStorage.removeItem(`returningFromReview_${mountQid}`)
         }
       }
 
@@ -939,9 +937,18 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       })
       quizSecurityService.setCallbacks(handleSecurityViolation, handleMaxViolations)
       quizSecurityService.start()
+
+      // Clear the returning from review flag only after successful quiz load
+      // This ensures the flag persists if there's an error during loading
+      if (returningFromReviewFlag && mountQid != null) {
+        sessionStorage.removeItem(`returningFromReview_${mountQid}`)
+      }
     } catch (error) {
       console.error('Error loading quiz:', error)
-      router.replace({ name: 'student' })
+      // Only redirect if not returning from review (give them a chance to retry)
+      if (!returningFromReviewFlag) {
+        router.replace({ name: 'student' })
+      }
     } finally {
       await nextTick()
       isLoading.value = false

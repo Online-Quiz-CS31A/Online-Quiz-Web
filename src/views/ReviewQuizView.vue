@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, ArrowLeft } from 'lucide-vue-next'
 import AppHeader from '@/components/AppHeader.vue'
 import ConfirmUnansweredModal from '@/components/modals/ConfirmUnansweredModal.vue'
@@ -11,8 +11,29 @@ import api from '@/services/api'
 
 // CONSTANTS
 const router = useRouter()
+const route = useRoute()
 const quizzesStore = useQuizzesStore()
 const authStore = useAuthStore()
+
+// Helper to get quizId from multiple sources (store, URL, sessionStorage)
+const getQuizId = (): number | null => {
+  // First try store
+  const storeQuizId = quizzesStore.currentAttempt.quizId
+  if (storeQuizId) return storeQuizId
+
+  // Then try URL params
+  const urlQuizId = Number(route.params.quizId)
+  if (!isNaN(urlQuizId) && urlQuizId > 0) return urlQuizId
+
+  // Finally try sessionStorage
+  const storedQuizId = sessionStorage.getItem('reviewQuizId')
+  if (storedQuizId) {
+    const parsed = Number(storedQuizId)
+    if (!isNaN(parsed) && parsed > 0) return parsed
+  }
+
+  return null
+}
 
 // TYPE DEFINITIONS
 interface AttemptResponse {
@@ -62,6 +83,7 @@ const isLoading = ref(true)
 const isSubmitting = ref(false)
 const attemptId = ref<number | null>(null)
 const quizQuestions = ref<QuizQuestion[]>([])
+const loadError = ref<string | null>(null)
 
 // COMPUTED
 const breadcrumb = computed(() => `Dashboard > Quizzes > ${quizzesStore.currentAttempt.quizTitle || 'Quiz'} > Review`)
@@ -134,9 +156,10 @@ const updateDateTime = () => {
 
 const editQuestion = (questionId: number) => {
   const current = quizzesStore.currentAttempt
-  const qid = current.quizId
+  const qid = getQuizId()
 
   if (!qid) {
+    console.error('No quizId available in ReviewQuizView')
     router.push({ name: 'student' })
     return
   }
@@ -164,10 +187,10 @@ const editQuestion = (questionId: number) => {
 }
 
 const backToQuiz = () => {
-  const quizId = quizzesStore.currentAttempt.quizId
-  
+  const quizId = getQuizId()
+
   if (!quizId) {
-    console.error('No quizId in currentAttempt')
+    console.error('No quizId available in ReviewQuizView')
     router.push({ name: 'student' })
     return
   }
@@ -290,7 +313,7 @@ const fetchQuizQuestions = async () => {
     console.log('=== ReviewQuizView: fetchQuizQuestions called ===')
     console.log('quizzesStore.currentAttempt:', quizzesStore.currentAttempt)
 
-    const quizId = quizzesStore.currentAttempt.quizId
+    const quizId = getQuizId()
     const userId = authStore.currentUser?.id
 
     console.log('quizId:', quizId, 'userId:', userId)
@@ -301,6 +324,9 @@ const fetchQuizQuestions = async () => {
       console.error('currentAttempt:', quizzesStore.currentAttempt)
       return
     }
+
+    // Store quizId in sessionStorage for recovery on page refresh
+    sessionStorage.setItem('reviewQuizId', String(quizId))
 
     console.log('Fetching quiz questions for review, quizId:', quizId)
 
@@ -417,9 +443,15 @@ const fetchQuizQuestions = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch quiz questions:', error)
+    loadError.value = 'Failed to load quiz data. Please try again.'
   } finally {
     isLoading.value = false
   }
+}
+
+const retryLoad = () => {
+  loadError.value = null
+  fetchQuizQuestions()
 }
 
 // LIFECYCLE
@@ -434,6 +466,8 @@ onUnmounted(() => {
   if (timeInterval.value) {
     clearInterval(timeInterval.value)
   }
+  // Clean up the review quiz ID from sessionStorage
+  sessionStorage.removeItem('reviewQuizId')
 })
 </script>
 
@@ -465,6 +499,27 @@ onUnmounted(() => {
         <div class="flex flex-col items-center justify-center">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4285f4] mb-4"></div>
           <p class="text-gray-600">Loading quiz questions...</p>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="loadError" class="bg-white rounded-3xl shadow-sm overflow-hidden border-2 border-red-400 p-12 text-center">
+        <AlertCircle class="w-16 h-16 text-red-500 mx-auto mb-4" />
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">Failed to Load</h3>
+        <p class="text-gray-600 mb-6">{{ loadError }}</p>
+        <div class="flex justify-center gap-4">
+          <button
+            @click="retryLoad"
+            class="px-6 py-3 bg-[#4285f4] hover:bg-[#4866DA] text-white rounded-xl font-semibold transition-all"
+          >
+            Retry
+          </button>
+          <button
+            @click="backToQuiz"
+            class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-semibold transition-all"
+          >
+            Back to Quiz
+          </button>
         </div>
       </div>
 
