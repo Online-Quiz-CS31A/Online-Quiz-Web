@@ -1251,15 +1251,27 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function initializeTimer(durationSeconds: number) {
+    // Set duration first
     currentAttempt.durationSeconds = durationSeconds
+    
+    console.log('=== initializeTimer Debug ===')
+    console.log('durationSeconds param:', durationSeconds)
+    console.log('currentAttempt.durationSeconds:', currentAttempt.durationSeconds)
+    console.log('currentAttempt.isOngoing:', currentAttempt.isOngoing)
+    console.log('currentAttempt.startAtISO:', currentAttempt.startAtISO)
     
     if (currentAttempt.isOngoing && currentAttempt.startAtISO) {
       // Calculate remaining time for ongoing attempt
-      timerSeconds.value = getRemainingSeconds()
+      const remaining = getRemainingSeconds()
+      console.log('Ongoing attempt - remaining seconds:', remaining)
+      timerSeconds.value = remaining
     } else {
       // New attempt - use full duration
+      console.log('New attempt - using full duration:', durationSeconds)
       timerSeconds.value = durationSeconds
     }
+    
+    console.log('Final timerSeconds.value:', timerSeconds.value)
   }
 
   function startTimer(onTimeout?: () => void) {

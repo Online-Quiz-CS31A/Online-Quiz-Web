@@ -248,7 +248,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         quizzesStore.currentAttempt.quizId = qid
         quizzesStore.currentAttempt.quizTitle = response.data.quizTitle || quizTitle.value
         quizzesStore.currentAttempt.startAtISO = response.data.startedAt
-        quizzesStore.currentAttempt.isOngoing = true
+        // DON'T set isOngoing = true here yet!
+        // We'll set it after initializing the timer
+        // quizzesStore.currentAttempt.isOngoing = true
       } else {
         console.error('No attemptId in response:', response.data)
       }
@@ -634,7 +636,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         }
       }
     }
-    
+
     quizzesStore.currentAttempt.durationSeconds = sec > 0 ? sec : 0
     
     // Initialize timer in store
@@ -745,15 +747,37 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       // Initialize duration and timer AFTER all async operations
       await initDuration()
       
+      // NOW set isOngoing = true for new attempts (after timer is initialized)
+      if (!hasOngoingAttempt) {
+        quizzesStore.currentAttempt.isOngoing = true
+      }
+      
       loadCurrentQuestionAnswers()
 
-      // Only auto-submit if timer has actually run out during quiz-taking
-      // Don't auto-submit when first loading the page
-      const timerValue = quizzesStore.getTimerValue()
-      if (quizzesStore.currentAttempt.durationSeconds > 0 && timerValue <= 0 && hasOngoingAttempt) {
-        autoSubmitOnTimeout()
-      } else if (quizzesStore.currentAttempt.durationSeconds > 0 && timerValue > 0) {
-        quizzesStore.startTimer(autoSubmitOnTimeout)
+      // Start the timer if there's a duration set
+      console.log('=== Timer Debug ===')
+      console.log('durationSeconds:', quizzesStore.currentAttempt.durationSeconds)
+      console.log('timerValue:', quizzesStore.getTimerValue())
+      console.log('hasOngoingAttempt:', hasOngoingAttempt)
+      console.log('isOngoing:', quizzesStore.currentAttempt.isOngoing)
+      
+      if (quizzesStore.currentAttempt.durationSeconds > 0) {
+        const timerValue = quizzesStore.getTimerValue()
+        
+        if (timerValue <= 0 && hasOngoingAttempt) {
+          // Timer expired - auto submit
+          console.log('Timer expired, auto-submitting')
+          autoSubmitOnTimeout()
+        } else if (timerValue > 0) {
+          // Start the timer countdown
+          console.log('Starting timer with value:', timerValue)
+          quizzesStore.startTimer(autoSubmitOnTimeout)
+        } else {
+          // New attempt with no timer value set - this shouldn't happen
+          console.error('Timer value is 0 but duration is set. This is a bug!')
+        }
+      } else {
+        console.log('No time limit for this quiz')
       }
 
       // Start security monitoring
