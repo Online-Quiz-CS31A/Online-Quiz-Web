@@ -323,7 +323,8 @@ async function handleImport(file: File) {
                   </li>
                 </ul>
               </li>
-              <li>
+              <!-- Archived Classes - Admin-only -->
+              <!-- <li>
                 <button
                   @click="$emit('nav-archived-classes')"
                   class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
@@ -331,8 +332,9 @@ async function handleImport(file: File) {
                   <i class="fas fa-users w-4"></i>
                   <span class="ml-3">Classes</span>
                 </button>
-              </li>
-              <li>
+              </li> -->
+              <!-- Archived Courses - Admin-only -->
+              <!-- <li>
                 <button
                   @click="$emit('nav-archived-courses')"
                   class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
@@ -340,7 +342,7 @@ async function handleImport(file: File) {
                   <i class="fas fa-book-open w-4"></i>
                   <span class="ml-3">Courses</span>
                 </button>
-              </li>
+              </li> -->
             </ul>
           </li>
 
