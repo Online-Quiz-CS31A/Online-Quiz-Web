@@ -372,6 +372,8 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       const qid = quizId.value
       if (qid) {
         quizzesStore.markQuizAsSubmitted(qid)
+        // Clear biometric verification flag after successful submission
+        sessionStorage.removeItem(`biometricVerifiedQuiz_${qid}`)
       }
 
     } catch (error) {
@@ -728,8 +730,6 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         router.replace({ name: 'student-prequiz', params: { quizId: mountQid.toString() } })
         return
       }
-      // Clear the flag after use
-      sessionStorage.removeItem(`biometricVerifiedQuiz_${mountQid}`)
     }
 
     try {
@@ -794,6 +794,12 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       clearInterval(timerInterval.value)
     }
     quizSecurityService.stop()
+    
+    // Clear biometric verification flag when leaving the quiz
+    const authLocal = useAuthStore()
+    if (authLocal.userRole === 'student' && quizId.value) {
+      sessionStorage.removeItem(`biometricVerifiedQuiz_${quizId.value}`)
+    }
   })
   </script>
 

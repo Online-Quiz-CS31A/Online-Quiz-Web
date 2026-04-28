@@ -88,22 +88,47 @@ export const useBiometricStore = defineStore('biometric', () => {
 
   // SignalR event handlers
   function handleEnrollmentStarted(data: EnrollmentPayload) {
-    enrollmentState.value = 'waiting-for-scan'
-    enrollmentSlotId.value = data.slotId ?? null
-    enrollmentError.value = null
-    enrollmentErrorCode.value = null
-    toast.info('Please place your finger on the scanner')
-  }
-
-  function handleEnrollmentCompleted(data: EnrollmentPayload) {
-    if (data.success) {
-      enrollmentState.value = 'success'
+    console.log('[BiometricStore] EnrollmentStarted event received:', data, 'Expected userId:', enrollmentTargetUser.value?.id, 'Current state:', enrollmentState.value)
+    // Only handle if this is for the user we're enrolling AND we're not already in a terminal state
+    if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
+      // Ignore if we're already in success or failed state (don't allow automatic retries to reset UI)
+      if (enrollmentState.value === 'success' || enrollmentState.value === 'failed') {
+        console.log('[BiometricStore] EnrollmentStarted event ignored - already in terminal state:', enrollmentState.value)
+        return
+      }
+      
+      enrollmentState.value = 'waiting-for-scan'
       enrollmentSlotId.value = data.slotId ?? null
       enrollmentError.value = null
       enrollmentErrorCode.value = null
-      toast.success('Fingerprint saved successfully!')
-      refreshEnrollmentStatuses()
+      toast.info('Please place your finger on the scanner')
     } else {
+      console.log('[BiometricStore] EnrollmentStarted event ignored - userId mismatch')
+    }
+  }
+
+  function handleEnrollmentCompleted(data: EnrollmentPayload) {
+    // Only handle if this is for the user we're enrolling
+    if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
+      if (data.success) {
+        enrollmentState.value = 'success'
+        enrollmentSlotId.value = data.slotId ?? null
+        enrollmentError.value = null
+        enrollmentErrorCode.value = null
+        toast.success('Fingerprint saved successfully!')
+        refreshEnrollmentStatuses()
+      } else {
+        enrollmentState.value = 'failed'
+        enrollmentError.value = data.message || 'Unable to save fingerprint. Please try again.'
+        enrollmentErrorCode.value = data.errorCode ?? null
+        toast.error(data.message || 'Unable to save fingerprint')
+      }
+    }
+  }
+
+  function handleEnrollmentFailed(data: EnrollmentPayload) {
+    // Only handle if this is for the user we're enrolling
+    if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
       enrollmentState.value = 'failed'
       enrollmentError.value = data.message || 'Unable to save fingerprint. Please try again.'
       enrollmentErrorCode.value = data.errorCode ?? null
@@ -111,43 +136,59 @@ export const useBiometricStore = defineStore('biometric', () => {
     }
   }
 
-  function handleEnrollmentFailed(data: EnrollmentPayload) {
-    enrollmentState.value = 'failed'
-    enrollmentError.value = data.message || 'Unable to save fingerprint. Please try again.'
-    enrollmentErrorCode.value = data.errorCode ?? null
-    toast.error(data.message || 'Unable to save fingerprint')
-  }
-
   function handleVerificationStarted(_data: VerificationPayload) {
-    void _data
-    verificationState.value = 'waiting-for-scan'
-    verificationError.value = null
-    verificationErrorCode.value = null
-    toast.info('Please place your finger on the scanner')
+    console.log('[BiometricStore] VerificationStarted event received:', _data, 'Expected userId:', verificationTargetUserId.value, 'Current state:', verificationState.value)
+    // Only handle if this is for the user we're verifying AND we're not already in a terminal state
+    if (verificationTargetUserId.value && _data.userId === verificationTargetUserId.value) {
+      // Ignore if we're already in success or failed state (don't allow automatic retries to reset UI)
+      if (verificationState.value === 'success' || verificationState.value === 'failed') {
+        console.log('[BiometricStore] VerificationStarted event ignored - already in terminal state:', verificationState.value)
+        return
+      }
+      
+      verificationState.value = 'waiting-for-scan'
+      verificationError.value = null
+      verificationErrorCode.value = null
+      toast.info('Please place your finger on the scanner')
+    } else {
+      console.log('[BiometricStore] VerificationStarted event ignored - userId mismatch')
+    }
   }
 
   function handleVerificationCompleted(data: VerificationPayload) {
-    if (data.success && data.matched) {
-      verificationState.value = 'success'
-      verificationMatched.value = true
-      verificationError.value = null
-      verificationErrorCode.value = null
-      toast.success('Identity verified successfully!')
+    console.log('[BiometricStore] VerificationCompleted event received:', data, 'Expected userId:', verificationTargetUserId.value)
+    // Only handle if this is for the user we're verifying
+    if (verificationTargetUserId.value && data.userId === verificationTargetUserId.value) {
+      if (data.success && data.matched) {
+        verificationState.value = 'success'
+        verificationMatched.value = true
+        verificationError.value = null
+        verificationErrorCode.value = null
+        toast.success('Identity verified successfully!')
+      } else {
+        verificationState.value = 'failed'
+        verificationMatched.value = false
+        verificationError.value = data.message || 'Unable to verify identity. Please try again.'
+        verificationErrorCode.value = data.errorCode ?? null
+        toast.error(data.message || 'Unable to verify identity')
+      }
     } else {
+      console.log('[BiometricStore] VerificationCompleted event ignored - userId mismatch')
+    }
+  }
+
+  function handleVerificationFailed(data: VerificationPayload) {
+    console.log('[BiometricStore] VerificationFailed event received:', data, 'Expected userId:', verificationTargetUserId.value)
+    // Only handle if this is for the user we're verifying
+    if (verificationTargetUserId.value && data.userId === verificationTargetUserId.value) {
       verificationState.value = 'failed'
       verificationMatched.value = false
       verificationError.value = data.message || 'Unable to verify identity. Please try again.'
       verificationErrorCode.value = data.errorCode ?? null
       toast.error(data.message || 'Unable to verify identity')
+    } else {
+      console.log('[BiometricStore] VerificationFailed event ignored - userId mismatch')
     }
-  }
-
-  function handleVerificationFailed(data: VerificationPayload) {
-    verificationState.value = 'failed'
-    verificationMatched.value = false
-    verificationError.value = data.message || 'Unable to verify identity. Please try again.'
-    verificationErrorCode.value = data.errorCode ?? null
-    toast.error(data.message || 'Unable to verify identity')
   }
 
   function handleDeviceStatusChanged(data: DeviceStatusChangedPayload) {
