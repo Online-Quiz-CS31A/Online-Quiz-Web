@@ -88,13 +88,22 @@ export const useBiometricStore = defineStore('biometric', () => {
 
   // SignalR event handlers
   function handleEnrollmentStarted(data: EnrollmentPayload) {
-    // Only handle if this is for the user we're enrolling
+    console.log('[BiometricStore] EnrollmentStarted event received:', data, 'Expected userId:', enrollmentTargetUser.value?.id, 'Current state:', enrollmentState.value)
+    // Only handle if this is for the user we're enrolling AND we're not already in a terminal state
     if (enrollmentTargetUser.value && data.userId === enrollmentTargetUser.value.id) {
+      // Ignore if we're already in success or failed state (don't allow automatic retries to reset UI)
+      if (enrollmentState.value === 'success' || enrollmentState.value === 'failed') {
+        console.log('[BiometricStore] EnrollmentStarted event ignored - already in terminal state:', enrollmentState.value)
+        return
+      }
+      
       enrollmentState.value = 'waiting-for-scan'
       enrollmentSlotId.value = data.slotId ?? null
       enrollmentError.value = null
       enrollmentErrorCode.value = null
       toast.info('Please place your finger on the scanner')
+    } else {
+      console.log('[BiometricStore] EnrollmentStarted event ignored - userId mismatch')
     }
   }
 
@@ -128,9 +137,15 @@ export const useBiometricStore = defineStore('biometric', () => {
   }
 
   function handleVerificationStarted(_data: VerificationPayload) {
-    console.log('[BiometricStore] VerificationStarted event received:', _data, 'Expected userId:', verificationTargetUserId.value)
-    // Only handle if this is for the user we're verifying
+    console.log('[BiometricStore] VerificationStarted event received:', _data, 'Expected userId:', verificationTargetUserId.value, 'Current state:', verificationState.value)
+    // Only handle if this is for the user we're verifying AND we're not already in a terminal state
     if (verificationTargetUserId.value && _data.userId === verificationTargetUserId.value) {
+      // Ignore if we're already in success or failed state (don't allow automatic retries to reset UI)
+      if (verificationState.value === 'success' || verificationState.value === 'failed') {
+        console.log('[BiometricStore] VerificationStarted event ignored - already in terminal state:', verificationState.value)
+        return
+      }
+      
       verificationState.value = 'waiting-for-scan'
       verificationError.value = null
       verificationErrorCode.value = null
