@@ -428,38 +428,19 @@ const confirmArchive = (u: AdminUser) => {
   showArchiveModal.value = true
 }
 
-const archiveUser = (reason: string) => {
+const archiveUser = async (reason: string) => {
   if (!userToArchive.value) return
-  const u = userToArchive.value
+  const userId = userToArchive.value.id
 
-  const STORAGE_KEY = 'archivedUsers'
-  const stored = localStorage.getItem(STORAGE_KEY)
-  let archivedUsers = stored ? JSON.parse(stored) : []
-  archivedUsers = archivedUsers.filter((au: any) => au.email !== u.email)
-
-  archivedUsers.push({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    role: u.role,
-    status: 'Archived',
-    lastActive: u.lastActive,
-    avatar: u.avatar,
-    username: u.username,
-    course: u.course,
-    year: u.year,
-    section: u.section,
-    department: u.department,
-    contactNumber: u.contactNumber,
-    emergencyContactNumber: u.emergencyContactNumber,
-    archivedAt: new Date().toISOString(),
-    archiveReason: reason
-  })
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(archivedUsers))
-
-  showArchiveModal.value = false
-  userToArchive.value = null
-  loadUsers()
+  try {
+    await adminStore.archiveUser(userId, reason)
+    
+    showArchiveModal.value = false
+    userToArchive.value = null
+    loadUsers()
+  } catch (e) {
+    console.error('Failed to archive user:', e)
+  }
 }
 
 // LIFECYCLE

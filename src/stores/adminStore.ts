@@ -161,6 +161,172 @@ export const useAdminStore = defineStore('admin', () => {
         }
     }
 
+    async function archiveUser(userId: number, reason?: string) {
+        isLoading.value = true
+        try {
+            await api.post(`/user/${userId}/archive`)
+            
+            // Store archive reason in localStorage
+            if (reason) {
+                const authStore = useAuthStore()
+                const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
+                archiveReasons[userId] = {
+                    reason,
+                    archivedAt: new Date().toISOString(),
+                    archivedBy: authStore.currentUser?.id || 1
+                }
+                localStorage.setItem('userArchiveReasons', JSON.stringify(archiveReasons))
+            }
+            
+            allRawUsers.value = []
+            await fetchUsers()
+            return true
+        } catch (err: any) {
+            console.error('Failed to archive user:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to archive user'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function unarchiveUser(userId: number) {
+        isLoading.value = true
+        try {
+            await api.post(`/user/${userId}/unarchive`)
+            
+            // Remove archive reason from localStorage
+            const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
+            delete archiveReasons[userId]
+            localStorage.setItem('userArchiveReasons', JSON.stringify(archiveReasons))
+            
+            allRawUsers.value = []
+            await fetchUsers()
+            return true
+        } catch (err: any) {
+            console.error('Failed to unarchive user:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to unarchive user'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function bulkArchiveUsers(ids: number[], reasons?: Record<number, string>) {
+        isLoading.value = true
+        try {
+            const result = await api.post('/user/bulk-archive', { ids })
+            
+            // Store archive reasons in localStorage
+            if (reasons) {
+                const authStore = useAuthStore()
+                const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
+                Object.entries(reasons).forEach(([userId, reason]) => {
+                    archiveReasons[userId] = {
+                        reason,
+                        archivedAt: new Date().toISOString(),
+                        archivedBy: authStore.currentUser?.id || 1
+                    }
+                })
+                localStorage.setItem('userArchiveReasons', JSON.stringify(archiveReasons))
+            }
+            
+            allRawUsers.value = []
+            await fetchUsers()
+            return result.data
+        } catch (err: any) {
+            console.error('Failed to bulk archive users:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to bulk archive users'
+            throw err
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function bulkUnarchiveUsers(ids: number[]) {
+        isLoading.value = true
+        try {
+            const result = await api.post('/user/bulk-unarchive', { ids })
+            
+            // Remove archive reasons from localStorage
+            const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
+            ids.forEach(id => delete archiveReasons[id])
+            localStorage.setItem('userArchiveReasons', JSON.stringify(archiveReasons))
+            
+            allRawUsers.value = []
+            await fetchUsers()
+            return result.data
+        } catch (err: any) {
+            console.error('Failed to bulk unarchive users:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to bulk unarchive users'
+            throw err
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function fetchArchivedUsers(page = 1, pageSize = 10, search = '') {
+        isLoading.value = true
+        error.value = null
+        try {
+            const response = await api.get('/user/archived')
+            let data = response.data || []
+
+            // Get archive reasons from localStorage
+            const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
+
+            let mapped: AdminUser[] = data.map((u: any) => {
+                const archiveInfo = archiveReasons[u.userId] || {}
+                return {
+                    id: u.userId,
+                    name: u.fullName,
+                    email: u.email,
+                    role: u.roleName || 'Student',
+                    status: 'Archived',
+                    lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : 'Never',
+                    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                    username: u.email.split('@')[0],
+                    course: u.student?.course,
+                    year: u.student?.yearLevel?.toString(),
+                    section: u.student?.section,
+                    department: u.teacher?.department || u.department,
+                    contactNumber: u.contactNumber,
+                    emergencyContactNumber: u.emergencyContactNumber,
+                    archivedAt: u.archivedAt,
+                    archivedBy: u.archivedBy,
+                    archivedByName: u.archivedByName,
+                    archiveReason: archiveInfo.reason || ''
+                }
+            })
+
+            // --- Search filter ---
+            if (search && search.trim()) {
+                const q = search.trim().toLowerCase()
+                mapped = mapped.filter(u =>
+                    u.name.toLowerCase().includes(q) ||
+                    u.email.toLowerCase().includes(q) ||
+                    u.role.toLowerCase().includes(q)
+                )
+            }
+
+            totalUsers.value = mapped.length
+            const start = (page - 1) * pageSize
+            users.value = mapped.slice(start, start + pageSize)
+            return mapped
+        } catch (err: any) {
+            console.error('Failed to fetch archived users:', err)
+            error.value = err.message || 'Failed to fetch archived users'
+            return []
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    function getArchiveReason(userId: number): string {
+        const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
+        return archiveReasons[userId]?.reason || ''
+    }
+
     // --- COURSES ---
     async function fetchCourses(page = 1, pageSize = 10, search = '', status = '') {
         isLoading.value = true
@@ -546,6 +712,12 @@ export const useAdminStore = defineStore('admin', () => {
         createUser,
         updateUser,
         deleteUser,
+        archiveUser,
+        unarchiveUser,
+        bulkArchiveUsers,
+        bulkUnarchiveUsers,
+        fetchArchivedUsers,
+        getArchiveReason,
         fetchCourses,
         fetchArchivedCourses,
         archiveCourse,

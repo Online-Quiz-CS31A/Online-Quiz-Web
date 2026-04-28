@@ -5,38 +5,21 @@ import AdminSearchFilterBar from '@/components/SearchFilterBar.vue'
 import SkeletonTable from '@/components/skeletons/SkeletonTable.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
-import api from '@/services/api'
+import { useAdminStore } from '@/stores/adminStore'
+import type { AdminUser } from '@/interfaces/interfaces'
 
-interface ArchivedUser {
-  id: number
-  name: string
-  email: string
-  role: string
-  status: string
-  lastActive: string
-  avatar: string
-  username?: string
-  course?: string
-  year?: string
-  section?: string
-  department?: string
-  contactNumber?: string
-  emergencyContactNumber?: string
-  archivedAt: string
-  archiveReason?: string
-}
-
-const STORAGE_KEY = 'archivedUsers'
+// STORE
+const adminStore = useAdminStore()
 
 // STATE
-const archivedUsers = ref<ArchivedUser[]>([])
+const archivedUsers = ref<AdminUser[]>([])
 const searchQuery = ref('')
 const filterRole = ref('All Roles')
 const isLoading = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const showRestoreModal = ref(false)
-const userToRestore = ref<ArchivedUser | null>(null)
+const userToRestore = ref<AdminUser | null>(null)
 
 // COMPUTED
 const filteredUsers = computed(() => {
@@ -81,35 +64,20 @@ const paginatedUsers = computed(() => {
 const totalItems = computed(() => filteredUsers.value.length)
 
 // METHODS
-const loadArchivedUsers = () => {
+const loadArchivedUsers = async () => {
   isLoading.value = true
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    const raw: ArchivedUser[] = stored ? JSON.parse(stored) : []
-
-    const seen = new Map<string, ArchivedUser>()
-    for (const u of raw) {
-      const existing = seen.get(u.email)
-      if (!existing || new Date(u.archivedAt) > new Date(existing.archivedAt)) {
-        seen.set(u.email, u)
-      }
-    }
-    const deduped = Array.from(seen.values())
-
-    if (deduped.length !== raw.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped))
-    }
-
-    archivedUsers.value = deduped
-    setTimeout(() => { isLoading.value = false }, 300)
+    const archived = await adminStore.fetchArchivedUsers()
+    archivedUsers.value = archived
   } catch (e) {
     console.error('Failed to load archived users:', e)
     archivedUsers.value = []
+  } finally {
     isLoading.value = false
   }
 }
 
-const confirmRestore = (user: ArchivedUser) => {
+const confirmRestore = (user: AdminUser) => {
   userToRestore.value = user
   showRestoreModal.value = true
 }
@@ -117,20 +85,16 @@ const confirmRestore = (user: ArchivedUser) => {
 const restoreUser = async () => {
   if (!userToRestore.value) return
 
-  const u = userToRestore.value
-
   try {
-    await api.put(`/user/${u.id}`, { status: 'Active' })
+    await adminStore.unarchiveUser(userToRestore.value.id)
+    
+    showRestoreModal.value = false
+    userToRestore.value = null
+    
+    await loadArchivedUsers()
   } catch (e) {
-    console.error('Failed to restore user status via API:', e)
+    console.error('Failed to restore user:', e)
   }
-
-  const remaining = archivedUsers.value.filter(au => au.email !== u.email)
-  archivedUsers.value = remaining
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
-
-  showRestoreModal.value = false
-  userToRestore.value = null
 }
 
 const getRoleBadgeClass = (role: string) => {
@@ -146,14 +110,13 @@ const getRoleBadgeClass = (role: string) => {
   }
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string) => {
+  if (!dateString) return 'N/A'
   try {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     })
   } catch {
     return dateString
