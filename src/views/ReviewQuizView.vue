@@ -131,13 +131,12 @@ const editQuestion = (questionId: number) => {
   const qid = current.quizId
 
   if (!qid) {
-    router.push({ name: 'quiz' })
+    router.push({ name: 'student' })
     return
   }
 
-  const questions = quizzesStore.getStudentQuizQuestions(qid)
   const studentQuiz = quizzesStore.myStudentQuizzes.find(q => q.id === qid)
-  const index = Math.max(0, Math.min(questions.length - 1, questionId - 1))
+  const index = Math.max(0, Math.min(quizQuestions.value.length - 1, questionId - 1))
 
   router.push({
     name: 'quiz',
@@ -147,6 +146,7 @@ const editQuestion = (questionId: number) => {
     },
     state: {
       quizId: qid,
+      questions: quizQuestions.value,
       quizTitle: current.quizTitle || studentQuiz?.title || 'Quiz',
       quizSubject: studentQuiz?.subject || 'Quiz',
     },
@@ -154,7 +154,24 @@ const editQuestion = (questionId: number) => {
 }
 
 const backToQuiz = () => {
-  router.push({ name: 'quiz' })
+  const quizId = quizzesStore.currentAttempt.quizId
+  
+  if (!quizId) {
+    console.error('No quizId in currentAttempt')
+    router.push({ name: 'student' })
+    return
+  }
+
+  // Navigate back to quiz with proper state
+  router.push({
+    name: 'quiz',
+    params: { quizId: String(quizId) },
+    state: {
+      quizId: quizId,
+      questions: quizQuestions.value,
+      quizTitle: quizzesStore.currentAttempt.quizTitle
+    }
+  })
 }
 
 const submitQuiz = async () => {

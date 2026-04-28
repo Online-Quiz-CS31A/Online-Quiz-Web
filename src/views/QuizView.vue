@@ -698,7 +698,14 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     }
 
     try {
-      if (questions.value.length === 0 && mountQid != null) {
+      // If we don't have a valid quizId, redirect to student home
+      if (!mountQid) {
+        console.error('No quizId available in QuizView')
+        router.replace({ name: 'student' })
+        return
+      }
+
+      if (questions.value.length === 0) {
         const authLocal2 = useAuthStore()
         if (authLocal2.currentUser?.id) {
           const detail = await quizzesStore.fetchQuizDetail(mountQid, authLocal2.currentUser.id)
@@ -719,6 +726,10 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             if (detail.title) {
               quizTitle.value = detail.title
             }
+          } else {
+            console.error('Failed to load quiz questions')
+            router.replace({ name: 'student' })
+            return
           }
         }
       }
@@ -752,6 +763,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       })
       quizSecurityService.setCallbacks(handleSecurityViolation, handleMaxViolations)
       quizSecurityService.start()
+    } catch (error) {
+      console.error('Error loading quiz:', error)
+      router.replace({ name: 'student' })
     } finally {
       await nextTick()
       isLoading.value = false
