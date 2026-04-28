@@ -634,7 +634,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         }
       }
     }
-
+    
+    quizzesStore.currentAttempt.durationSeconds = sec > 0 ? sec : 0
+    
     // Initialize timer in store
     quizzesStore.initializeTimer(sec > 0 ? sec : 0)
     
