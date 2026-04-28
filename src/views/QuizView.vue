@@ -399,6 +399,29 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         if (ongoingAttempt) {
           attemptId.value = ongoingAttempt.attemptId
           
+          const quizDetail = await quizzesStore.fetchQuizDetail(qid, userId)
+          if (quizDetail && quizDetail.timeLimitMinutes) {
+            const startTime = new Date(ongoingAttempt.startedAt).getTime()
+            const now = Date.now()
+            const elapsed = Math.floor((now - startTime) / 1000)
+            const durationSeconds = quizDetail.timeLimitMinutes * 60
+            const remaining = durationSeconds - elapsed
+            
+            if (remaining <= 0) {
+              console.log('Found expired ongoing attempt, auto-submitting it')
+              try {
+                await api.put(`/Attempt/${attemptId.value}/submit?studentId=${userId}`, {
+                  timeSpentSeconds: elapsed
+                })
+                console.log('Expired attempt submitted, will start new attempt')
+                return false
+              } catch (error) {
+                console.error('Failed to submit expired attempt:', error)
+                return false
+              }
+            }
+          }
+          
           // Restore the attempt state
           quizzesStore.currentAttempt.quizId = qid
           quizzesStore.currentAttempt.quizTitle = quizTitle.value
