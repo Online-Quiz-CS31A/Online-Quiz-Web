@@ -157,8 +157,15 @@ const isEssayPendingGrading = (questionIndex: number): boolean => {
   // Get the grading status from backend
   const gradingStatus = answerGradingStatus.value.get(questionIndex)
   
-  // If isCorrect is null, it's pending grading
-  return gradingStatus === null
+  console.log(`isEssayPendingGrading for question ${questionIndex}:`, {
+    questionType: q.questionType,
+    gradingStatus,
+    isNull: gradingStatus === null,
+    isUndefined: gradingStatus === undefined
+  })
+  
+  // If isCorrect is null or undefined, it's pending grading
+  return gradingStatus === null || gradingStatus === undefined
 }
 
 const getQuestionButtonClass = (index: number) => {
@@ -176,11 +183,10 @@ const getQuestionButtonClass = (index: number) => {
   }
 
   if (isActive) {
-    return question.isCorrect
-      ? 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
-      : 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
+    return 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
   }
 
+  // For non-essay questions or graded essays, use isCorrect
   return question.isCorrect
     ? 'border-[#4ade80] bg-[#86efac] text-green-800 hover:bg-green-300'
     : 'border-[#f87171] bg-[#fca5a5] text-red-800 hover:bg-red-300'
