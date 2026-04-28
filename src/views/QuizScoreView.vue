@@ -26,6 +26,7 @@ interface AnswerResponse {
   questionId: number
   choiceId: number | null
   textAnswer: string | null
+  isCorrect: boolean | null
 }
 
 interface QuestionResponse {
@@ -51,6 +52,9 @@ const quizData = ref<{
   course?: { name: string }
   questions?: unknown[]
 } | null>(null)
+
+// Store answer grading status from backend (isCorrect field)
+const answerGradingStatus = ref<Map<number, boolean | null>>(new Map())
 
 // COMPUTED
 const questions = computed(() => {
@@ -145,11 +149,31 @@ const isQuestionUnanswered = (q: ScoreReviewQuestion | undefined | null): boolea
   return q.userAnswer == null || String(q.userAnswer).trim() === ''
 }
 
+// Check if essay/text question is pending manual grading
+const isEssayPendingGrading = (questionIndex: number): boolean => {
+  const q = questions.value[questionIndex]
+  if (!q || (q.questionType !== 'text' && q.questionType !== 'essay')) return false
+  
+  // Get the grading status from backend
+  const gradingStatus = answerGradingStatus.value.get(questionIndex)
+  
+  // If isCorrect is null, it's pending grading
+  return gradingStatus === null
+}
+
 const getQuestionButtonClass = (index: number) => {
   const question = questions.value[index]
   if (!question) return 'border-[#7B90DF] bg-[#F4F7F9] text-gray-800'
 
   const isActive = currentQuestion.value === index
+
+  // Check if it's an essay question pending grading
+  if (isEssayPendingGrading(index)) {
+    if (isActive) {
+      return 'border-[#4285f4] bg-[#e3f2fd] text-[#1976d2]'
+    }
+    return 'border-[#f59e0b] bg-[#fef3c7] text-orange-800 hover:bg-yellow-200'
+  }
 
   if (isActive) {
     return question.isCorrect
@@ -226,28 +250,6 @@ const isCorrectOption = (optionIndex: number) => {
   return question.correctAnswer === optionIndex
 }
 
-const isShortAnswerCorrect = (answer: string | string[] | number | Record<number, number> | null | undefined) => {
-  if (!answer) return false
-  const text = String(answer).trim()
-  if (!text) return false
-  const sentences = text
-    .split(/[.!?\n]+/)
-    .map(s => s.trim())
-    .filter(Boolean)
-
-  if (sentences.length < 3) return false
-
-  const allSentencesLongEnough = sentences.every(sentence => {
-    const words = sentence
-      .split(/\s+/)
-      .map(w => w.trim())
-      .filter(Boolean)
-    return words.length >= 3
-  })
-
-  return allSentencesLongEnough
-}
-
 // Helper to check if an array of numbers includes a number
 const includesNumber = (arr: unknown, num: number): boolean => {
   if (!Array.isArray(arr)) return false
@@ -315,9 +317,16 @@ const getQuestionScore = (index: number) => {
     return { earned, total }
   }
 
-  if (q.questionType === 'text') {
+  // For text/essay questions, check if pending grading
+  if (q.questionType === 'text' || q.questionType === 'essay') {
     total = basePoints
-    earned = isShortAnswerCorrect(q.userAnswer) ? basePoints : 0
+    // If pending grading, earned is 0 (not yet graded)
+    if (isEssayPendingGrading(index)) {
+      earned = 0
+    } else {
+      // Use the isCorrect from backend
+      earned = q.isCorrect ? basePoints : 0
+    }
     return { earned, total }
   }
 
@@ -458,7 +467,10 @@ const loadScoreData = async () => {
               if (questionIndex >= 0) {
                 const question = mappedQuestions[questionIndex]
                 const qType = (question.type || '').toLowerCase()
-                console.log(`Question type: ${qType}`)
+                console.log(`Question type: ${qType}, isCorrect: ${answer.isCorrect}`)
+
+                // Store the grading status from backend
+                answerGradingStatus.value.set(questionIndex, answer.isCorrect)
 
                 // Handle single-choice and true-false (radio buttons) - uses choiceId
                 if (answer.choiceId != null && (qType === 'single-choice' || qType === 'true-false')) {
@@ -500,7 +512,7 @@ const loadScoreData = async () => {
                 }
                 // Handle text/essay questions
                 else if (answer.textAnswer && (qType === 'text' || qType === 'essay')) {
-                  console.log('Text/essay answer:', answer.textAnswer)
+                  console.log('Text/essay answer:', answer.textAnswer, 'isCorrect:', answer.isCorrect)
                   quizzesStore.setTextAnswer(questionIndex, answer.textAnswer)
                   quizzesStore.markAnswered(questionIndex)
                 }
@@ -544,6 +556,7 @@ const loadScoreData = async () => {
 
           console.log('Final currentAttempt:', quizzesStore.currentAttempt)
           console.log('Final questions from getScoreItems:', quizzesStore.getScoreItems())
+          console.log('Answer grading status:', answerGradingStatus.value)
         }
       } else {
         console.warn('No submitted attempts found for this quiz')
@@ -639,6 +652,17 @@ onMounted(async () => {
             <div v-if="isQuestionUnanswered(currentQuestionData)" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold flex items-center gap-2">
               <i class="fas fa-exclamation-circle"></i>
               <span>Unanswered</span>
+            </div>
+
+            <!-- Pending Manual Grading Banner for Essay Questions -->
+            <div v-if="isEssayPendingGrading(currentQuestion)" class="mb-4 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl">
+              <div class="flex items-start gap-3">
+                <i class="fas fa-clock text-amber-600 text-xl mt-0.5"></i>
+                <div>
+                  <p class="text-amber-900 font-semibold text-base">Pending Manual Grading</p>
+                  <p class="text-amber-700 text-sm mt-1">This essay answer is awaiting review by your instructor. Your score will be updated once graded.</p>
+                </div>
+              </div>
             </div>
 
             <div class="space-y-3">
@@ -852,31 +876,52 @@ onMounted(async () => {
                 </div>
               </template>
 
-              <!-- Text Rendering -->
-              <template v-else-if="currentQuestionData.questionType === 'text'">
+              <!-- Text/Essay Rendering -->
+              <template v-else-if="currentQuestionData.questionType === 'text' || currentQuestionData.questionType === 'essay'">
+                <!-- Show answer in a neutral box if pending grading -->
                 <div
-                  v-if="!isShortAnswerCorrect(currentQuestionData.userAnswer)"
-                  class="mb-2 text-sm"
+                  v-if="isEssayPendingGrading(currentQuestion)"
+                  class="flex items-start p-4 rounded-xl transition-all border-2 bg-amber-50 border-amber-300"
                 >
-                  <span class="font-semibold text-[#16a34a]">Correct answer:</span>
-                  <span class="font-semibold text-gray-800">
-                    answer must be at least 3 sentences
-                  </span>
+                  <div class="mr-4 flex items-center justify-center w-8 h-8 flex-shrink-0">
+                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-semibold bg-amber-100 border-amber-400 text-amber-700">
+                      <i class="fas fa-clock text-xs"></i>
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-amber-900 mb-1">Your Answer:</p>
+                    <p class="text-base text-gray-800 whitespace-pre-wrap">
+                      <template
+                        v-if="
+                          currentQuestionData.userAnswer &&
+                          String(currentQuestionData.userAnswer).trim() !== ''
+                        "
+                      >
+                        {{ currentQuestionData.userAnswer }}
+                      </template>
+                      <span
+                        v-else
+                        class="italic text-gray-500"
+                      >(unanswered)</span>
+                    </p>
+                  </div>
                 </div>
 
+                <!-- Show graded result if already graded -->
                 <div
+                  v-else
                   :class="[
-                    'flex items-center p-2 rounded-xl transition-all border-1',
-                    isShortAnswerCorrect(currentQuestionData.userAnswer)
+                    'flex items-start p-4 rounded-xl transition-all border-2',
+                    currentQuestionData.isCorrect
                       ? 'bg-[#86efac] border-[#4ade80]'
                       : 'bg-[#fca5a5] border-[#f87171]'
                   ]"
                 >
-                  <div class="mr-4 flex items-center justify-center w-8 h-8">
+                  <div class="mr-4 flex items-center justify-center w-8 h-8 flex-shrink-0">
                     <div
                       :class="[
                         'w-6 h-6 rounded-full border-1 flex items-center justify-center text-sm font-semibold',
-                        isShortAnswerCorrect(currentQuestionData.userAnswer)
+                        currentQuestionData.isCorrect
                           ? 'bg-[#4ade80] border-[#4ade80] text-white'
                           : 'bg-[#f87171] border-[#f87171] text-white'
                       ]"
@@ -884,28 +929,29 @@ onMounted(async () => {
                       <i
                         :class="[
                           'fas',
-                          isShortAnswerCorrect(currentQuestionData.userAnswer)
-                            ? 'fa-check'
-                            : 'fa-times',
+                          currentQuestionData.isCorrect ? 'fa-check' : 'fa-times',
                           'text-xs'
                         ]"
                       ></i>
                     </div>
                   </div>
-                  <span class="text-base font-medium text-gray-800">
-                    <template
-                      v-if="
-                        currentQuestionData.userAnswer &&
-                        String(currentQuestionData.userAnswer).trim() !== ''
-                      "
-                    >
-                      {{ currentQuestionData.userAnswer }}
-                    </template>
-                    <span
-                      v-else
-                      class="italic"
-                    >(unanswered)</span>
-                  </span>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-700 mb-1">Your Answer:</p>
+                    <p class="text-base text-gray-800 whitespace-pre-wrap">
+                      <template
+                        v-if="
+                          currentQuestionData.userAnswer &&
+                          String(currentQuestionData.userAnswer).trim() !== ''
+                        "
+                      >
+                        {{ currentQuestionData.userAnswer }}
+                      </template>
+                      <span
+                        v-else
+                        class="italic"
+                      >(unanswered)</span>
+                    </p>
+                  </div>
                 </div>
               </template>
 
