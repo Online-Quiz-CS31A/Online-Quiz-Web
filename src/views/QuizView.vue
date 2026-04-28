@@ -654,16 +654,22 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
     durationSeconds.value = sec > 0 ? sec : 0
 
-    // Set durationSeconds in currentAttempt for ongoing attempts
+    // Set durationSeconds in currentAttempt BEFORE calling getRemainingSeconds
     if (quizzesStore.currentAttempt.isOngoing && quizzesStore.currentAttempt.quizId === qid) {
-      // Update the durationSeconds if it wasn't set
-      if (quizzesStore.currentAttempt.durationSeconds === 0) {
-        quizzesStore.currentAttempt.durationSeconds = durationSeconds.value
-      }
+      // Always update the durationSeconds to ensure it's set
+      quizzesStore.currentAttempt.durationSeconds = durationSeconds.value
+      
+      // Now calculate remaining time
       timer.value = quizzesStore.getRemainingSeconds()
+      console.log('Timer initialized for ongoing attempt:', {
+        durationSeconds: durationSeconds.value,
+        remainingSeconds: timer.value,
+        startAtISO: quizzesStore.currentAttempt.startAtISO
+      })
       restoreAnswers()
     } else {
       timer.value = durationSeconds.value
+      console.log('Timer initialized for new attempt:', timer.value)
     }
   }
 
