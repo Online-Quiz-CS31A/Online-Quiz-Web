@@ -399,13 +399,27 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         if (ongoingAttempt) {
           attemptId.value = ongoingAttempt.attemptId
           
-          const quizDetail = await quizzesStore.fetchQuizDetail(qid, userId)
-          if (quizDetail && quizDetail.timeLimitMinutes) {
+          // Check if this attempt has expired before loading it
+          let timeLimitMinutes = quizMetadata.value.timeLimitMinutes
+          if (!timeLimitMinutes) {
+            const quizDetail = await quizzesStore.fetchQuizDetail(qid, userId)
+            if (quizDetail && quizDetail.timeLimitMinutes) {
+              timeLimitMinutes = quizDetail.timeLimitMinutes
+            }
+          }
+          
+          if (timeLimitMinutes && timeLimitMinutes > 0) {
             const startTime = new Date(ongoingAttempt.startedAt).getTime()
             const now = Date.now()
             const elapsed = Math.floor((now - startTime) / 1000)
-            const durationSeconds = quizDetail.timeLimitMinutes * 60
+            const durationSeconds = timeLimitMinutes * 60
             const remaining = durationSeconds - elapsed
+            
+            console.log('=== Checking ongoing attempt expiration ===')
+            console.log('Start time:', ongoingAttempt.startedAt)
+            console.log('Elapsed seconds:', elapsed)
+            console.log('Duration seconds:', durationSeconds)
+            console.log('Remaining seconds:', remaining)
             
             if (remaining <= 0) {
               console.log('Found expired ongoing attempt, auto-submitting it')
@@ -758,7 +772,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         }
       }
 
-      // Check for ongoing attempt
+      // Check for ongoing attempt AFTER loading quiz metadata
       const hasOngoingAttempt = await loadAttemptFromBackend()
 
       // Check biometric verification for students
@@ -815,6 +829,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             autoSubmitOnTimeout()
           } else {
             console.log('Timer value was incorrect, starting timer with actual remaining:', actualRemaining)
+            quizzesStore.setTimerValue(actualRemaining)
             quizzesStore.startTimer(autoSubmitOnTimeout)
           }
         } else if (timerValue > 0) {

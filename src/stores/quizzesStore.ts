@@ -1308,6 +1308,10 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     return timerSeconds.value
   }
 
+  function setTimerValue(value: number) {
+    timerSeconds.value = value
+  }
+
   function calculateScore(): { score: number; totalPoints: number; percentage: number } {
     if (currentAttempt.quizId == null) return { score: 0, totalPoints: 0, percentage: 0 }
 
@@ -1871,6 +1875,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     initializeTimer,
     startTimer,
     stopTimer,
-    getTimerValue
+    getTimerValue,
+    setTimerValue
   }
 })
