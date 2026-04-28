@@ -124,6 +124,26 @@ export async function unpublishQuiz(quizId: number) {
   return response.data
 }
 
+/**
+ * Fetch quiz attempts for a specific student
+ * @param studentId - The ID of the student
+ * @returns Promise with attempt data
+ */
+export async function getStudentAttempts(studentId: number) {
+  const response = await api.get(`/Attempt/student/${studentId}`)
+  return response.data
+}
+
+/**
+ * Fetch all quiz attempts for students in a course
+ * @param courseId - The ID of the course
+ * @returns Promise with attempts data
+ */
+export async function getCourseAttempts(courseId: number) {
+  const response = await api.get(`/Attempt/course/${courseId}`)
+  return response.data
+}
+
 export default {
   getQuizzesForCourse,
   getQuizById,
@@ -134,4 +154,6 @@ export default {
   unarchiveQuiz,
   publishQuiz,
   unpublishQuiz,
+  getStudentAttempts,
+  getCourseAttempts,
 }

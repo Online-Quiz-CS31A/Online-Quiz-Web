@@ -10,6 +10,7 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, TeacherQuizItem } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
+import * as quizService from '@/services/quizService'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
 import ClassDashboardTab from '@/components/teacher/TeacherClassQuizzesTab.vue'
 import ClassPeopleTab from '@/components/teacher/TeacherClassPeopleTab.vue'
@@ -41,6 +42,8 @@ const apiStudents = ref<any[]>([])
 const apiQuizzes = ref<TeacherQuizItem[]>([])
 const isLoadingStudents = ref(false)
 const isLoadingQuizzes = ref(false)
+const studentAttempts = ref<Record<number, any[]>>({}) // studentId -> attempts[]
+const isLoadingAttempts = ref(false)
 
 // COMPUTED
 const sectionId = computed(() => Number(route.params.id || 0))
@@ -167,25 +170,14 @@ const paginatedStudents = computed(() => {
 
 function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
   const quizzesForClass = activeQuizzes.value
-  const username = getUsernameForStudentId(studentId)
-
-  if (!username) return quizzesForClass.map((quiz) => {
-    const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
-    return {
-      title: quiz.title,
-      score: 0,
-      total: totalPoints,
-      percent: 0,
-      due: quiz.dueDate,
-      status: 'Missing',
-    }
-  })
+  const attempts = studentAttempts.value[studentId] || []
 
   return quizzesForClass.map((quiz) => {
     const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
-    const history = quizzesStore.getQuizAttemptHistoryForStudent(quiz.id, username)
+    
+    const quizAttempts = attempts.filter((attempt: any) => attempt.quizId === quiz.id)
 
-    if (!history.length) {
+    if (!quizAttempts.length) {
       return {
         title: quiz.title,
         score: 0,
@@ -196,16 +188,22 @@ function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
       }
     }
 
-    const bestAttempt = history.reduce((best, cur) => {
-      if (!best) return cur
-      return cur.percentage > best.percentage ? cur : best
-    }, history[0])
+    // Find the highest score from all attempts
+    const bestAttempt = quizAttempts.reduce((best: any, current: any) => {
+      const currentScore = current.score || 0
+      const bestScore = best.score || 0
+      return currentScore > bestScore ? current : best
+    }, quizAttempts[0])
+
+    const score = bestAttempt.score || 0
+    const total = bestAttempt.totalPoints || totalPoints
+    const percent = total > 0 ? Math.round((score / total) * 100) : 0
 
     return {
       title: quiz.title,
-      score: bestAttempt.score,
-      total: totalPoints,
-      percent: bestAttempt.percentage,
+      score: score,
+      total: total,
+      percent: percent,
       due: quiz.dueDate,
       status: 'Submitted',
     }
@@ -215,9 +213,13 @@ function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
 const gradeRows = computed<GradeRow[]>(() => {
   return students.value.slice(0, 10).map((s, idx) => {
     const quizzesBreakdown = buildQuizBreakdown(s.id)
-    const overallQuizPercent = quizzesBreakdown.length
-      ? Math.round(quizzesBreakdown.reduce((sum, q) => sum + q.percent, 0) / quizzesBreakdown.length)
+    
+    const totalEarned = quizzesBreakdown.reduce((sum, q) => sum + q.score, 0)
+    const totalPossible = quizzesBreakdown.reduce((sum, q) => sum + q.total, 0)
+    const overallQuizPercent = totalPossible > 0 
+      ? Math.round((totalEarned / totalPossible) * 100)
       : 0
+    
     const answeredCount = quizzesBreakdown.filter(q => q.status === 'Submitted').length
     const progress = quizzesBreakdown.length
       ? Math.round((answeredCount / quizzesBreakdown.length) * 100)
@@ -376,6 +378,47 @@ async function fetchQuizzesFromAPI() {
   }
 }
 
+async function fetchStudentAttempts() {
+  if (!currentCourseId.value || apiStudents.value.length === 0) return
+
+  isLoadingAttempts.value = true
+  try {
+    // Fetch attempts for each student
+    const attemptPromises = apiStudents.value.map(async (student) => {
+      const studentId = student.userId || student.id
+      if (!studentId) return { studentId: null, attempts: [] }
+
+      try {
+        const attempts = await quizService.getStudentAttempts(studentId)
+        return {
+          studentId,
+          attempts: Array.isArray(attempts) ? attempts : []
+        }
+      } catch (error) {
+        console.error(`Failed to fetch attempts for student ${studentId}:`, error)
+        return { studentId, attempts: [] }
+      }
+    })
+
+    const results = await Promise.all(attemptPromises)
+    
+    // Build the studentAttempts map
+    const attemptsMap: Record<number, any[]> = {}
+    results.forEach(({ studentId, attempts }) => {
+      if (studentId) {
+        attemptsMap[studentId] = attempts
+      }
+    })
+
+    studentAttempts.value = attemptsMap
+  } catch (error) {
+    console.error('Failed to fetch student attempts:', error)
+    studentAttempts.value = {}
+  } finally {
+    isLoadingAttempts.value = false
+  }
+}
+
 onMounted(() => {
   sectionsStore.loadArchivedSectionsFromStorage()
   studentsStore.fetchAllStudentsFromApi()
@@ -394,6 +437,13 @@ watch([sectionId], () => {
   if (sectionId.value && currentSection.value?.name && authStore.currentUser?.id) {
     fetchStudentsFromAPI()
     fetchQuizzesFromAPI()
+  }
+}, { immediate: false })
+
+// Fetch attempts after students are loaded
+watch([apiStudents], () => {
+  if (apiStudents.value.length > 0) {
+    fetchStudentAttempts()
   }
 }, { immediate: false })
 
