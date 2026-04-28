@@ -85,6 +85,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     const user = authLocal.currentUser
     if (!user || user.role !== 'student' || !user.id) return
 
+    // Try to load from localStorage first for instant display
+    const cachedData = loadStudentQuizzesFromStorage()
+    if (cachedData) {
+      studentQuizzesFromApi.value = cachedData.quizzes
+      if (cachedData.submittedIds) {
+        submittedQuizIds.value = new Set(cachedData.submittedIds)
+      }
+      if (cachedData.attemptScores) {
+        attemptScores.value = cachedData.attemptScores
+      }
+    }
+
     isLoading.value = true
 
     try {
@@ -155,9 +167,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
               // Get section from student's enrollment or from quiz data
               const sectionName = studentSections[course.id] ||
-                                 quiz.sectionName ||
-                                 (quiz.section && quiz.section.name) ||
-                                 ''
+                quiz.sectionName ||
+                (quiz.section && quiz.section.name) ||
+                ''
 
               return {
                 id: quiz.quizId || quiz.id || 0,
@@ -182,8 +194,52 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       )
 
       studentQuizzesFromApi.value = results.flat()
+      saveStudentQuizzesToStorage()
     } finally {
       isLoading.value = false
+    }
+  }
+
+  function loadStudentQuizzesFromStorage() {
+    try {
+      const auth = useAuthStore()
+      const user = auth.currentUser
+      if (!user || user.role !== 'student') return null
+
+      const storageKey = `quizzes_student_${user.id}`
+      const stored = localStorage.getItem(storageKey)
+      if (!stored) return null
+
+      const data = JSON.parse(stored)
+      // Check if data is less than 30 minutes old
+      const isRecent = data.timestamp && (Date.now() - data.timestamp < 30 * 60 * 1000)
+
+      if (isRecent && data.quizzes) {
+        return data
+      }
+      return null
+    } catch (e) {
+      console.error('Failed to load student quizzes from localStorage:', e)
+      return null
+    }
+  }
+
+  function saveStudentQuizzesToStorage() {
+    try {
+      const auth = useAuthStore()
+      const user = auth.currentUser
+      if (!user || user.role !== 'student') return
+
+      const storageKey = `quizzes_student_${user.id}`
+      const data = {
+        quizzes: studentQuizzesFromApi.value,
+        submittedIds: Array.from(submittedQuizIds.value),
+        attemptScores: attemptScores.value,
+        timestamp: Date.now()
+      }
+      localStorage.setItem(storageKey, JSON.stringify(data))
+    } catch (e) {
+      console.error('Failed to save student quizzes to localStorage:', e)
     }
   }
 
@@ -553,6 +609,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         userQuizzes.push(quizItem)
       }
 
+      saveQuizzesToStorage()
+
       return quizItem
     } finally {
       isSaving.value = false
@@ -570,6 +628,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     Object.keys(teacherQuizzesByUser.value).forEach(list => {
       teacherQuizzesByUser.value[list] = teacherQuizzesByUser.value[list].filter(q => q.id !== quizId)
     })
+
+    saveQuizzesToStorage()
   }
 
   function archiveQuiz(quizId: number) {
@@ -753,11 +813,44 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function loadQuizzesFromStorage(): TeacherQuizItem[] {
-    return []
+    try {
+      const auth = useAuthStore()
+      const user = auth.currentUser
+      if (!user || user.role !== 'teacher') return []
+
+      const storageKey = `quizzes_teacher_${user.id}`
+      const stored = localStorage.getItem(storageKey)
+      if (!stored) return []
+
+      const data = JSON.parse(stored)
+      // Check if data is less than 1 hour old
+      const isRecent = data.timestamp && (Date.now() - data.timestamp < 60 * 60 * 1000)
+
+      if (isRecent && data.quizzes) {
+        return data.quizzes
+      }
+      return []
+    } catch (e) {
+      console.error('Failed to load quizzes from localStorage:', e)
+      return []
+    }
   }
 
   function saveQuizzesToStorage() {
-    // Placeholder for future implementation
+    try {
+      const auth = useAuthStore()
+      const user = auth.currentUser
+      if (!user || user.role !== 'teacher') return
+
+      const storageKey = `quizzes_teacher_${user.id}`
+      const data = {
+        quizzes: myTeacherQuizzes.value,
+        timestamp: Date.now()
+      }
+      localStorage.setItem(storageKey, JSON.stringify(data))
+    } catch (e) {
+      console.error('Failed to save quizzes to localStorage:', e)
+    }
   }
 
   function getStudentQuizQuestions(quizId: number): QuizQuestion[] {
@@ -1496,6 +1589,14 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       return
     }
 
+    // Try to load from localStorage first
+    const cachedQuizzes = loadQuizzesFromStorage()
+    if (cachedQuizzes.length > 0) {
+      teacherQuizzesByUser.value[user.username] = cachedQuizzes
+      loadArchivedSeedQuizzesFromStorage()
+      return
+    }
+
     isLoading.value = true
 
     try {
@@ -1584,6 +1685,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
 
       teacherQuizzesByUser.value[user.username] = detailedQuizzes
       loadArchivedSeedQuizzesFromStorage()
+      saveQuizzesToStorage()
     } finally {
       isLoading.value = false
     }
@@ -1657,6 +1759,8 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     setQuizQuestionsForScore,
     hasSubmittedAttempt,
     markQuizAsSubmitted,
-    attemptScores
+    attemptScores,
+    loadStudentQuizzesFromStorage,
+    saveStudentQuizzesToStorage
   }
 })

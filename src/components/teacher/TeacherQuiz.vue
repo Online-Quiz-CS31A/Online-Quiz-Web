@@ -3,11 +3,11 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
+import { useCoursesStore } from '@/stores/coursesStore'
 import type { TeacherQuizItem } from '@/interfaces/interfaces'
 import QuizDeleteDraftModal from '@/components/modals/QuizDeleteDraftModal.vue'
 import QuizDeletePublishedModal from '@/components/modals/QuizDeletePublishedModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
-import TeacherQuizSkeleton from '@/components/skeletons/TeacherQuizSkeleton.vue'
 import quiz1 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103442.webp'
 import quiz2 from '@/assets/image/quiz_bg/Screenshot 2025-08-21 103614.webp'
 import quiz3 from '@/assets/image/quiz_bg/liquid-cheese.webp'
@@ -94,22 +94,6 @@ const getCoverStyle = (quiz: TeacherQuizItem) => {
   }
 }
 
-const getCardColorClasses = (color: string) => {
-  const colorMap: Record<string, string> = {
-    blue: 'bg-blue-200 text-blue-900',
-    green: 'bg-green-200 text-green-900',
-    purple: 'bg-purple-200 text-purple-900',
-    red: 'bg-red-200 text-red-900',
-    yellow: 'bg-yellow-200 text-yellow-900',
-    indigo: 'bg-indigo-200 text-indigo-900',
-    pink: 'bg-pink-200 text-pink-900',
-    teal: 'bg-teal-200 text-teal-900',
-    orange: 'bg-orange-200 text-orange-900',
-    cyan: 'bg-cyan-200 text-cyan-900'
-  }
-  return colorMap[color] || colorMap.blue
-}
-
 const toggleMenu = (quizId: number) => {
   openMenuId.value = openMenuId.value === quizId ? null : quizId
 }
@@ -194,17 +178,43 @@ const handleQuizClick = (quiz: TeacherQuizItem) => {
 
 const getSubmissionStats = (quiz: TeacherQuizItem) => {
   const submitted = quizzesStore.getQuizUniqueSubmitterCount(quiz.id)
-  const section = sectionsStore.allSections.find(s => s.name === quiz.class)
-  const total = section
-    ? (section.studentUsernames?.length || section.students || 0)
-    : (quiz.total || 0)
-  const percent = total > 0 ? Math.min(100, (submitted / total) * 100) : 0
+  const coursesStore = useCoursesStore()
 
-  return {
-    submitted,
-    total,
-    percent
+  const quizSection = quiz.class?.trim().toLowerCase() ?? ''
+  const quizSubject = quiz.subject?.trim().toLowerCase() ?? ''
+
+  let matchingCourse = coursesStore.rawTeacherCourses.find(
+    rc => rc.section?.trim().toLowerCase() === quizSection
+      && rc.name?.trim().toLowerCase() === quizSubject
+  )
+  
+  if (!matchingCourse) {
+    matchingCourse = coursesStore.rawTeacherCourses.find(
+      rc => rc.section?.trim().toLowerCase() === quizSection
+    )
   }
+
+  const total = matchingCourse
+    ? (matchingCourse.students || 0)
+    : (() => {
+
+        const name = (quiz.class || '').trim()
+        if (!name) return quiz.total || 0
+
+        const matchedSections = sectionsStore.allSections.filter(s => (s.name || '').trim() === name)
+        const unique = new Set<string | number>()
+        for (const sec of matchedSections) {
+          const usernames = sec.studentUsernames || []
+          for (const u of usernames) unique.add(u)
+        }
+
+        if (unique.size > 0) return unique.size
+        const single = sectionsStore.allSections.find(s => (s.name || '').trim() === name)
+        return single?.students || quiz.total || 0
+      })()
+
+  const percent = total > 0 ? Math.min(100, (submitted / total) * 100) : 0
+  return { submitted, total, percent }
 }
 
 const formatDueDate = (dateStr: string) => {
@@ -284,7 +294,26 @@ const formatDueDate = (dateStr: string) => {
 
     <!-- Loading State -->
     <div v-if="quizzesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <TeacherQuizSkeleton v-for="i in 3" :key="i" />
+      <div v-for="i in 6" :key="i" class="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+        <div class="h-32 bg-gradient-to-br from-gray-200 to-gray-300"></div>
+        <div class="p-4 space-y-3">
+          <div class="bg-gray-100 rounded-lg px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-5 h-5 bg-gray-200 rounded"></div>
+              <div class="flex-1">
+                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <div class="w-5 h-5 bg-gray-200 rounded mr-2.5"></div>
+            <div class="h-3 bg-gray-200 rounded w-32"></div>
+          </div>
+          <div class="pt-2">
+            <div class="h-4 bg-gray-200 rounded w-full"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -307,85 +336,128 @@ const formatDueDate = (dateStr: string) => {
       <div
         v-for="quiz in filteredQuizzes"
         :key="quiz.id"
-        class="quiz-card rounded-xl shadow-md overflow-hidden"
-        :class="[
-          quiz.status === 'draft' ? 'draft-card' : getCardColorClasses(quiz.color)
-        ]"
-        :style="quiz.status === 'draft' ? {} : { ...getCoverStyle(quiz), backgroundSize: 'cover', backgroundPosition: 'center' }"
+        class="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
+        :class="[quiz.status === 'draft' ? 'border-amber-300' : '']"
         @click="handleQuizClick(quiz)"
       >
-        <div class="p-5 min-h-[180px] flex flex-col justify-between" :class="quiz.status === 'draft' ? 'bg-gradient-to-br from-slate-600 to-slate-700' : ''">
-          <div class="flex justify-between items-start mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-xs" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white'">{{ formatDueDate(quiz.dueDate) }}</span>
-              <span
-                v-if="quiz.status === 'draft'"
-                class="px-2 py-0.5 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-sm"
-              >
-                <i class="fas fa-file-pen mr-1"></i>DRAFT
-              </span>
+        <!-- Header with background image -->
+        <div class="relative h-32 overflow-hidden">
+          <div
+            v-if="quiz.status !== 'draft'"
+            class="absolute inset-0 bg-cover bg-center transform group-hover:scale-105 transition-transform duration-300"
+            :style="getCoverStyle(quiz)"
+          ></div>
+          <div
+            v-else
+            class="absolute inset-0 bg-gradient-to-br from-slate-600 to-slate-700"
+          ></div>
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-blue-800/50 to-transparent"></div>
+
+          <!-- Status badges -->
+          <div class="absolute top-3 left-3 flex gap-2">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm bg-white/20 text-white border border-white/30">
+              {{ formatDueDate(quiz.dueDate) }}
+            </span>
+            <span
+              v-if="quiz.status === 'draft'"
+              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/90 text-white backdrop-blur-sm"
+            >
+              <i class="fas fa-file-pen mr-1"></i>DRAFT
+            </span>
+          </div>
+
+          <!-- Actions menu -->
+          <div class="absolute right-2 top-2">
+            <button
+              @click.stop="toggleMenu(quiz.id)"
+              class="text-white hover:text-white p-2 rounded-full hover:bg-white/20 backdrop-blur-sm transition-colors cursor-pointer"
+              title="More options"
+            >
+              <i class="fas fa-ellipsis-vertical"></i>
+            </button>
+            <div
+              v-if="openMenuId === quiz.id"
+              class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
+              @click.stop
+            >
+              <template v-if="quiz.archived">
+                <button
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                  @click="handleViewQuiz(quiz)"
+                >
+                  View
+                </button>
+                <button
+                  class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
+                  @click="handleUnarchiveQuiz(quiz)"
+                >
+                  Unarchive
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                  @click="handleEditQuiz(quiz)"
+                >
+                  Edit
+                </button>
+                <button
+                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                  @click="handleDeleteQuiz(quiz)"
+                >
+                  Archive
+                </button>
+              </template>
             </div>
-            <div class="relative">
-              <button
-                @click.stop="toggleMenu(quiz.id)"
-                :class="quiz.status === 'draft' ? 'text-slate-200 hover:text-white' : 'text-white hover:text-gray-200'"
-                class="text-lg transition-colors cursor-pointer"
-                title="More options"
-              >
-                <i class="fas fa-ellipsis-vertical"></i>
-              </button>
-              <div
-                v-if="openMenuId === quiz.id"
-                class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-md shadow-lg border border-gray-200 py-1 z-10"
-                @click.stop
-              >
-                <template v-if="quiz.archived">
-                  <button
-                    class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                    @click="handleViewQuiz(quiz)"
-                  >
-                    View
-                  </button>
-                  <button
-                    class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
-                    @click="handleUnarchiveQuiz(quiz)"
-                  >
-                    Unarchive
-                  </button>
-                </template>
-                <template v-else>
-                  <button
-                    class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                    @click="handleEditQuiz(quiz)"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                    @click="handleDeleteQuiz(quiz)"
-                  >
-                    Archive
-                  </button>
-                </template>
+          </div>
+
+          <!-- Quiz title -->
+          <div class="absolute bottom-3 left-4 right-4">
+            <h3 class="text-lg font-bold text-white line-clamp-2 drop-shadow-lg">
+              {{ quiz.title }}
+            </h3>
+          </div>
+        </div>
+
+        <!-- Card body -->
+        <div class="p-4 space-y-3">
+          <!-- Course info -->
+          <div class="bg-blue-50 rounded-lg px-4 py-3">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              <div class="flex-1 min-w-0">
+                <div class="text-base leading-relaxed">
+                  <span class="font-semibold text-blue-700">{{ quiz.subject }}</span>
+                  <span v-if="quiz.class" class="text-gray-500 text-sm ml-2">
+                    ({{ quiz.class }})
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-          <h3 class="text-lg font-bold mb-2" :class="quiz.status === 'draft' ? 'text-white' : 'text-white'">{{ quiz.title }}</h3>
-          <p class="text-sm mb-4" :class="quiz.status === 'draft' ? 'text-slate-200' : 'text-white/90'">{{ quiz.subject }}</p>
-        </div>
-        <div class="px-5 py-3 h-12" :class="quiz.status === 'draft' ? 'bg-slate-100' : 'bg-white'">
-          <div v-if="quiz.status === 'draft'" class="flex items-center justify-end h-full">
-            <button class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
-              <span>Continue Editing</span>
+
+          <!-- Action button or submission stats -->
+          <div v-if="quiz.status === 'draft'" class="pt-2">
+            <button class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center group-hover:shadow-md">
+              <i class="fas fa-edit mr-2"></i>
+              Continue Editing
+              <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </button>
           </div>
-          <div v-else class="flex items-center gap-3 h-full">
-            <span class="text-xs text-gray-500 whitespace-nowrap">
-              {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }} submitted
-            </span>
-            <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+          <div v-else class="pt-2">
+            <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+              <span class="font-medium">Submissions</span>
+              <span class="font-semibold text-gray-900">
+                {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }}
+              </span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
               <div
-                class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                class="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 :style="{ width: `${getSubmissionStats(quiz).percent}%` }"
               ></div>
             </div>
@@ -513,24 +585,17 @@ const formatDueDate = (dateStr: string) => {
   </div>
 </template>
 
-
-
 <style scoped>
-.quiz-card {
-  transition: all 0.3s ease;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
-.quiz-card:hover {
-  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-}
-
-.draft-card {
-  position: relative;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 3px rgba(59, 130, 246, 0.3);
-  transition: all 0.3s ease;
-}
-
-.draft-card:hover {
-  box-shadow: 0 8px 15px rgba(0,0,0,0.15), 0 0 0 3px rgba(59, 130, 246, 0.5);
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

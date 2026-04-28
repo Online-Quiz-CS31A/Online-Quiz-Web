@@ -103,23 +103,7 @@ const breadcrumbText = computed(() => {
 
 const students = computed<Student[]>(() => {
   if (apiStudents.value.length > 0) {
-    const currentSectionName = currentSection.value?.name
-
-    const filteredApiStudents = apiStudents.value.filter(student => {
-      if (!currentSectionName) return true
-
-      if (Array.isArray(student.sections)) {
-        return student.sections.includes(currentSectionName)
-      }
-
-      if (typeof student.section === 'string') {
-        return student.section.split(',').map((s: string) => s.trim()).includes(currentSectionName)
-      }
-
-      return true
-    })
-
-    return filteredApiStudents.map((student, i) => {
+    return apiStudents.value.map((student: any, i: number) => {
       const fullName = (student.studentName || '').trim()
         || `${student.firstName || ''} ${student.lastName || ''}`.trim()
         || student.username
@@ -262,7 +246,14 @@ const sortedGrades = computed(() => {
   return rows
 })
 
-const totalStudents = computed(() => students.value.length)
+const totalStudents = computed(() => {
+  const seen = new Set<string | number>()
+  for (const s of students.value) {
+    if (s.email) seen.add(s.email)
+    else if (s.id != null) seen.add(s.id)
+  }
+  return seen.size
+})
 
 const scheduleInfo = computed(() => {
   if (!schedule.value) return 'Schedule not set'
@@ -326,35 +317,39 @@ const classMeta = reactive({
 
 // FETCH FUNCTIONS
 async function fetchStudentsFromAPI() {
-  const currentSectionName = currentSection.value?.name
-
-  if (!currentCourseId.value || !currentSectionName) return
-  if (!authStore.currentUser?.id) return
+  const courseId = currentCourseId.value
+  if (!courseId || !authStore.currentUser?.id) return
 
   isLoadingStudents.value = true
-
   try {
-    const { useAdminStore } = await import('@/stores/adminStore')
-    const adminStore = useAdminStore()
+    // The courseId already identifies exactly one section (each rawTeacherCourse
+    // entry = one section). Return ALL enrollments for this course — no section-name
+    // filtering needed, which was the root cause of students disappearing.
+    const { getCourseEnrollments } = await import('@/services/courseService')
+    const enrollments = await getCourseEnrollments(courseId, authStore.currentUser.id!)
 
-    const students = await adminStore.fetchStudentsBySection(currentSectionName)
+    // Deduplicate by studentId/userId — a student should only appear once
+    // even if the backend returned duplicate enrollment records.
+    const seen = new Set<number>()
+    const unique = enrollments.filter((e: any) => {
+      const uid = e.studentId || e.userId
+      if (!uid || seen.has(uid)) return false
+      seen.add(uid)
+      return true
+    })
 
-    if (students && Array.isArray(students)) {
-      apiStudents.value = students.map((student: any) => ({
-        userId: student.id,
-        id: student.id,
-        studentName: student.name,
-        firstName: student.name?.split(' ')[0] || '',
-        lastName: student.name?.split(' ').slice(1).join(' ') || '',
-        username: student.username || student.email?.split('@')[0] || '',
-        email: student.email,
-        photoUrl: student.avatar,
-        section: currentSectionName,
-        sections: [currentSectionName]
-      }))
-    } else {
-      apiStudents.value = []
-    }
+    apiStudents.value = unique.map((enrollment: any, i: number) => ({
+      userId: enrollment.studentId || enrollment.userId,
+      id: enrollment.studentId || enrollment.userId || i + 1,
+      studentName: enrollment.studentName || '',
+      firstName: (enrollment.studentName || '').split(' ')[0] || '',
+      lastName: (enrollment.studentName || '').split(' ').slice(1).join(' ') || '',
+      username: enrollment.studentNumber || enrollment.email?.split('@')[0] || '',
+      email: enrollment.email || '',
+      photoUrl: null,
+      section: enrollment.section || enrollment.studentSection || '',
+      sections: [enrollment.section || enrollment.studentSection || ''],
+    }))
   } catch (error) {
     console.error('Failed to fetch students from API:', error)
     apiStudents.value = []
@@ -585,7 +580,7 @@ function cancelRemove() {
               </div>
               <div class="leading-tight">
                 <div class="text-white font-medium">{{ classMeta.professor }}</div>
-                <div class="text-blue-100 text-sm">{{ students.length }} students</div>
+                <div class="text-blue-100 text-sm">{{ totalStudents }} students</div>
               </div>
             </div>
           </div>
