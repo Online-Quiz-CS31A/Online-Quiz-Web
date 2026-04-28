@@ -4,9 +4,12 @@ import type { QuestionOption } from '@/interfaces/interfaces'
 interface Props {
   options: QuestionOption[]
   questionId: number
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:options': [options: QuestionOption[]]
@@ -34,9 +37,10 @@ function updateOption(index: number, field: keyof QuestionOption, value: any) {
             <input 
               :checked="option.isCorrect"
               @change="updateOption(index, 'isCorrect', true)"
+              :disabled="props.readOnly"
               type="radio" 
               :name="`correct-${questionId}`"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" 
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 disabled:opacity-50" 
             />
             <span class="min-w-6 h-6 inline-flex items-center justify-center text-xs font-semibold rounded-full bg-blue-50 text-blue-600">
               {{ getOptionLetter(index) }}
@@ -44,8 +48,9 @@ function updateOption(index: number, field: keyof QuestionOption, value: any) {
             <input 
               :value="option.text"
               @input="updateOption(index, 'text', ($event.target as HTMLInputElement).value)"
+              :disabled="props.readOnly"
               type="text"
-              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400" 
+              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 disabled:opacity-80" 
             />
           </div>
         </div>

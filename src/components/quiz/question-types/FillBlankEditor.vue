@@ -1,9 +1,12 @@
 <script setup lang="ts">
 interface Props {
   correctAnswer: string
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:correctAnswer': [value: string]
@@ -24,8 +27,9 @@ function updateAnswer(e: Event) {
           <input 
             :value="correctAnswer"
             @input="updateAnswer"
+            :disabled="props.readOnly"
             type="text"
-            class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
+            class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 disabled:opacity-80 disabled:cursor-not-allowed"
             placeholder="Enter the correct answer for the blank" 
           />
         </div>

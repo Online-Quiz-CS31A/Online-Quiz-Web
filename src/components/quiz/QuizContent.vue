@@ -7,7 +7,13 @@ import { useMediaUpload } from '@/composables/useMediaUpload'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import type { QuizQuestion } from '@/interfaces/interfaces'
+interface Props {
+  readOnly?: boolean
+}
 
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 import SidebarQuestions from './SidebarQuestions.vue'
 import QuestionEditorPanel from './QuestionEditorPanel.vue'
 import SettingsPanel from './SettingsPanel.vue'
@@ -148,6 +154,7 @@ defineExpose({
         :questions="quiz.questions"
         :currentQuestionIndex="quiz.currentQuestionIndex"
         :openMenuIndex="openMenuIndex"
+        :read-only="props.readOnly"
         @select="handleSelectQuestion"
         @toggleMenu="toggleQuestionMenu"
         @duplicate="duplicateQuestion"
@@ -160,7 +167,7 @@ defineExpose({
         <div class="py-4">
           <div class="bg-white p-4 flex items-start gap-4 rounded-lg">
             <!-- Add Question Button -->
-            <div class="flex-shrink-0">
+            <div class="flex-shrink-0" v-if="!props.readOnly">
               <!-- Real button when enabled -->
               <button
                 v-if="hasCourseSelected && hasAssignedSections"
@@ -189,12 +196,14 @@ defineExpose({
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                 <div>
                   <input v-model="quiz.title" type="text"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         :disabled="props.readOnly"
+                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                          placeholder="Quiz Title">
                 </div>
                 <div>
                   <select v-model="quiz.subject"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          :disabled="props.readOnly"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed">
                     <option value="">Select Course</option>
                     <option v-for="subject in teacherSubjects" :key="subject" :value="subject">
                       {{ subject }}
@@ -208,7 +217,7 @@ defineExpose({
 
         <!-- Question Editor -->
         <div class="flex-1 overflow-auto scrollbar-hide">
-          <QuestionEditorPanel :question="currentQuestion" />
+          <QuestionEditorPanel :question="currentQuestion" :read-only="props.readOnly" />
         </div>
       </div>
 
@@ -218,6 +227,7 @@ defineExpose({
         :questionSettings="questionSettings"
         :questionTypes="questionTypes"
         :showMediaUpload="showMediaUpload"
+        :read-only="props.readOnly"
         @update:type="(val) => questionSettings.type = val"
         @update:points="(val) => questionSettings.points = val"
         @update:mediaType="(val) => questionSettings.mediaType = val"

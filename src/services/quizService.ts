@@ -90,7 +90,7 @@ export async function deleteQuiz(quizId: number) {
  * @returns Promise with response data
  */
 export async function archiveQuiz(quizId: number) {
-  const response = await api.patch(`/Quiz/${quizId}/archive`)
+  const response = await api.post(`/Quiz/${quizId}/archive`)
   return response.data
 }
 
@@ -100,7 +100,67 @@ export async function archiveQuiz(quizId: number) {
  * @returns Promise with response data
  */
 export async function unarchiveQuiz(quizId: number) {
-  const response = await api.patch(`/Quiz/${quizId}/unarchive`)
+  const response = await api.post(`/Quiz/${quizId}/unarchive`)
+  return response.data
+}
+
+/**
+ * Get archived quizzes for a course
+ * @param courseId - The ID of the course
+ * @returns Promise with archived quizzes data
+ */
+export async function getArchivedQuizzesForCourse(courseId: number) {
+  const response = await api.get(`/Quiz/course/${courseId}/archived`)
+  return response.data
+}
+
+/**
+ * Get archived quizzes for a course (paginated)
+ * @param courseId - The ID of the course
+ * @param pageNumber - Page number (default: 1)
+ * @param pageSize - Page size (default: 10)
+ * @returns Promise with paginated archived quizzes data
+ */
+export async function getArchivedQuizzesForCoursePaginated(
+  courseId: number,
+  pageNumber: number = 1,
+  pageSize: number = 10
+) {
+  const response = await api.get(`/Quiz/course/${courseId}/archived/paged`, {
+    params: { pageNumber, pageSize }
+  })
+  return response.data
+}
+
+/**
+ * Bulk archive quizzes
+ * @param quizIds - Array of quiz IDs to archive
+ * @returns Promise with bulk operation result
+ */
+export async function bulkArchiveQuizzes(quizIds: number[]) {
+  const response = await api.post('/Quiz/bulk-archive', { ids: quizIds })
+  return response.data
+}
+
+/**
+ * Bulk unarchive quizzes
+ * @param quizIds - Array of quiz IDs to unarchive
+ * @returns Promise with bulk operation result
+ */
+export async function bulkUnarchiveQuizzes(quizIds: number[]) {
+  const response = await api.post('/Quiz/bulk-unarchive', { ids: quizIds })
+  return response.data
+}
+
+/**
+ * Get quiz archive statistics
+ * @param courseId - Optional course ID to filter statistics
+ * @returns Promise with archive statistics
+ */
+export async function getQuizArchiveStatistics(courseId?: number) {
+  const response = await api.get('/Quiz/archive-statistics', {
+    params: courseId ? { courseId } : undefined
+  })
   return response.data
 }
 
@@ -152,6 +212,11 @@ export default {
   deleteQuiz,
   archiveQuiz,
   unarchiveQuiz,
+  getArchivedQuizzesForCourse,
+  getArchivedQuizzesForCoursePaginated,
+  bulkArchiveQuizzes,
+  bulkUnarchiveQuizzes,
+  getQuizArchiveStatistics,
   publishQuiz,
   unpublishQuiz,
   getStudentAttempts,

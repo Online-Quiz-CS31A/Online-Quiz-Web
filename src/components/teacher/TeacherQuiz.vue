@@ -44,6 +44,8 @@ const props = withDefaults(defineProps<Props>(), {
 // EMITS
 const emit = defineEmits<{
   'view-all': []
+  'quiz-archived': []
+  'quiz-unarchived': []
 }>()
 
 // REFS
@@ -143,12 +145,17 @@ const handleCancelDelete = () => {
   quizPendingDeletion.value = null
 }
 
-const handleConfirmDelete = () => {
+const handleConfirmDelete = async () => {
   if (!quizPendingDeletion.value) {
     handleCancelDelete()
     return
   }
-  quizzesStore.archiveQuiz(quizPendingDeletion.value.id)
+  try {
+    await quizzesStore.archiveQuiz(quizPendingDeletion.value.id)
+    emit('quiz-archived')
+  } catch (error) {
+    console.error('Archive failed:', error)
+  }
   handleCancelDelete()
 }
 
@@ -163,12 +170,17 @@ const handleCancelUnarchive = () => {
   quizPendingUnarchive.value = null
 }
 
-const handleConfirmUnarchive = () => {
+const handleConfirmUnarchive = async () => {
   if (!quizPendingUnarchive.value) {
     handleCancelUnarchive()
     return
   }
-  quizzesStore.unarchiveQuiz(quizPendingUnarchive.value.id)
+  try {
+    await quizzesStore.unarchiveQuiz(quizPendingUnarchive.value.id)
+    emit('quiz-unarchived')
+  } catch (error) {
+    console.error('Unarchive failed:', error)
+  }
   handleCancelUnarchive()
 }
 
@@ -439,28 +451,33 @@ const formatDueDate = (dateStr: string) => {
           </div>
 
           <!-- Action button or submission stats -->
-          <div v-if="quiz.status === 'draft'" class="pt-2">
-            <button class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center group-hover:shadow-md">
-              <i class="fas fa-edit mr-2"></i>
-              Continue Editing
-              <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </button>
-          </div>
-          <div v-else class="pt-2">
-            <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
-              <span class="font-medium">Submissions</span>
-              <span class="font-semibold text-gray-900">
-                {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }}
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-              <div
-                class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${getSubmissionStats(quiz).percent}%` }"
-              ></div>
-            </div>
+          <div class="pt-2">
+            <template v-if="quiz.status === 'draft'">
+              <button v-if="!quiz.archived" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center group-hover:shadow-md">
+                <i class="fas fa-edit mr-2"></i>
+                Continue Editing
+                <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+              <div v-else class="text-sm text-gray-400 italic text-center py-2 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                <i class="fas fa-archive mr-1.5"></i> Archived Draft
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <span class="font-medium">Submissions</span>
+                <span class="font-semibold text-gray-900">
+                  {{ getSubmissionStats(quiz).submitted }}/{{ getSubmissionStats(quiz).total }}
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  :style="{ width: `${getSubmissionStats(quiz).percent}%` }"
+                ></div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -494,11 +511,14 @@ const formatDueDate = (dateStr: string) => {
                 <div class="text-base font-semibold" :class="quiz.status === 'draft' ? 'text-slate-800' : 'text-gray-900'">{{ quiz.title }}</div>
                 <div class="text-sm" :class="quiz.status === 'draft' ? 'text-slate-600' : 'text-gray-600'">{{ quiz.subject }}</div>
                 <div v-if="quiz.status === 'draft'" class="mt-3">
-                  <button class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
+                  <button v-if="!quiz.archived" class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
                     <i class="fas fa-edit"></i>
                     <span>Continue Editing</span>
                     <i class="fas fa-arrow-right text-xs"></i>
                   </button>
+                  <div v-else class="text-xs text-gray-400 italic">
+                    <i class="fas fa-archive mr-1"></i> Archived Draft
+                  </div>
                 </div>
                 <div v-else class="mt-3 flex items-center gap-2">
                   <span class="text-xs text-gray-500">

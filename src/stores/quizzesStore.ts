@@ -6,6 +6,7 @@ import { useCoursesStore } from './coursesStore'
 import * as quizService from '../services/quizService'
 import type { QuizPayload, StudentQuizDto } from '../services/types'
 import api from '../services/api'
+import { useToast } from '../composables/useToast'
 
 export const useQuizzesStore = defineStore('quizzes', () => {
   const isLoading = ref(false)
@@ -632,7 +633,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     saveQuizzesToStorage()
   }
 
-  function archiveQuiz(quizId: number) {
+  async function archiveQuiz(quizId: number) {
+    const toast = useToast()
+    try {
+      // Call the API to archive the quiz
+      await quizService.archiveQuiz(quizId)
+      toast.success('Quiz archived successfully')
+    } catch (error) {
+      console.error('Failed to archive quiz via API:', error)
+      toast.error('Failed to archive quiz. Please try again.')
+      throw error // Re-throw to let caller know it failed
+    }
+
     let seedMutated = false
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {
@@ -719,7 +731,18 @@ export const useQuizzesStore = defineStore('quizzes', () => {
     ids.forEach(id => archiveQuiz(id))
   }
 
-  function unarchiveQuiz(quizId: number) {
+  async function unarchiveQuiz(quizId: number) {
+    const toast = useToast()
+    try {
+      // Call the API to unarchive the quiz
+      await quizService.unarchiveQuiz(quizId)
+      toast.success('Quiz restored successfully')
+    } catch (error) {
+      console.error('Failed to unarchive quiz via API:', error)
+      toast.error('Failed to restore quiz. Please try again.')
+      throw error // Re-throw to let caller know it failed
+    }
+
     let seedMutated = false
     Object.values(teacherQuizzesByUser.value).forEach(list => {
       list.forEach(q => {

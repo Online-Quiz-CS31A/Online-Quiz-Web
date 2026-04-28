@@ -282,7 +282,7 @@ const quizzesStore = useQuizzesStore()
 const activeQuizzes = computed<TeacherQuizItem[]>(() => {
   return apiQuizzes.value
     .filter(q => (q.status || 'published') !== 'draft')
-    .filter(q => !(q as any).archived)
+    .filter(q => !(q as any).archived && !q.archived)
     .sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime()
       const bDate = new Date(b.createdAt || 0).getTime()
@@ -368,6 +368,7 @@ async function fetchQuizzesFromAPI() {
         questions: quiz.questions || [],
         createdAt: quiz.createdAt || new Date().toISOString(),
         updatedAt: quiz.updatedAt || new Date().toISOString(),
+        archived: quiz.isArchived || false,
       }))
     }
   } catch (error) {
@@ -648,6 +649,7 @@ function cancelRemove() {
           :archivedSectionId="sectionId"
           @update:viewMode="(v) => (quizViewMode = v)"
           @create-quiz="navigateToQuizCreator"
+          @quiz-archived="fetchQuizzesFromAPI"
         />
       </div>
 

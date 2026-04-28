@@ -29,15 +29,6 @@ const creatorRef = ref<InstanceType<typeof QuizContent> | null>(null)
 watch(() => route.name, (newRouteName) => {
   showResults.value = newRouteName === 'quiz-results'
   showAssign.value = newRouteName === 'quiz-assign'
-
-  if ((archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value)
-    && newRouteName !== 'quiz-results'
-    && (newRouteName === 'quiz-builder' || newRouteName === 'quiz-assign' || newRouteName === 'quiz-preview')
-  ) {
-    showResults.value = true
-    showAssign.value = false
-    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
-  }
 })
 
 // METHODS
@@ -116,19 +107,21 @@ onMounted(() => {
   }
   syncPublished()
 
-  if (archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value) {
-    showResults.value = true
-    showAssign.value = false
-    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
+  const isArchived = archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value
+  const isPublished = published.value
+
+  if (isArchived && isPublished && route.name === 'quiz-builder') {
+    onResults()
   }
 })
 
 watch(() => quizzesStore.currentQuiz.id, (id) => {
   syncPublished()
-  if (archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value) {
-    showResults.value = true
-    showAssign.value = false
-    router.replace({ name: 'quiz-results', params: route.params, query: route.query })
+  const isArchived = archivedQuiz.value || isArchivedSectionContext.value || isArchivedCourseContext.value
+  const isPublished = published.value
+ 
+  if (isArchived && isPublished && route.name === 'quiz-builder') {
+    onResults()
   }
 })
 </script>
@@ -179,7 +172,12 @@ watch(() => quizzesStore.currentQuiz.id, (id) => {
     <div class="flex-1 flex flex-col overflow-hidden">
       <router-view v-slot="{ Component }">
         <div class="h-full overflow-y-auto">
-          <component :is="Component" ref="creatorRef" class="min-h-full" />
+          <component
+            :is="Component"
+            ref="creatorRef"
+            class="min-h-full"
+            :read-only="archivedQuiz || isArchivedSectionContext || isArchivedCourseContext"
+          />
         </div>
       </router-view>
     </div>

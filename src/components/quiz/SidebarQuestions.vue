@@ -5,9 +5,12 @@ interface Props {
   questions: QuizQuestion[]
   currentQuestionIndex: number
   openMenuIndex: number | null
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   select: [index: number]
@@ -53,7 +56,7 @@ function getQuestionIcon(type: string) {
               <i :class="getQuestionIcon(question.type)" class="text-blue-600 text-sm"></i>
             </div>
 
-            <div class="relative">
+            <div class="relative" v-if="!props.readOnly">
               <button @click.stop="emit('toggleMenu', index)"
                       class="p-1 hover:bg-gray-100 rounded transition">
                 <i class="fas fa-ellipsis-v text-gray-400"></i>

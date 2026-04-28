@@ -1,9 +1,12 @@
 <script setup lang="ts">
 interface Props {
   correctAnswer: string
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:correctAnswer': [value: string]
@@ -24,7 +27,8 @@ function updateAnswer(e: Event) {
           <textarea 
             :value="correctAnswer"
             @input="updateAnswer"
-            class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 resize-none"
+            :disabled="props.readOnly"
+            class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 resize-none disabled:opacity-80 disabled:cursor-not-allowed"
             rows="5"
             placeholder="Enter a sample answer (minimum 3 sentences)..."
           ></textarea>

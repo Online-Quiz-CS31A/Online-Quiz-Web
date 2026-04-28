@@ -12,9 +12,12 @@ const EssayEditor = defineAsyncComponent(() => import('@/components/quiz/questio
 
 interface Props {
   question: QuizQuestion | null
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 function autoResizeTextarea(e: Event) {
   const target = e.target as HTMLTextAreaElement
@@ -46,7 +49,8 @@ function autoResizeTextarea(e: Event) {
             <textarea 
               v-model="question.text"
               @input="autoResizeTextarea($event)"
-              class="w-full px-4 py-3 rounded-lg bg-gray-50 focus:bg-white border-0 ring-1 ring-transparent focus:ring-2 focus:ring-blue-100 focus:outline-none placeholder-gray-400 shadow-inner resize-none overflow-hidden"
+              :disabled="props.readOnly"
+              class="w-full px-4 py-3 rounded-lg bg-gray-50 focus:bg-white border-0 ring-1 ring-transparent focus:ring-2 focus:ring-blue-100 focus:outline-none placeholder-gray-400 shadow-inner resize-none overflow-hidden disabled:opacity-80 disabled:cursor-not-allowed"
               rows="1"
               placeholder="Type your question here..."
             ></textarea>
@@ -64,32 +68,38 @@ function autoResizeTextarea(e: Event) {
             v-if="question.type === 'multiple-choice'"
             v-model:options="question.options"
             :questionId="question.id"
+            :read-only="props.readOnly"
           />
           
           <TrueFalseEditor 
             v-else-if="question.type === 'true-false'"
             v-model:options="question.options"
             :questionId="question.id"
+            :read-only="props.readOnly"
           />
           
           <FillBlankEditor 
             v-else-if="question.type === 'fill-blank'"
             v-model:correctAnswer="question.correctAnswer"
+            :read-only="props.readOnly"
           />
 
           <EssayEditor 
             v-else-if="question.type === 'text'"
             v-model:correctAnswer="question.correctAnswer"
+            :read-only="props.readOnly"
           />
           
           <MatchingEditor 
             v-else-if="question.type === 'matching'"
             v-model:pairs="question.pairs"
+            :read-only="props.readOnly"
           />
           
           <EnumerationEditor 
             v-else-if="question.type === 'enumeration'"
             v-model:items="question.items"
+            :read-only="props.readOnly"
           />
         </div>
       </div>

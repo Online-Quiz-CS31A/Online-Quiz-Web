@@ -1,9 +1,12 @@
 <script setup lang="ts">
 interface Props {
   items: string[]
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:items': [items: string[]]
@@ -45,14 +48,15 @@ function updateItem(index: number, value: string) {
             <input 
               :value="item"
               @input="updateItem(index, ($event.target as HTMLInputElement).value)"
+              :disabled="props.readOnly"
               type="text"
               :placeholder="`Item ${index + 1}`"
-              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400" 
+              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 disabled:opacity-80 disabled:cursor-not-allowed" 
             />
           </div>
         </div>
 
-        <div class="ml-3 flex items-center gap-2 self-stretch">
+        <div class="ml-3 flex items-center gap-2 self-stretch" v-if="!props.readOnly">
           <button 
             @click="removeItem(index)" 
             title="Remove item"
@@ -64,6 +68,7 @@ function updateItem(index: number, value: string) {
       </div>
     </div>
     <button 
+      v-if="!props.readOnly"
       @click="addItem"
       class="mt-3 bg-blue-50 text-blue-600 text-sm py-2 px-3 rounded-md hover:bg-blue-100 transition-colors"
     >

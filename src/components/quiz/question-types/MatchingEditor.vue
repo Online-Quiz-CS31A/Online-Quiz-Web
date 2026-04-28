@@ -3,9 +3,12 @@ import type { MatchingPair } from '@/interfaces/interfaces'
 
 interface Props {
   pairs: MatchingPair[]
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:pairs': [pairs: MatchingPair[]]
@@ -42,22 +45,24 @@ function updatePair(index: number, field: 'left' | 'right', value: string) {
             <input 
               :value="pair.left"
               @input="updatePair(index, 'left', ($event.target as HTMLInputElement).value)"
+              :disabled="props.readOnly"
               type="text"
-              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
+              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 disabled:opacity-80 disabled:cursor-not-allowed"
               placeholder="Term" 
             />
             <i class="fas fa-arrows-alt-h text-gray-300"></i>
             <input 
               :value="pair.right"
               @input="updatePair(index, 'right', ($event.target as HTMLInputElement).value)"
+              :disabled="props.readOnly"
               type="text"
-              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
+              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 disabled:opacity-80 disabled:cursor-not-allowed"
               placeholder="Definition" 
             />
           </div>
         </div>
 
-        <div class="ml-3 flex items-center gap-2 self-stretch">
+        <div class="ml-3 flex items-center gap-2 self-stretch" v-if="!props.readOnly">
           <button 
             @click="removePair(index)" 
             title="Remove pair"
@@ -69,6 +74,7 @@ function updatePair(index: number, field: 'left' | 'right', value: string) {
       </div>
     </div>
     <button 
+      v-if="!props.readOnly"
       @click="addPair" 
       class="mt-3 bg-blue-50 text-blue-600 text-sm py-2 px-3 rounded-md hover:bg-blue-100 transition-colors"
     >
