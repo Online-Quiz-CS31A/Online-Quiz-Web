@@ -387,7 +387,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     try {
       const userId = authStore.currentUser?.id
       const qid = quizId.value
-      if (!userId || !qid) return
+      if (!userId || !qid) return false
 
       const response = await api.get(`/Attempt/student/${userId}`)
 
@@ -398,6 +398,12 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
         if (ongoingAttempt) {
           attemptId.value = ongoingAttempt.attemptId
+          
+          // Restore the attempt state
+          quizzesStore.currentAttempt.quizId = qid
+          quizzesStore.currentAttempt.quizTitle = quizTitle.value
+          quizzesStore.currentAttempt.startAtISO = ongoingAttempt.startedAt
+          quizzesStore.currentAttempt.isOngoing = true
 
           const answersResponse = await api.get(`/Answer/attempt/${attemptId.value}?userId=${userId}`)
 
