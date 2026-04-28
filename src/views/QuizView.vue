@@ -61,6 +61,30 @@ interface QuizMetadata {
   courseName?: string
 }
 
+interface QuestionWithBody extends QuizQuestion {
+  body?: string
+}
+
+interface QuestionWithChoices extends QuizQuestion {
+  choices?: QuestionOption[]
+}
+
+interface QuestionWithItems extends QuizQuestion {
+  items?: string[]
+}
+
+interface QuestionWithPairs extends QuizQuestion {
+  pairs?: Array<{ left: string; right: string }>
+}
+
+interface QuestionWithBlanks extends QuizQuestion {
+  blanks?: Array<{ text: string }>
+}
+
+interface WindowWithQuizHandler extends Window {
+  __quizPopStateHandler?: (event: PopStateEvent) => void
+}
+
 // REFS
 const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIndex === 'number')
   ? (history.state as HistoryState).questionIndex!
@@ -113,10 +137,14 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     }
 
     const selectedArray = Array.from(selectedOptions.value)
-    quizzesStore.setAnswer(qi, selectedArray.length > 0 ? selectedArray[0] : -1)
+    // Store the entire array for multiple-choice questions
+    quizzesStore.currentAttempt.answers[qi] = selectedArray
 
     if (selectedArray.length > 0) {
       quizzesStore.markAnswered(qi)
+    } else {
+      // If no options selected, remove from answered set
+      quizzesStore.currentAttempt.answeredSet.delete(qi)
     }
 
     await saveAnswerToBackend(qi, selectedArray)
@@ -186,9 +214,12 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     if (q.type === 'single-choice' || q.type === 'true-false') {
       selectedOption.value = typeof answer === 'number' ? answer : null
     } else if (q.type === 'multiple-choice') {
-      // Multiple-choice uses checkboxes - answer is array of indices
+      // Multiple-choice uses checkboxes - answer should be array of indices
       if (Array.isArray(answer)) {
         selectedOptions.value = new Set(answer.filter((v): v is number => typeof v === 'number'))
+      } else if (typeof answer === 'number' && answer >= 0) {
+        // Backwards compatibility: if stored as single number, convert to array
+        selectedOptions.value = new Set([answer])
       } else {
         selectedOptions.value.clear()
       }
@@ -706,6 +737,9 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       } else if (q.type === 'multiple-choice') {
         if (Array.isArray(answer)) {
           selectedOptions.value = new Set(answer.filter((v): v is number => typeof v === 'number'))
+        } else if (typeof answer === 'number' && answer >= 0) {
+          // Backwards compatibility
+          selectedOptions.value = new Set([answer])
         }
       } else if (q.type === 'text') {
         if (typeof answer === 'string') {
@@ -732,6 +766,50 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
   // LIFECYCLE
   onMounted(async () => {
     isLoading.value = true
+
+    // Add browser navigation warning and auto-submit
+    const handlePopState = async (event: PopStateEvent) => {
+      event.preventDefault()
+      
+      const confirmLeave = confirm(
+        'Warning: Using browser back/forward buttons will automatically submit your quiz. Do you want to continue?'
+      )
+      
+      if (confirmLeave) {
+        // Auto-submit the quiz
+        try {
+          quizSecurityService.stop()
+          quizzesStore.stopTimer()
+          
+          await submitAttempt()
+          quizzesStore.saveAttemptToHistory()
+          
+          if (quizzesStore.currentAttempt.quizId) {
+            quizzesStore.markQuizAsSubmitted(quizzesStore.currentAttempt.quizId)
+            localStorage.setItem('lastQuizId', quizzesStore.currentAttempt.quizId.toString())
+          }
+          
+          // Navigate to score page
+          router.push({
+            name: 'quiz-score',
+            params: { quizId: quizId.value?.toString() || '' }
+          })
+        } catch (error) {
+          console.error('Failed to auto-submit on browser navigation:', error)
+          alert('Failed to submit quiz. Please try again.')
+        }
+      } else {
+        // Push the state back to prevent navigation
+        window.history.pushState(null, '', window.location.href)
+      }
+    }
+    
+    // Prevent browser back/forward navigation
+    window.history.pushState(null, '', window.location.href)
+    window.addEventListener('popstate', handlePopState)
+    
+    // Store the event handler for cleanup
+    ;(window as WindowWithQuizHandler).__quizPopStateHandler = handlePopState
 
     try {
       // If we don't have a valid quizId, redirect to student home
@@ -866,6 +944,14 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
     quizzesStore.stopTimer()
     quizSecurityService.stop()
     
+    // Remove browser navigation event listener
+    const windowWithHandler = window as WindowWithQuizHandler
+    const handler = windowWithHandler.__quizPopStateHandler
+    if (handler) {
+      window.removeEventListener('popstate', handler)
+      delete windowWithHandler.__quizPopStateHandler
+    }
+    
     // Clear biometric verification flag when leaving the quiz
     const authLocal = useAuthStore()
     if (authLocal.userRole === 'student' && quizId.value) {
@@ -900,7 +986,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
 <template>
     <div class="min-h-screen quiz-container">
-      <AppHeader :breadcrumb="breadcrumb" />
+      <AppHeader :breadcrumb="breadcrumb" :disable-breadcrumb-navigation="true" />
 
       <!-- Security Violation Warning Banner -->
       <transition name="slide-down">
@@ -952,7 +1038,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
             <div class="mb-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">Question {{ currentQuestion + 1 }}</h2>
-              <p class="text-base text-gray-700 leading-relaxed mb-6 no-select">{{ questions[currentQuestion].text || (questions[currentQuestion] as any).body }}</p>
+              <p class="text-base text-gray-700 leading-relaxed mb-6 no-select">{{ questions[currentQuestion].text || (questions[currentQuestion] as QuestionWithBody).body }}</p>
               <div v-if="questions[currentQuestion].mediaUrl" class="mb-6">
                 <img
                   :src="questions[currentQuestion].mediaUrl"
@@ -965,7 +1051,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             <!-- Single Choice / True-False (Radio Buttons) -->
             <div v-if="['single-choice', 'true-false'].includes(questions[currentQuestion].type)" class="space-y-3">
               <div
-                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])"
+                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as QuestionWithChoices).choices || [])"
                 :key="index"
                 :class="[
                   'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
@@ -996,14 +1082,14 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                     'text-base font-medium',
                     selectedOption === index ? 'text-[#4866DA]' : 'text-gray-800'
                   ]"
-                >{{ (option && 'text' in option) ? (option as any).text : (option && 'body' in option ? (option as any).body : option) }}</span>
+                >{{ (option && 'text' in option) ? option.text : (option && 'body' in option ? (option as { body: string }).body : option) }}</span>
               </div>
             </div>
 
             <!-- Multiple Choice (Checkboxes) -->
             <div v-else-if="questions[currentQuestion].type === 'multiple-choice'" class="space-y-3">
               <div
-                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as any).choices || [])"
+                v-for="(option, index) in (questions[currentQuestion].options || (questions[currentQuestion] as QuestionWithChoices).choices || [])"
                 :key="index"
                 :class="[
                   'flex items-center p-2 rounded-xl cursor-pointer transition-all border-1',
@@ -1034,7 +1120,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                     'text-base font-medium',
                     isOptionSelected(index) ? 'text-[#4866DA]' : 'text-gray-800'
                   ]"
-                >{{ (option && 'text' in option) ? (option as any).text : (option && 'body' in option ? (option as any).body : option) }}</span>
+                >{{ (option && 'text' in option) ? option.text : (option && 'body' in option ? (option as { body: string }).body : option) }}</span>
               </div>
             </div>
 
@@ -1052,7 +1138,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             <!-- Enumeration -->
             <div v-else-if="questions[currentQuestion].type === 'enumeration' || questions[currentQuestion].type === 'Enumeration'" class="space-y-3">
               <div
-                v-for="(item, index) in (((questions[currentQuestion] as any)?.items) || [])"
+                v-for="(item, index) in ((questions[currentQuestion] as QuestionWithItems).items || [])"
                 :key="index"
                 class="flex items-center gap-3"
               >
@@ -1074,7 +1160,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                 <div>
                   <h3 class="font-semibold text-gray-700 mb-3">Column A</h3>
                   <div
-                    v-for="(pair, index) in ((questions[currentQuestion] as any).pairs || [])"
+                    v-for="(pair, index) in ((questions[currentQuestion] as QuestionWithPairs).pairs || [])"
                     :key="index"
                     class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg"
                   >
@@ -1086,7 +1172,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                 <div>
                   <h3 class="font-semibold text-gray-700 mb-3">Column B</h3>
                   <div
-                    v-for="(pair, leftIndex) in ((questions[currentQuestion] as any).pairs || [])"
+                    v-for="(pair, leftIndex) in ((questions[currentQuestion] as QuestionWithPairs).pairs || [])"
                     :key="leftIndex"
                     class="mb-2"
                   >
@@ -1097,7 +1183,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                     >
                       <option :value="undefined">Select answer...</option>
                       <option
-                        v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as any).pairs || [])"
+                        v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as QuestionWithPairs).pairs || [])"
                         :key="rightIndex"
                         :value="Number(rightIndex)"
                       >
@@ -1111,7 +1197,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
 
             <!-- Fill in the Blank -->
             <div v-else-if="questions[currentQuestion].type === 'fill-blank' || questions[currentQuestion].type === 'FillBlank'" class="space-y-3">
-              <div v-for="(blank, index) in (((questions[currentQuestion] as any)?.blanks) || Array(1).fill({}))" :key="index" class="flex items-center gap-3">
+              <div v-for="(blank, index) in ((questions[currentQuestion] as QuestionWithBlanks).blanks || Array(1).fill({}))" :key="index" class="flex items-center gap-3">
                 <span class="text-gray-600 font-medium">Blank {{ Number(index) + 1 }}:</span>
                 <input
                   type="text"

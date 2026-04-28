@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<{
   readOnlyResultsOnly?: boolean
   saving?: boolean
   publishing?: boolean
+  disableBreadcrumbNavigation?: boolean
 }>(), {
   breadcrumb: '',
   showNotification: true,
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<{
   readOnlyResultsOnly: false,
   saving: false,
   publishing: false,
+  disableBreadcrumbNavigation: false,
 })
 
 // EMITS
@@ -181,9 +183,9 @@ function deleteNotification(id: number) {
         <ol class="flex items-center space-x-2">
           <template v-if="breadcrumbSegments.length">
             <li v-for="(seg, idx) in breadcrumbSegments" :key="idx" class="flex items-center">
-              <!-- Clickable breadcrumb segment -->
+              <!-- Clickable breadcrumb segment (only if navigation is enabled) -->
               <button
-                v-if="idx < breadcrumbSegments.length - 1"
+                v-if="idx < breadcrumbSegments.length - 1 && !disableBreadcrumbNavigation"
                 @click="handleBreadcrumbClick(seg)"
                 class="group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors duration-150 rounded-md px-2 py-1 hover:bg-indigo-50"
                 :title="`Go to ${seg}`"
@@ -191,6 +193,16 @@ function deleteNotification(id: number) {
                 <i v-if="idx === 0" class="fas fa-home mr-1.5 text-xs"></i>
                 <span class="max-w-[150px] truncate">{{ seg }}</span>
               </button>
+
+              <!-- Non-clickable breadcrumb segment (when navigation is disabled) -->
+              <span
+                v-else-if="idx < breadcrumbSegments.length - 1 && disableBreadcrumbNavigation"
+                class="flex items-center text-sm font-medium text-gray-500 px-2 py-1 cursor-not-allowed"
+                :title="seg"
+              >
+                <i v-if="idx === 0" class="fas fa-home mr-1.5 text-xs"></i>
+                <span class="max-w-[150px] truncate">{{ seg }}</span>
+              </span>
 
               <!-- Current/last breadcrumb segment -->
               <span

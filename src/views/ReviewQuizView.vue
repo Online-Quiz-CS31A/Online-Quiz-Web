@@ -80,8 +80,14 @@ const questions = computed(() => {
     if (qType === 'single-choice' || qType === 'true-false') {
       isAnswered = typeof userAnswer === 'number' && userAnswer >= 0
     } else if (qType === 'multiple-choice') {
-      // Multiple-choice answers are stored as arrays
-      isAnswered = Array.isArray(userAnswer) && userAnswer.length > 0
+      // Multiple-choice answers can be stored as arrays or as a single number
+      // Check both formats for backwards compatibility
+      if (Array.isArray(userAnswer)) {
+        isAnswered = userAnswer.length > 0
+      } else if (typeof userAnswer === 'number') {
+        // If stored as single number, check if it's valid
+        isAnswered = userAnswer >= 0
+      }
     } else if (qType === 'text' || qType === 'essay') {
       isAnswered = typeof userAnswer === 'string' && userAnswer.trim().length > 0
     } else if (qType === 'enumeration') {
