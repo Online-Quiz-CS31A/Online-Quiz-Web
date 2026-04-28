@@ -238,9 +238,12 @@ onUnmounted(() => {
               <!-- Phase: Loading -->
               <div v-else-if="store.enrollmentState === 'loading'" class="flex flex-col items-center py-8 sm:py-12">
                 <div class="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mb-4" />
-                <p class="text-base font-medium text-gray-700">Preparing fingerprint scanner...</p>
+                <p class="text-base font-medium text-gray-700">Connecting to fingerprint scanner...</p>
                 <p class="text-sm text-gray-500 mt-2">
                   For: <span class="font-semibold">{{ store.enrollmentTargetUser?.name }}</span>
+                </p>
+                <p class="text-xs text-gray-400 mt-3 max-w-md text-center">
+                  Waiting for the scanner to be ready. This may take a few seconds.
                 </p>
                 <button
                   class="mt-6 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"

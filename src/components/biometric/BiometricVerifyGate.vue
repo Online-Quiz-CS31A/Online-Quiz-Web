@@ -142,7 +142,8 @@ onUnmounted(() => {
       <!-- Loading -->
       <div v-else-if="store.verificationState === 'loading'" class="flex flex-col items-center py-6">
         <div class="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mb-3" />
-        <p class="text-sm text-gray-600">Preparing scanner...</p>
+        <p class="text-sm font-medium text-gray-700">Connecting to scanner...</p>
+        <p class="text-xs text-gray-400 mt-2">This may take a few seconds</p>
         <button
           class="mt-4 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
           @click="handleCancel"
