@@ -580,13 +580,20 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       const allSeedQuizzes = Object.values(teacherQuizzesByUser.value).flat()
       const seedQuiz = allSeedQuizzes.find(q => q.id === id)
 
+      const derivedAssignedSections = Array.isArray(currentQuiz.assignedSections) && currentQuiz.assignedSections.length > 0
+        ? [...currentQuiz.assignedSections]
+        : (seedQuiz && Array.isArray(seedQuiz.assignedSections) && seedQuiz.assignedSections.length > 0
+          ? [...seedQuiz.assignedSections]
+          : (seedQuiz && seedQuiz.class ? [seedQuiz.class] : []))
+
       const quizItem: TeacherQuizItem = {
         id,
         title: currentQuiz.title,
         subject: currentQuiz.subject,
         description: currentQuiz.description,
         dueDate: seedQuiz ? seedQuiz.dueDate : payloadTemplate.dueAt,
-        class: seedQuiz ? seedQuiz.class : '',
+        class: (derivedAssignedSections && derivedAssignedSections.length > 0) ? String(derivedAssignedSections[0]) : (seedQuiz ? seedQuiz.class || '' : ''),
+        assignedSections: derivedAssignedSections,
         submitted: seedQuiz ? seedQuiz.submitted : 0,
         total: seedQuiz ? seedQuiz.total : 0,
         color: seedQuiz ? seedQuiz.color : 'blue',
@@ -594,7 +601,9 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         questions: JSON.parse(JSON.stringify(currentQuiz.questions)),
         createdAt: seedQuiz ? seedQuiz.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        ownerUsername: username
+        ownerUsername: username,
+        timeLimit: seedQuiz && seedQuiz.timeLimit ? seedQuiz.timeLimit : (currentQuiz.timeLimit || undefined),
+        maxAttempts: seedQuiz && typeof seedQuiz.maxAttempts === 'number' ? seedQuiz.maxAttempts : undefined
       }
 
       currentQuiz.id = quizItem.id
@@ -700,6 +709,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
       if (payload.maxAttempts != null) {
         seedQuiz.maxAttempts = payload.maxAttempts
       }
+      saveQuizzesToStorage()
     }
   }
 
@@ -807,6 +817,13 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           currentQuiz.subject = course?.name || detail.courseName || (detail.course && detail.course.name) || ''
           currentQuiz.description = detail.description || ''
           currentQuiz.timeLimit = detail.timeLimitMinutes ? `${detail.timeLimitMinutes} min` : ''
+          
+          // Load assignedSections from the stored quiz data
+          const storedQuiz = myTeacherQuizzes.value.find(q => q.id === quizId)
+          currentQuiz.assignedSections = storedQuiz && Array.isArray(storedQuiz.assignedSections)
+            ? [...storedQuiz.assignedSections]
+            : (storedQuiz?.class ? [storedQuiz.class] : [])
+          
           const rawQs = Array.isArray(detail.questions) ? detail.questions : []
           currentQuiz.questions = rawQs.map(mapApiQuestionToFrontend)
           currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
@@ -832,7 +849,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
   }
 
   function getAllQuizzes(): TeacherQuizItem[] {
-    return []
+    return loadQuizzesFromStorage()
   }
 
   function loadQuizzesFromStorage(): TeacherQuizItem[] {

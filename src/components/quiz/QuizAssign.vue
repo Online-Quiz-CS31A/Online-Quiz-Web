@@ -56,6 +56,9 @@ const options = reactive({
 
 // LIFECYCLE
 onMounted(async () => {
+  // Capture initial assigned sections before any reactive changes (like pushing to classes) trigger the watcher
+  const initialStoreAssigned = [...(quizzesStore.currentQuiz.assignedSections || [])]
+
   sectionsStore.loadArchivedSectionsFromStorage()
 
   await coursesStore.fetchTeacherCourses()
@@ -234,14 +237,13 @@ onMounted(async () => {
     }
   })
 
-  const storeAssigned = quizzesStore.currentQuiz.assignedSections || []
   const metaAssigned = (meta && Array.isArray((meta as any).assignedSections)) 
       ? (meta as any).assignedSections 
       : []
 
   const fallbackClass = (meta && (meta as any).class) || ''
 
-  const combinedAssigned = new Set([...storeAssigned, ...metaAssigned, fallbackClass].filter(Boolean))
+  const combinedAssigned = new Set([...initialStoreAssigned, ...metaAssigned, fallbackClass].filter(Boolean))
 
   const effectiveAssignedSections = Array.from(combinedAssigned)
 
