@@ -135,6 +135,9 @@ const editQuestion = (questionId: number) => {
     return
   }
 
+  // Set a flag to bypass biometric check when returning from review
+  sessionStorage.setItem(`returningFromReview_${qid}`, 'true')
+
   const studentQuiz = quizzesStore.myStudentQuizzes.find(q => q.id === qid)
   const index = Math.max(0, Math.min(quizQuestions.value.length - 1, questionId - 1))
 
@@ -149,6 +152,7 @@ const editQuestion = (questionId: number) => {
       questions: quizQuestions.value,
       quizTitle: current.quizTitle || studentQuiz?.title || 'Quiz',
       quizSubject: studentQuiz?.subject || 'Quiz',
+      fromReview: true
     },
   })
 }
@@ -162,6 +166,9 @@ const backToQuiz = () => {
     return
   }
 
+  // Set a flag to bypass biometric check when returning from review
+  sessionStorage.setItem(`returningFromReview_${quizId}`, 'true')
+
   // Navigate back to quiz with proper state
   router.push({
     name: 'quiz',
@@ -169,7 +176,8 @@ const backToQuiz = () => {
     state: {
       quizId: quizId,
       questions: quizQuestions.value,
-      quizTitle: quizzesStore.currentAttempt.quizTitle
+      quizTitle: quizzesStore.currentAttempt.quizTitle,
+      fromReview: true
     }
   })
 }

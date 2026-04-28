@@ -735,16 +735,25 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
         }
       }
 
-      // Check if there's an ongoing attempt
+      // Check for ongoing attempt
       const hasOngoingAttempt = await loadAttemptFromBackend()
 
-      // Check biometric verification for students ONLY if no ongoing attempt
+      // Check biometric verification for students
       const authLocal = useAuthStore()
-      if (authLocal.userRole === 'student' && mountQid != null && !hasOngoingAttempt) {
+      if (authLocal.userRole === 'student' && mountQid != null) {
         const biometricFlag = sessionStorage.getItem(`biometricVerifiedQuiz_${mountQid}`)
-        if (!biometricFlag && !history.state?.biometricVerified) {
+        const returningFromReview = sessionStorage.getItem(`returningFromReview_${mountQid}`)
+        const fromReviewState = history.state?.fromReview
+        const shouldAllowAccess = biometricFlag || returningFromReview || fromReviewState || hasOngoingAttempt || history.state?.biometricVerified
+        
+        if (!shouldAllowAccess) {
           router.replace({ name: 'student-prequiz', params: { quizId: mountQid.toString() } })
           return
+        }
+        
+        // Clear the returning from review flag after checking
+        if (returningFromReview) {
+          sessionStorage.removeItem(`returningFromReview_${mountQid}`)
         }
       }
 
