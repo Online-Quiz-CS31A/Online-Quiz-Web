@@ -356,12 +356,6 @@ export interface QuizSettings {
   retakeCooldown: number
   tabSwitchWarningThreshold: number
   tabSwitchAutoSubmit: boolean
-  showCorrectAnswers: boolean
-  showScoreImmediately: boolean
-  passingScore: number
-  randomizeQuestions: boolean
-  randomizeOptions: boolean
-  allowReview: boolean
 }
 
 export interface Participant {
