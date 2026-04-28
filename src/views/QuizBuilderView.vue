@@ -3,6 +3,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
+import type QuizContent from '@/components/quiz/QuizContent.vue'
 
 const AppHeader = defineAsyncComponent(() => import('@/components/AppHeader.vue'))
 
