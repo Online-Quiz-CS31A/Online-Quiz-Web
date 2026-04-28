@@ -781,17 +781,26 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       if (quizzesStore.currentAttempt.durationSeconds > 0) {
         const timerValue = quizzesStore.getTimerValue()
         
-        if (timerValue <= 0 && hasOngoingAttempt) {
-          // Timer expired - auto submit
-          console.log('Timer expired, auto-submitting')
-          autoSubmitOnTimeout()
+        if (timerValue <= 0 && hasOngoingAttempt && quizzesStore.currentAttempt.startAtISO) {
+          const start = new Date(quizzesStore.currentAttempt.startAtISO).getTime()
+          const now = Date.now()
+          const elapsed = Math.floor((now - start) / 1000)
+          const actualRemaining = quizzesStore.currentAttempt.durationSeconds - elapsed
+          
+          if (actualRemaining <= 0) {
+            console.log('Timer expired, auto-submitting')
+            autoSubmitOnTimeout()
+          } else {
+            console.log('Timer value was incorrect, starting timer with actual remaining:', actualRemaining)
+            quizzesStore.startTimer(autoSubmitOnTimeout)
+          }
         } else if (timerValue > 0) {
           // Start the timer countdown
           console.log('Starting timer with value:', timerValue)
           quizzesStore.startTimer(autoSubmitOnTimeout)
         } else {
-          // New attempt with no timer value set - this shouldn't happen
-          console.error('Timer value is 0 but duration is set. This is a bug!')
+          console.log('New attempt, starting timer')
+          quizzesStore.startTimer(autoSubmitOnTimeout)
         }
       } else {
         console.log('No time limit for this quiz')
