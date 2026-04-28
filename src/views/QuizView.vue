@@ -372,6 +372,8 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       const qid = quizId.value
       if (qid) {
         quizzesStore.markQuizAsSubmitted(qid)
+        // Clear biometric verification flag after successful submission
+        sessionStorage.removeItem(`biometricVerifiedQuiz_${qid}`)
       }
 
     } catch (error) {
