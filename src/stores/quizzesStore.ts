@@ -510,7 +510,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
         let mappedType = q.type
         if (q.type === 'multiple-choice') {
           mappedType = 'Multiple'
-        } else if (q.type === 'true-false') {
+        } else if (q.type === 'single-choice' || q.type === 'true-false') {
           mappedType = 'Single'
         }
 
