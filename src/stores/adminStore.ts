@@ -173,16 +173,12 @@ export const useAdminStore = defineStore('admin', () => {
             const response = await api.get(`/course/paged?${params.toString()}`)
             const data = response.data.items || []
 
-            const storedArchived = localStorage.getItem('archivedCourses')
-            const archivedCoursesLocal: any[] = storedArchived ? JSON.parse(storedArchived) : []
-
             let mapped: Course[] = data.map((c: any) => {
-                const isArchived = archivedCoursesLocal.some((ac: any) => ac.id === c.courseId)
                 return {
                     id: c.courseId,
                     title: c.name,
                     code: c.code,
-                    status: isArchived ? 'Archived' : (c.status || 'Active'),
+                    status: c.status || 'Active',
                     subjectCode: c.category || '',
                     description: c.description || '',
                     instructors: c.instructorName ? [{
@@ -216,6 +212,115 @@ export const useAdminStore = defineStore('admin', () => {
         } catch (err: any) {
             console.error('Failed to fetch courses:', err)
             error.value = err.message || 'Failed to fetch courses'
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function fetchArchivedCourses(page = 1, pageSize = 10, search = '') {
+        isLoading.value = true
+        error.value = null
+        try {
+            const response = await api.get('/course/archived')
+            let data = response.data || []
+
+            let mapped: Course[] = data.map((c: any) => {
+                return {
+                    id: c.courseId,
+                    title: c.name,
+                    code: c.code,
+                    status: 'Archived',
+                    subjectCode: c.category || '',
+                    description: c.description || '',
+                    archivedAt: c.archivedAt,
+                    archivedBy: c.archivedBy,
+                    archivedByName: c.archivedByName,
+                    instructors: c.instructorName ? [{
+                        teacherId: c.instructorId,
+                        section: c.section || 'A',
+                        students: c.enrollmentCount || 0
+                    }] : []
+                }
+            })
+
+            // --- Search filter ---
+            if (search && search.trim()) {
+                const q = search.trim().toLowerCase()
+                mapped = mapped.filter(c =>
+                    c.title.toLowerCase().includes(q) ||
+                    c.code.toLowerCase().includes(q) ||
+                    c.subjectCode.toLowerCase().includes(q)
+                )
+            }
+
+            totalCourses.value = mapped.length
+            const start = (page - 1) * pageSize
+            courses.value = mapped.slice(start, start + pageSize)
+            return mapped
+        } catch (err: any) {
+            console.error('Failed to fetch archived courses:', err)
+            error.value = err.message || 'Failed to fetch archived courses'
+            return []
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function archiveCourse(courseId: number) {
+        isLoading.value = true
+        try {
+            await api.post(`/course/${courseId}/archive`)
+            await fetchCourses()
+            return true
+        } catch (err: any) {
+            console.error('Failed to archive course:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to archive course'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function unarchiveCourse(courseId: number) {
+        isLoading.value = true
+        try {
+            await api.post(`/course/${courseId}/unarchive`)
+            await fetchCourses()
+            return true
+        } catch (err: any) {
+            console.error('Failed to unarchive course:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to unarchive course'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function bulkArchiveCourses(ids: number[]) {
+        isLoading.value = true
+        try {
+            const result = await api.post('/course/bulk-archive', { ids })
+            await fetchCourses()
+            return result.data
+        } catch (err: any) {
+            console.error('Failed to bulk archive courses:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to bulk archive courses'
+            throw err
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    async function bulkUnarchiveCourses(ids: number[]) {
+        isLoading.value = true
+        try {
+            const result = await api.post('/course/bulk-unarchive', { ids })
+            await fetchCourses()
+            return result.data
+        } catch (err: any) {
+            console.error('Failed to bulk unarchive courses:', err)
+            error.value = err.response?.data?.error || err.message || 'Failed to bulk unarchive courses'
+            throw err
         } finally {
             isLoading.value = false
         }
@@ -442,6 +547,11 @@ export const useAdminStore = defineStore('admin', () => {
         updateUser,
         deleteUser,
         fetchCourses,
+        fetchArchivedCourses,
+        archiveCourse,
+        unarchiveCourse,
+        bulkArchiveCourses,
+        bulkUnarchiveCourses,
         createCourse,
         updateCourse,
         deleteCourse,

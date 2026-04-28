@@ -145,12 +145,16 @@ export interface Course {
   title: string
   code: string
   status: 'Active' | 'Archived'
+  category?: string
   subjectCode: string
   instructors: CourseInstructor[]
   description?: string
   units?: number
   section?: string
   instructorId?: number
+  archivedAt?: string
+  archivedBy?: number
+  archivedByName?: string
 }
 
 export interface Person {

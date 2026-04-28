@@ -72,7 +72,7 @@ export async function updateCourse(courseId: number, courseData: Partial<Teacher
  * @returns Promise with response data
  */
 export async function archiveCourse(courseId: number) {
-  const response = await api.patch(`/Course/${courseId}/archive`)
+  const response = await api.post(`/course/${courseId}/archive`)
   return response.data
 }
 
@@ -82,7 +82,56 @@ export async function archiveCourse(courseId: number) {
  * @returns Promise with response data
  */
 export async function unarchiveCourse(courseId: number) {
-  const response = await api.patch(`/Course/${courseId}/unarchive`)
+  const response = await api.post(`/course/${courseId}/unarchive`)
+  return response.data
+}
+
+/**
+ * Bulk archive courses
+ * @param ids - Array of course IDs to archive
+ * @returns Promise with bulk operation result
+ */
+export async function bulkArchiveCourses(ids: number[]) {
+  const response = await api.post('/course/bulk-archive', { ids })
+  return response.data
+}
+
+/**
+ * Bulk unarchive courses
+ * @param ids - Array of course IDs to unarchive
+ * @returns Promise with bulk operation result
+ */
+export async function bulkUnarchiveCourses(ids: number[]) {
+  const response = await api.post('/course/bulk-unarchive', { ids })
+  return response.data
+}
+
+/**
+ * Get archived courses
+ * @returns Promise with array of archived courses
+ */
+export async function getArchivedCourses() {
+  const response = await api.get('/course/archived')
+  return response.data || []
+}
+
+/**
+ * Get archived courses (paginated)
+ * @param pageNumber - Page number
+ * @param pageSize - Items per page
+ * @returns Promise with paginated archived courses
+ */
+export async function getArchivedCoursesPaged(pageNumber = 1, pageSize = 10) {
+  const response = await api.get(`/course/archived/paged?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+  return response.data
+}
+
+/**
+ * Get course archive statistics
+ * @returns Promise with archive statistics
+ */
+export async function getCourseArchiveStatistics() {
+  const response = await api.get('/course/archive-statistics')
   return response.data
 }
 
@@ -105,5 +154,10 @@ export default {
   updateCourse,
   archiveCourse,
   unarchiveCourse,
+  bulkArchiveCourses,
+  bulkUnarchiveCourses,
+  getArchivedCourses,
+  getArchivedCoursesPaged,
+  getCourseArchiveStatistics,
   deleteCourse,
 }

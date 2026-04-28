@@ -313,22 +313,95 @@ export const useCoursesStore = defineStore('classes', () => {
     saveCoursesToStorage()
   }
 
-  function unarchiveCourse(courseId: number) {
-    allCourses.value = allCourses.value.map(course =>
-      course.id === courseId
-        ? { ...course, status: 'Active' }
-        : course
-    )
-    saveCoursesToStorage()
+  async function unarchiveCourse(courseId: number) {
+    try {
+      await courseService.unarchiveCourse(courseId)
+      allCourses.value = allCourses.value.map(course =>
+        course.id === courseId
+          ? { ...course, status: 'Active' }
+          : course
+      )
+      saveCoursesToStorage()
+      return true
+    } catch (e) {
+      console.error('Failed to unarchive course:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to unarchive course'
+      return false
+    }
   }
 
-  function archiveCourse(courseId: number) {
-    allCourses.value = allCourses.value.map(course =>
-      course.id === courseId
-        ? { ...course, status: 'Archived' }
-        : course
-    )
-    saveCoursesToStorage()
+  async function archiveCourse(courseId: number) {
+    try {
+      await courseService.archiveCourse(courseId)
+      allCourses.value = allCourses.value.map(course =>
+        course.id === courseId
+          ? { ...course, status: 'Archived' }
+          : course
+      )
+      saveCoursesToStorage()
+      return true
+    } catch (e) {
+      console.error('Failed to archive course:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to archive course'
+      return false
+    }
+  }
+
+  async function bulkArchiveCourses(courseIds: number[]) {
+    try {
+      const result = await courseService.bulkArchiveCourses(courseIds)
+      
+      if (result.successfulIds && result.successfulIds.length > 0) {
+        allCourses.value = allCourses.value.map(course =>
+          result.successfulIds.includes(course.id)
+            ? { ...course, status: 'Archived' }
+            : course
+        )
+        saveCoursesToStorage()
+      }
+      
+      return result
+    } catch (e) {
+      console.error('Failed to bulk archive courses:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to bulk archive courses'
+      throw e
+    }
+  }
+
+  async function bulkUnarchiveCourses(courseIds: number[]) {
+    try {
+      const result = await courseService.bulkUnarchiveCourses(courseIds)
+      
+      if (result.successfulIds && result.successfulIds.length > 0) {
+        allCourses.value = allCourses.value.map(course =>
+          result.successfulIds.includes(course.id)
+            ? { ...course, status: 'Active' }
+            : course
+        )
+        saveCoursesToStorage()
+      }
+      
+      return result
+    } catch (e) {
+      console.error('Failed to bulk unarchive courses:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to bulk unarchive courses'
+      throw e
+    }
+  }
+
+  async function fetchArchivedCourses() {
+    isLoading.value = true
+    error.value = null
+    try {
+      const archived = await courseService.getArchivedCourses()
+      return archived
+    } catch (e) {
+      console.error('Failed to fetch archived courses:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to fetch archived courses'
+      return []
+    } finally {
+      isLoading.value = false
+    }
   }
 
   return {
@@ -346,6 +419,9 @@ export const useCoursesStore = defineStore('classes', () => {
     addClass,
     archiveCourse,
     unarchiveCourse,
+    bulkArchiveCourses,
+    bulkUnarchiveCourses,
+    fetchArchivedCourses,
     fetchTeacherCourses,
     fetchStudentCourses,
   }

@@ -7,8 +7,6 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import * as courseService from '@/services/courseService'
 import type { ClassItem } from '@/interfaces/interfaces'
-import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
-import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import bg1 from '@/assets/image/bg1.webp'
 import bg2 from '@/assets/image/bg2.webp'
 import bg3 from '@/assets/image/bg3.webp'
@@ -38,10 +36,6 @@ const quizzesStore = useQuizzesStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
-const coursePendingDeletion = ref<ClassItem | null>(null)
-const showCourseDeleteModal = ref(false)
-const coursePendingUnarchive = ref<ClassItem | null>(null)
-const showCourseUnarchiveModal = ref(false)
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -66,51 +60,9 @@ const handleEnterClass = (classItem: ClassItem) => {
   router.push({ name: 'teacher-class', params: { code: classItem.code } })
 }
 
-const handleLeaveClass = (classItem: ClassItem) => {
-  coursePendingDeletion.value = classItem
-  showCourseDeleteModal.value = true
-  menuOpenForId.value = null
-}
-
 const handleEditClass = (classItem: ClassItem) => {
   router.push({ name: 'teacher-class', params: { code: classItem.code } })
   menuOpenForId.value = null
-}
-
-const handleCancelDelete = () => {
-  showCourseDeleteModal.value = false
-  coursePendingDeletion.value = null
-}
-
-const handleConfirmDelete = () => {
-  if (!coursePendingDeletion.value) {
-    handleCancelDelete()
-    return
-  }
-  classesStore.archiveCourse(coursePendingDeletion.value.id)
-  quizzesStore.archiveQuizzesForCourse(coursePendingDeletion.value.name)
-  handleCancelDelete()
-}
-
-const handleUnarchiveClass = (classItem: ClassItem) => {
-  coursePendingUnarchive.value = classItem
-  showCourseUnarchiveModal.value = true
-  menuOpenForId.value = null
-}
-
-const handleCancelUnarchiveCourse = () => {
-  showCourseUnarchiveModal.value = false
-  coursePendingUnarchive.value = null
-}
-
-const handleConfirmUnarchiveCourse = () => {
-  if (!coursePendingUnarchive.value) {
-    handleCancelUnarchiveCourse()
-    return
-  }
-  classesStore.unarchiveCourse(coursePendingUnarchive.value.id)
-  quizzesStore.unarchiveQuizzesForCourse(coursePendingUnarchive.value.name)
-  handleCancelUnarchiveCourse()
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -377,12 +329,9 @@ onBeforeUnmount(() => {
                 >
                   View
                 </button>
-                <button
-                  @click.stop="handleUnarchiveClass(classItem)"
-                  class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
-                >
-                  Unarchive
-                </button>
+                <div class="px-3 py-2 text-xs text-gray-400 italic">
+                  Contact admin to restore
+                </div>
               </template>
               <template v-else>
                 <button
@@ -390,13 +339,6 @@ onBeforeUnmount(() => {
                   class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
                   Edit
-                </button>
-
-                <button
-                  @click.stop="handleLeaveClass(classItem)"
-                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-                >
-                  Archive
                 </button>
               </template>
             </div>
@@ -437,21 +379,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
-
-  <CourseArchiveModal
-    :open="showCourseDeleteModal"
-    :courseName="coursePendingDeletion?.name"
-    @cancel="handleCancelDelete"
-    @confirm="handleConfirmDelete"
-  />
-
-	<ConfirmUnarchiveModal
-	  :open="showCourseUnarchiveModal"
-	  :item-name="coursePendingUnarchive?.name"
-	  title="Unarchive course?"
-	  @cancel="handleCancelUnarchiveCourse"
-	  @confirm="handleConfirmUnarchiveCourse"
-	/>
 </template>
 
 <style scoped>
