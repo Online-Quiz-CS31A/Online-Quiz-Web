@@ -44,36 +44,26 @@ const sections = computed(() => {
   const code = props.code
   if (!code) return []
 
-  const targetCourseIds = classesStore.rawTeacherCourses
-    .filter(c => c.code === code)
-    .map(c => c.courseId)
+  const seenNames = new Set<string>()
+  const result: Array<{ id: number; name: string; students: number; studentUsernames: string[] }> = []
 
-  const allSections = []
-  const seenIds = new Set<number>()
+  for (const rc of classesStore.rawTeacherCourses) {
+    if (rc.code !== code || !rc.section?.trim()) continue
+    const name = rc.section.trim()
+    if (seenNames.has(name)) continue   // already added this section name
+    seenNames.add(name)
 
-  for (const cid of targetCourseIds) {
-    const cidSections = sectionsStore.getSectionsByCourse(cid)
-    for (const s of cidSections) {
-      if (!seenIds.has(s.id)) {
-        allSections.push(s)
-        seenIds.add(s.id)
-      }
-    }
+    const storeSection = sectionsStore.allSections.find(s => s.name === name)
+    const id = storeSection?.id ?? name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+
+    const students = storeSection
+      ? (storeSection.studentUsernames?.length ?? storeSection.students ?? 0)
+      : (rc.students ?? 0)
+
+    result.push({ id, name, students, studentUsernames: storeSection?.studentUsernames ?? [] })
   }
 
-  const assignedSectionNames = classesStore.rawTeacherCourses
-    .filter(c => c.code === code && c.section)
-    .map(c => c.section.trim())
-
-  const apiSections = sectionsStore.allSections.filter(s => assignedSectionNames.includes(s.name))
-  for (const s of apiSections) {
-    if (!seenIds.has(s.id)) {
-      allSections.push(s)
-      seenIds.add(s.id)
-    }
-  }
-
-  return allSections
+  return result
 })
 
 const current = computed<ClassItem>(() => {
@@ -87,7 +77,18 @@ const isCourseArchived = computed(() => current.value.status === 'Archived')
 
 const professorName = computed(() => current.value.teacher || '—')
 const totalClasses = computed(() => sections.value.length)
-const totalStudents = computed(() => sections.value.reduce((sum, s) => sum + s.students, 0))
+const totalStudents = computed(() => {
+  const unique = new Set<string | number>()
+  for (const s of sections.value) {
+    const usernames = (s.studentUsernames as string[]) || []
+    if (usernames.length > 0) {
+      for (const u of usernames) unique.add(u)
+    }
+  }
+  // If we have username data, return deduplicated count; otherwise fall back to sum
+  if (unique.size > 0) return unique.size
+  return sections.value.reduce((sum, s) => sum + (s.students || 0), 0)
+})
 
 const coverUrl = computed(() => {
   const key = `${current.value.id}-${current.value.name}`
@@ -99,7 +100,9 @@ const breadcrumbText = computed(() => `Dashboard > Courses > ${current.value.nam
 
 
 onMounted(async () => {
-  await classesStore.fetchTeacherCourses()
+  if (classesStore.rawTeacherCourses.length === 0 || sectionsStore.courseSectionMappings.length === 0) {
+    await classesStore.fetchTeacherCourses()
+  }
 })
 
 // METHODS

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
@@ -21,6 +21,13 @@ const activeTab = ref<'questions' | 'participants'>('questions')
 const selectedQuestionId = ref<number>(1)
 const selectedSection = ref('All Sections')
 const search = ref('')
+
+onMounted(async () => {
+  await Promise.all([
+    studentsStore.fetchAllStudentsFromApi(true),
+    sectionsStore.fetchSectionsFromApi()
+  ])
+})
 
 const currentQuizId = computed(() => quizzesStore.currentQuiz.id ?? null)
 
@@ -328,8 +335,24 @@ function buildParticipantsForSections(sections: ClassSection[], attempts: QuizAt
     const profile = studentsStore.profiles[username]
     const latest = latestByStudent.get(username)
 
-    const name = profile ? `${profile.firstName} ${profile.lastName}` : username
-    const email = profile?.email || `${username}@example.com`
+    let name = username 
+    let email = `${username}@example.com` 
+    
+    if (profile) {
+      const firstName = (profile.firstName || '').trim()
+      const lastName = (profile.lastName || '').trim()
+      
+      if (firstName && lastName) {
+        name = `${firstName} ${lastName}`
+      } else if (firstName) {
+        name = firstName
+      } else if (lastName) {
+        name = lastName
+      }
+      
+      email = profile.email || email
+    }
+
     const avatar = profile?.photoUrl || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
 
     const score = latest ? latest.score : 0

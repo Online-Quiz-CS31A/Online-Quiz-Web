@@ -21,7 +21,8 @@ const titleMap: Record<string, string> = {
   'admin-quiz-settings': 'Quiz Settings',
   'admin-data': 'Data Management',
   'admin-analytics': 'Analytics',
-  'admin-archived': 'Archived Courses',
+  'admin-archived-courses': 'Archived Courses',
+  'admin-archived-users': 'Archived Users',
   'admin-biometric': 'Biometrics',
 }
 

@@ -10,6 +10,7 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import type { Student, TabKey, GradeRow, GradeCol, QuizBreakdown, TeacherQuizItem } from '@/interfaces/interfaces'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
+import * as quizService from '@/services/quizService'
 import RemoveStudentConfirmModal from '@/components/modals/RemoveStudentConfirmModal.vue'
 import ClassDashboardTab from '@/components/teacher/TeacherClassQuizzesTab.vue'
 import ClassPeopleTab from '@/components/teacher/TeacherClassPeopleTab.vue'
@@ -41,6 +42,8 @@ const apiStudents = ref<any[]>([])
 const apiQuizzes = ref<TeacherQuizItem[]>([])
 const isLoadingStudents = ref(false)
 const isLoadingQuizzes = ref(false)
+const studentAttempts = ref<Record<number, any[]>>({}) // studentId -> attempts[]
+const isLoadingAttempts = ref(false)
 
 // COMPUTED
 const sectionId = computed(() => Number(route.params.id || 0))
@@ -103,23 +106,7 @@ const breadcrumbText = computed(() => {
 
 const students = computed<Student[]>(() => {
   if (apiStudents.value.length > 0) {
-    const currentSectionName = currentSection.value?.name
-
-    const filteredApiStudents = apiStudents.value.filter(student => {
-      if (!currentSectionName) return true
-
-      if (Array.isArray(student.sections)) {
-        return student.sections.includes(currentSectionName)
-      }
-
-      if (typeof student.section === 'string') {
-        return student.section.split(',').map((s: string) => s.trim()).includes(currentSectionName)
-      }
-
-      return true
-    })
-
-    return filteredApiStudents.map((student, i) => {
+    return apiStudents.value.map((student: any, i: number) => {
       const fullName = (student.studentName || '').trim()
         || `${student.firstName || ''} ${student.lastName || ''}`.trim()
         || student.username
@@ -183,25 +170,14 @@ const paginatedStudents = computed(() => {
 
 function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
   const quizzesForClass = activeQuizzes.value
-  const username = getUsernameForStudentId(studentId)
-
-  if (!username) return quizzesForClass.map((quiz) => {
-    const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
-    return {
-      title: quiz.title,
-      score: 0,
-      total: totalPoints,
-      percent: 0,
-      due: quiz.dueDate,
-      status: 'Missing',
-    }
-  })
+  const attempts = studentAttempts.value[studentId] || []
 
   return quizzesForClass.map((quiz) => {
     const totalPoints = (quiz.questions || []).reduce((sum, q: any) => sum + (q.points || 0), 0)
-    const history = quizzesStore.getQuizAttemptHistoryForStudent(quiz.id, username)
+    
+    const quizAttempts = attempts.filter((attempt: any) => attempt.quizId === quiz.id)
 
-    if (!history.length) {
+    if (!quizAttempts.length) {
       return {
         title: quiz.title,
         score: 0,
@@ -212,16 +188,22 @@ function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
       }
     }
 
-    const bestAttempt = history.reduce((best, cur) => {
-      if (!best) return cur
-      return cur.percentage > best.percentage ? cur : best
-    }, history[0])
+    // Find the highest score from all attempts
+    const bestAttempt = quizAttempts.reduce((best: any, current: any) => {
+      const currentScore = current.score || 0
+      const bestScore = best.score || 0
+      return currentScore > bestScore ? current : best
+    }, quizAttempts[0])
+
+    const score = bestAttempt.score || 0
+    const total = bestAttempt.totalPoints || totalPoints
+    const percent = total > 0 ? Math.round((score / total) * 100) : 0
 
     return {
       title: quiz.title,
-      score: bestAttempt.score,
-      total: totalPoints,
-      percent: bestAttempt.percentage,
+      score: score,
+      total: total,
+      percent: percent,
       due: quiz.dueDate,
       status: 'Submitted',
     }
@@ -231,9 +213,13 @@ function buildQuizBreakdown(studentId: number): QuizBreakdown[] {
 const gradeRows = computed<GradeRow[]>(() => {
   return students.value.slice(0, 10).map((s, idx) => {
     const quizzesBreakdown = buildQuizBreakdown(s.id)
-    const overallQuizPercent = quizzesBreakdown.length
-      ? Math.round(quizzesBreakdown.reduce((sum, q) => sum + q.percent, 0) / quizzesBreakdown.length)
+    
+    const totalEarned = quizzesBreakdown.reduce((sum, q) => sum + q.score, 0)
+    const totalPossible = quizzesBreakdown.reduce((sum, q) => sum + q.total, 0)
+    const overallQuizPercent = totalPossible > 0 
+      ? Math.round((totalEarned / totalPossible) * 100)
       : 0
+    
     const answeredCount = quizzesBreakdown.filter(q => q.status === 'Submitted').length
     const progress = quizzesBreakdown.length
       ? Math.round((answeredCount / quizzesBreakdown.length) * 100)
@@ -262,7 +248,14 @@ const sortedGrades = computed(() => {
   return rows
 })
 
-const totalStudents = computed(() => students.value.length)
+const totalStudents = computed(() => {
+  const seen = new Set<string | number>()
+  for (const s of students.value) {
+    if (s.email) seen.add(s.email)
+    else if (s.id != null) seen.add(s.id)
+  }
+  return seen.size
+})
 
 const scheduleInfo = computed(() => {
   if (!schedule.value) return 'Schedule not set'
@@ -287,29 +280,9 @@ const authStore = useAuthStore()
 const quizzesStore = useQuizzesStore()
 
 const activeQuizzes = computed<TeacherQuizItem[]>(() => {
-  const storedQuizzes = quizzesStore.loadQuizzesFromStorage()
-  const allQuizzes = [...storedQuizzes, ...quizzesStore.myTeacherQuizzes, ...apiQuizzes.value]
-
-  const courseName = currentCourse.value?.name || ''
-  const sectionName = currentSection.value?.name || ''
-
-  const base = allQuizzes
+  return apiQuizzes.value
     .filter(q => (q.status || 'published') !== 'draft')
-    .filter(q => !(q as any).archived)
-
-  if (isArchivedForQuizzes.value) {
-    return base
-      .filter(q => (!sectionName || q.class === sectionName))
-      .sort((a, b) => {
-        const aDate = new Date(a.createdAt || 0).getTime()
-        const bDate = new Date(b.createdAt || 0).getTime()
-        return bDate - aDate
-      })
-  }
-
-  return base
-    .filter(q => (!courseName || q.subject === courseName || q.subject.includes(courseName)))
-    .filter(q => (!sectionName || q.class === sectionName || q.class.includes(sectionName)))
+    .filter(q => !(q as any).archived && !q.archived)
     .sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime()
       const bDate = new Date(b.createdAt || 0).getTime()
@@ -326,35 +299,39 @@ const classMeta = reactive({
 
 // FETCH FUNCTIONS
 async function fetchStudentsFromAPI() {
-  const currentSectionName = currentSection.value?.name
-
-  if (!currentCourseId.value || !currentSectionName) return
-  if (!authStore.currentUser?.id) return
+  const courseId = currentCourseId.value
+  if (!courseId || !authStore.currentUser?.id) return
 
   isLoadingStudents.value = true
-
   try {
-    const { useAdminStore } = await import('@/stores/adminStore')
-    const adminStore = useAdminStore()
+    // The courseId already identifies exactly one section (each rawTeacherCourse
+    // entry = one section). Return ALL enrollments for this course — no section-name
+    // filtering needed, which was the root cause of students disappearing.
+    const { getCourseEnrollments } = await import('@/services/courseService')
+    const enrollments = await getCourseEnrollments(courseId, authStore.currentUser.id!)
 
-    const students = await adminStore.fetchStudentsBySection(currentSectionName)
+    // Deduplicate by studentId/userId — a student should only appear once
+    // even if the backend returned duplicate enrollment records.
+    const seen = new Set<number>()
+    const unique = enrollments.filter((e: any) => {
+      const uid = e.studentId || e.userId
+      if (!uid || seen.has(uid)) return false
+      seen.add(uid)
+      return true
+    })
 
-    if (students && Array.isArray(students)) {
-      apiStudents.value = students.map((student: any) => ({
-        userId: student.id,
-        id: student.id,
-        studentName: student.name,
-        firstName: student.name?.split(' ')[0] || '',
-        lastName: student.name?.split(' ').slice(1).join(' ') || '',
-        username: student.username || student.email?.split('@')[0] || '',
-        email: student.email,
-        photoUrl: student.avatar,
-        section: currentSectionName,
-        sections: [currentSectionName]
-      }))
-    } else {
-      apiStudents.value = []
-    }
+    apiStudents.value = unique.map((enrollment: any, i: number) => ({
+      userId: enrollment.studentId || enrollment.userId,
+      id: enrollment.studentId || enrollment.userId || i + 1,
+      studentName: enrollment.studentName || '',
+      firstName: (enrollment.studentName || '').split(' ')[0] || '',
+      lastName: (enrollment.studentName || '').split(' ').slice(1).join(' ') || '',
+      username: enrollment.studentNumber || enrollment.email?.split('@')[0] || '',
+      email: enrollment.email || '',
+      photoUrl: null,
+      section: enrollment.section || enrollment.studentSection || '',
+      sections: [enrollment.section || enrollment.studentSection || ''],
+    }))
   } catch (error) {
     console.error('Failed to fetch students from API:', error)
     apiStudents.value = []
@@ -391,6 +368,7 @@ async function fetchQuizzesFromAPI() {
         questions: quiz.questions || [],
         createdAt: quiz.createdAt || new Date().toISOString(),
         updatedAt: quiz.updatedAt || new Date().toISOString(),
+        archived: quiz.isArchived || false,
       }))
     }
   } catch (error) {
@@ -398,6 +376,47 @@ async function fetchQuizzesFromAPI() {
     apiQuizzes.value = []
   } finally {
     isLoadingQuizzes.value = false
+  }
+}
+
+async function fetchStudentAttempts() {
+  if (!currentCourseId.value || apiStudents.value.length === 0) return
+
+  isLoadingAttempts.value = true
+  try {
+    // Fetch attempts for each student
+    const attemptPromises = apiStudents.value.map(async (student) => {
+      const studentId = student.userId || student.id
+      if (!studentId) return { studentId: null, attempts: [] }
+
+      try {
+        const attempts = await quizService.getStudentAttempts(studentId)
+        return {
+          studentId,
+          attempts: Array.isArray(attempts) ? attempts : []
+        }
+      } catch (error) {
+        console.error(`Failed to fetch attempts for student ${studentId}:`, error)
+        return { studentId, attempts: [] }
+      }
+    })
+
+    const results = await Promise.all(attemptPromises)
+    
+    // Build the studentAttempts map
+    const attemptsMap: Record<number, any[]> = {}
+    results.forEach(({ studentId, attempts }) => {
+      if (studentId) {
+        attemptsMap[studentId] = attempts
+      }
+    })
+
+    studentAttempts.value = attemptsMap
+  } catch (error) {
+    console.error('Failed to fetch student attempts:', error)
+    studentAttempts.value = {}
+  } finally {
+    isLoadingAttempts.value = false
   }
 }
 
@@ -419,6 +438,13 @@ watch([sectionId], () => {
   if (sectionId.value && currentSection.value?.name && authStore.currentUser?.id) {
     fetchStudentsFromAPI()
     fetchQuizzesFromAPI()
+  }
+}, { immediate: false })
+
+// Fetch attempts after students are loaded
+watch([apiStudents], () => {
+  if (apiStudents.value.length > 0) {
+    fetchStudentAttempts()
   }
 }, { immediate: false })
 
@@ -585,7 +611,7 @@ function cancelRemove() {
               </div>
               <div class="leading-tight">
                 <div class="text-white font-medium">{{ classMeta.professor }}</div>
-                <div class="text-blue-100 text-sm">{{ students.length }} students</div>
+                <div class="text-blue-100 text-sm">{{ totalStudents }} students</div>
               </div>
             </div>
           </div>
@@ -623,6 +649,7 @@ function cancelRemove() {
           :archivedSectionId="sectionId"
           @update:viewMode="(v) => (quizViewMode = v)"
           @create-quiz="navigateToQuizCreator"
+          @quiz-archived="fetchQuizzesFromAPI"
         />
       </div>
 

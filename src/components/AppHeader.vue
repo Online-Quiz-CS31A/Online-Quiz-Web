@@ -221,10 +221,11 @@ function deleteNotification(id: number) {
 
       <!-- Center buttons for quiz creator -->
       <div
-        v-if="showQuizCreatorControls && !props.archivedQuiz && !props.readOnlyResultsOnly"
+        v-if="showQuizCreatorControls"
         class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
       >
         <button
+          v-if="!props.readOnlyResultsOnly || props.archivedQuiz"
           @click="emit('content')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -234,7 +235,9 @@ function deleteNotification(id: number) {
         >
           Content
         </button>
+        <!-- Assign button-->
         <button
+          v-if="!props.archivedQuiz && !props.readOnlyResultsOnly"
           @click="emit('assign')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{
@@ -244,24 +247,9 @@ function deleteNotification(id: number) {
         >
           Assign
         </button>
+        <!-- Results button -->
         <button
           v-if="published"
-          @click="emit('results')"
-          class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
-          :class="{
-            'bg-indigo-100 text-blue-700 border border-indigo-300': $route.name === 'quiz-results',
-            'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': $route.name !== 'quiz-results'
-          }"
-        >
-          Results
-        </button>
-      </div>
-
-      <div
-        v-else-if="showQuizCreatorControls && props.readOnlyResultsOnly && !props.archivedQuiz && false"
-        class="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2"
-      >
-        <button
           @click="emit('results')"
           class="px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
           :class="{

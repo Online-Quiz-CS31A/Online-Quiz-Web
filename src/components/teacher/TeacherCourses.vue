@@ -7,9 +7,6 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useAuthStore } from '@/stores/authStore'
 import * as courseService from '@/services/courseService'
 import type { ClassItem } from '@/interfaces/interfaces'
-import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
-import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
-import TeacherCourseSkeleton from '@/components/skeletons/TeacherCourseSkeleton.vue'
 import bg1 from '@/assets/image/bg1.webp'
 import bg2 from '@/assets/image/bg2.webp'
 import bg3 from '@/assets/image/bg3.webp'
@@ -39,10 +36,6 @@ const quizzesStore = useQuizzesStore()
 
 // REFS
 const menuOpenForId = ref<number | null>(null)
-const coursePendingDeletion = ref<ClassItem | null>(null)
-const showCourseDeleteModal = ref(false)
-const coursePendingUnarchive = ref<ClassItem | null>(null)
-const showCourseUnarchiveModal = ref(false)
 
 // COMPUTED
 const classes = computed<ClassItem[]>(() => props.classes ?? classesStore.myClasses)
@@ -67,51 +60,9 @@ const handleEnterClass = (classItem: ClassItem) => {
   router.push({ name: 'teacher-class', params: { code: classItem.code } })
 }
 
-const handleLeaveClass = (classItem: ClassItem) => {
-  coursePendingDeletion.value = classItem
-  showCourseDeleteModal.value = true
-  menuOpenForId.value = null
-}
-
 const handleEditClass = (classItem: ClassItem) => {
   router.push({ name: 'teacher-class', params: { code: classItem.code } })
   menuOpenForId.value = null
-}
-
-const handleCancelDelete = () => {
-  showCourseDeleteModal.value = false
-  coursePendingDeletion.value = null
-}
-
-const handleConfirmDelete = () => {
-  if (!coursePendingDeletion.value) {
-    handleCancelDelete()
-    return
-  }
-  classesStore.archiveCourse(coursePendingDeletion.value.id)
-  quizzesStore.archiveQuizzesForCourse(coursePendingDeletion.value.name)
-  handleCancelDelete()
-}
-
-const handleUnarchiveClass = (classItem: ClassItem) => {
-  coursePendingUnarchive.value = classItem
-  showCourseUnarchiveModal.value = true
-  menuOpenForId.value = null
-}
-
-const handleCancelUnarchiveCourse = () => {
-  showCourseUnarchiveModal.value = false
-  coursePendingUnarchive.value = null
-}
-
-const handleConfirmUnarchiveCourse = () => {
-  if (!coursePendingUnarchive.value) {
-    handleCancelUnarchiveCourse()
-    return
-  }
-  classesStore.unarchiveCourse(coursePendingUnarchive.value.id)
-  quizzesStore.unarchiveQuizzesForCourse(coursePendingUnarchive.value.name)
-  handleCancelUnarchiveCourse()
 }
 
 const getCoverStyle = (classItem: ClassItem) => {
@@ -304,7 +255,19 @@ onBeforeUnmount(() => {
 
     <!-- Loading State -->
     <div v-if="classesStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <TeacherCourseSkeleton v-for="i in (props.maxItems || 3)" :key="i" />
+      <div v-for="i in (props.maxItems || 3)" :key="i" class="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
+        <div class="h-40 bg-gray-200"></div>
+        <div class="p-4 space-y-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
+            <div class="flex-1 space-y-2">
+              <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+          <div class="h-10 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -327,23 +290,29 @@ onBeforeUnmount(() => {
       <div
         v-for="classItem in displayedClasses"
         :key="classItem.id"
-        class="class-card rounded-xl shadow-md overflow-hidden bg-white cursor-pointer"
+        class="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
         @click="handleEnterClass(classItem)"
       >
-        <div
-          class="relative h-36 bg-center bg-cover"
-          :style="getCoverStyle(classItem)"
-        >
-          <div class="absolute inset-0 bg-gradient-to-br from-black/30 via-black/15 to-black/10"></div>
+        <!-- Header with background image -->
+        <div class="relative h-40 overflow-hidden">
+          <div
+            class="absolute inset-0 bg-center bg-cover transform group-hover:scale-105 transition-transform duration-300"
+            :style="getCoverStyle(classItem)"
+          ></div>
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-blue-800/60 to-transparent"></div>
 
-          <div class="absolute inset-0 p-4 text-white select-none">
-            <p class="text-xs opacity-90">{{ classItem.code }}</p>
-            <h3 class="mt-1 text-xl font-bold leading-snug line-clamp-2">{{ classItem.name }}</h3>
+          <!-- Course code badge -->
+          <div class="absolute top-3 left-3">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm text-white border border-white/30">
+              {{ classItem.code }}
+            </span>
           </div>
+
+          <!-- Actions menu -->
           <div class="absolute right-2 top-2 actions-menu">
             <button
               @click.stop="toggleMenu(classItem.id)"
-              class="text-white hover:text-white p-1 cursor-pointer"
+              class="text-white hover:text-white p-2 rounded-full hover:bg-white/20 backdrop-blur-sm transition-colors cursor-pointer"
               aria-label="More options"
               title="More options"
             >
@@ -351,7 +320,7 @@ onBeforeUnmount(() => {
             </button>
             <div
               v-if="menuOpenForId === classItem.id"
-              class="absolute right-0 top-7 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20"
+              class="absolute right-0 top-10 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20"
             >
               <template v-if="props.mode === 'archived'">
                 <button
@@ -360,12 +329,9 @@ onBeforeUnmount(() => {
                 >
                   View
                 </button>
-                <button
-                  @click.stop="handleUnarchiveClass(classItem)"
-                  class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
-                >
-                  Unarchive
-                </button>
+                <div class="px-3 py-2 text-xs text-gray-400 italic">
+                  Contact admin to restore
+                </div>
               </template>
               <template v-else>
                 <button
@@ -374,18 +340,15 @@ onBeforeUnmount(() => {
                 >
                   Edit
                 </button>
-
-                <button
-                  @click.stop="handleLeaveClass(classItem)"
-                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-                >
-                  Archive
-                </button>
               </template>
             </div>
           </div>
 
-          <div class="absolute left-4 bottom-3 text-white min-w-0">
+          <!-- Course title and teacher info -->
+          <div class="absolute bottom-3 left-3 right-3">
+            <h3 class="text-lg font-bold text-white line-clamp-2 drop-shadow-lg leading-tight mb-2">
+              {{ classItem.name }}
+            </h3>
             <div class="flex items-center space-x-2">
               <div
                 class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-white ring-2 ring-white/20 shadow-sm"
@@ -394,46 +357,42 @@ onBeforeUnmount(() => {
                 {{ getInitials(classItem.teacher) }}
               </div>
               <div class="min-w-0 leading-tight">
-                <div class="text-xs truncate max-w-[180px]">{{ classItem.teacher }}</div>
-                <div class="text-[11px] opacity-90">{{ getStudentCount(classItem) }} students</div>
+                <div class="text-xs text-white/90 truncate max-w-[180px]">{{ classItem.teacher }}</div>
+                <div class="text-[11px] text-white/80">{{ getStudentCount(classItem) }} students</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="bg-white px-4 py-3 flex items-center justify-end">
-          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap cursor-pointer">
+        <!-- Card body -->
+        <div class="p-4">
+          <button 
+            @click.stop="handleEnterClass(classItem)"
+            class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center group-hover:shadow-md"
+          >
             Enter class
+            <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
           </button>
         </div>
       </div>
     </div>
   </div>
-
-  <CourseArchiveModal
-    :open="showCourseDeleteModal"
-    :courseName="coursePendingDeletion?.name"
-    @cancel="handleCancelDelete"
-    @confirm="handleConfirmDelete"
-  />
-
-	<ConfirmUnarchiveModal
-	  :open="showCourseUnarchiveModal"
-	  :item-name="coursePendingUnarchive?.name"
-	  title="Unarchive course?"
-	  @cancel="handleCancelUnarchiveCourse"
-	  @confirm="handleConfirmUnarchiveCourse"
-	/>
 </template>
 
 <style scoped>
-.class-card {
-  transition: all 0.3s ease;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
-.class-card:hover {
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-
 </style>
 

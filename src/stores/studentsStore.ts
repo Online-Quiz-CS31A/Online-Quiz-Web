@@ -27,8 +27,8 @@ export const useStudentsStore = defineStore('students', () => {
     updateCurrentStudentProfile({ photoUrl: url })
   }
 
-  async function fetchAllStudentsFromApi() {
-    if (Object.keys(profiles.value).length > 0) {
+  async function fetchAllStudentsFromApi(force = false) {
+    if (!force && Object.keys(profiles.value).length > 0) {
         return Object.keys(profiles.value).length
     }
     

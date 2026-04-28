@@ -11,8 +11,10 @@ const SchoolCalendar = defineAsyncComponent(() => import('@/components/SchoolCal
 const TeacherClasses = defineAsyncComponent(() => import('@/components/teacher/TeacherCourses.vue'))
 const ViewAllCourses = defineAsyncComponent(() => import('@/components/ViewAllCourses.vue'))
 const ViewAllQuizzes = defineAsyncComponent(() => import('@/components/ViewAllQuizzes.vue'))
-const ArchivedCourses = defineAsyncComponent(() => import('@/components/teacher/ArchivedCourses.vue'))
-const ArchivedClasses = defineAsyncComponent(() => import('@/components/teacher/ArchivedClasses.vue'))
+// ArchivedCourses - Admin-only
+// const ArchivedCourses = defineAsyncComponent(() => import('@/components/teacher/ArchivedCourses.vue'))
+// ArchivedClasses - Admin-only 
+// const ArchivedClasses = defineAsyncComponent(() => import('@/components/teacher/ArchivedClasses.vue'))
 const ArchivedQuizzes = defineAsyncComponent(() => import('@/components/teacher/ArchivedQuizzes.vue'))
 
 // REFS
@@ -20,7 +22,7 @@ const sidebarActive = ref(false)
 const showCreateQuiz = ref(false)
 const showImport = ref(false)
 const currentSection = ref<'home' | 'quizzes' | 'calendar' | 'courses' | 'archived'>('home')
-const archivedView = ref<'courses' | 'classes' | 'quizzes'>('courses')
+const archivedView = ref<'quizzes'>('quizzes') 
 const archivedQuizzesTab = ref<'published' | 'draft'>('published')
 
 // REACTIVE
@@ -122,18 +124,20 @@ const navigateToCalendar = () => {
 
 const navigateToArchived = () => {
   currentSection.value = 'archived'
-  archivedView.value = 'courses'
+  archivedView.value = 'quizzes' 
 }
 
-const navigateToArchivedCourses = () => {
-  currentSection.value = 'archived'
-  archivedView.value = 'courses'
-}
+// Admin-only (disabled)
+// const navigateToArchivedCourses = () => {
+//   currentSection.value = 'archived'
+//   archivedView.value = 'courses'
+// }
 
-const navigateToArchivedClasses = () => {
-  currentSection.value = 'archived'
-  archivedView.value = 'classes'
-}
+// Admin-only (disabled)
+// const navigateToArchivedClasses = () => {
+//   currentSection.value = 'archived'
+//   archivedView.value = 'classes'
+// }
 
 const navigateToArchivedQuizzes = () => {
   currentSection.value = 'archived'
@@ -207,8 +211,6 @@ onUnmounted(() => {
       @nav-quizzes="navigateToQuizzes"
       @nav-calendar="navigateToCalendar"
       @nav-archived="navigateToArchived"
-      @nav-archived-courses="navigateToArchivedCourses"
-      @nav-archived-classes="navigateToArchivedClasses"
       @nav-archived-quizzes="navigateToArchivedQuizzes"
       @nav-archived-quizzes-published="navigateToArchivedQuizzesPublished"
       @nav-archived-quizzes-draft="navigateToArchivedQuizzesDraft"
@@ -234,9 +236,11 @@ onUnmounted(() => {
         <SchoolCalendar v-else-if="currentSection === 'calendar'" />
         <!-- Archived Section -->
         <div v-else-if="currentSection === 'archived'" class="space-y-6">
-          <ArchivedCourses v-if="archivedView === 'courses'" />
-          <ArchivedClasses v-else-if="archivedView === 'classes'" />
-          <ArchivedQuizzes v-else :tab="archivedQuizzesTab" @update:tab="value => (archivedQuizzesTab = value)" />
+          <!-- ArchivedCourses - Admin-only -->
+          <!-- <ArchivedCourses v-if="archivedView === 'courses'" /> -->
+          <!-- ArchivedClasses - Admin-only -->
+          <!-- <ArchivedClasses v-if="archivedView === 'classes'" /> -->
+          <ArchivedQuizzes :tab="archivedQuizzesTab" @update:tab="value => (archivedQuizzesTab = value)" />
         </div>
         <!-- Courses Section (View All) -->
         <ViewAllCourses v-else />

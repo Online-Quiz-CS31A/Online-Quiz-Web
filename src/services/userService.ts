@@ -121,3 +121,72 @@ export async function updateUser(id: number, userData: UpdateUserDto): Promise<A
 export async function deleteUser(id: number): Promise<ApiResponse<{ deletedUserId: number }>> {
   return apiClient.delete<{ deletedUserId: number }>(`/api/users/${id}`)
 }
+
+/**
+ * Archive a user
+ * @param userId - The ID of the user to archive
+ * @returns Promise with response data
+ */
+export async function archiveUser(userId: number) {
+  const response = await apiClient.post(`/user/${userId}/archive`)
+  return response.data
+}
+
+/**
+ * Unarchive a user
+ * @param userId - The ID of the user to unarchive
+ * @returns Promise with response data
+ */
+export async function unarchiveUser(userId: number) {
+  const response = await apiClient.post(`/user/${userId}/unarchive`)
+  return response.data
+}
+
+/**
+ * Bulk archive users
+ * @param ids - Array of user IDs to archive
+ * @returns Promise with bulk operation result
+ */
+export async function bulkArchiveUsers(ids: number[]) {
+  const response = await apiClient.post('/user/bulk-archive', { ids })
+  return response.data
+}
+
+/**
+ * Bulk unarchive users
+ * @param ids - Array of user IDs to unarchive
+ * @returns Promise with bulk operation result
+ */
+export async function bulkUnarchiveUsers(ids: number[]) {
+  const response = await apiClient.post('/user/bulk-unarchive', { ids })
+  return response.data
+}
+
+/**
+ * Get archived users
+ * @returns Promise with array of archived users
+ */
+export async function getArchivedUsers() {
+  const response = await apiClient.get('/user/archived')
+  return response.data || []
+}
+
+/**
+ * Get archived users (paginated)
+ * @param pageNumber - Page number
+ * @param pageSize - Items per page
+ * @returns Promise with paginated archived users
+ */
+export async function getArchivedUsersPaged(pageNumber = 1, pageSize = 10) {
+  const response = await apiClient.get(`/user/archived/paged?pageNumber=${pageNumber}&pageSize=${pageSize}`)
+  return response.data
+}
+
+/**
+ * Get user archive statistics
+ * @returns Promise with archive statistics
+ */
+export async function getUserArchiveStatistics() {
+  const response = await apiClient.get('/user/archive-statistics')
+  return response.data
+}

@@ -324,39 +324,16 @@ const archiveCourse = async () => {
   
   const coursesToArchive = adminStore.courses.filter(c => c.code === courseToArchive.value?.code)
   
-  const STORAGE_KEY = 'archivedCourses'
   try {
-    const existingArchived = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    const newArchived = coursesToArchive.map(c => ({
-      id: c.id,
-      code: c.code,
-      title: c.title,
-      category: c.subjectCode,
-      status: 'Archived',
-      deletedAt: new Date().toISOString(),
-      instructors: c.instructors || []
-    }))
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...existingArchived, ...newArchived]))
+    const courseIds = coursesToArchive.map(c => c.id)
+    await adminStore.bulkArchiveCourses(courseIds)
+    
+    showArchiveModal.value = false
+    courseToArchive.value = null
+    await loadCourses()
   } catch (e) {
-    console.error('Failed to localStorage archive course:', e)
+    console.error('Failed to archive course:', e)
   }
-  
-  const promises = coursesToArchive.map(c => {
-    const updatePayload = {
-      name: c.title,
-      status: 'Archived',
-      category: c.subjectCode,
-      section: c.instructors?.[0]?.section,
-      instructorId: c.instructors?.[0]?.teacherId
-    }
-    return adminStore.updateCourse(c.id, updatePayload)
-  })
-  
-  await Promise.all(promises)
-  
-  showArchiveModal.value = false
-  courseToArchive.value = null
-  await loadCourses()
 }
 
 const openCourseDetailsInline = (c: Course) => { selectedCourseInline.value = c }

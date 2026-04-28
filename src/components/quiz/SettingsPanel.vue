@@ -12,9 +12,12 @@ interface Props {
   }
   questionTypes: Array<{ value: string; label: string }>
   showMediaUpload: boolean
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:type': [value: string]
@@ -52,7 +55,8 @@ function updateMediaType(value: string) {
         <select 
           :value="questionSettings.type"
           @change="updateType(($event.target as HTMLSelectElement).value)"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          :disabled="props.readOnly"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
           <option v-for="type in questionTypes" :key="type.value" :value="type.value">
             {{ type.label }}
@@ -64,9 +68,10 @@ function updateMediaType(value: string) {
             <input 
               :value="questionSettings.points"
               @input="updatePoints(Number(($event.target as HTMLInputElement).value))"
+              :disabled="props.readOnly"
               type="number" 
               min="1" 
-              class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
             <p
               v-if="questionSettings.type === 'enumeration' || questionSettings.type === 'matching'"
@@ -86,7 +91,8 @@ function updateMediaType(value: string) {
         <select 
           :value="questionSettings.mediaType"
           @change="updateMediaType(($event.target as HTMLSelectElement).value)"
-          class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+          :disabled="props.readOnly"
+          class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
           <option value="none">None</option>
           <option value="image">Image</option>
@@ -99,17 +105,20 @@ function updateMediaType(value: string) {
             <button @click="emit('clearMedia')" class="mt-2 text-red-600 text-sm hover:underline">Remove image</button>
           </div>
           <label v-else class="block w-full">
-            <div class="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-300 transition">
+            <div 
+              class="border-2 border-dashed border-gray-300 rounded-md p-4 text-center transition"
+              :class="!props.readOnly ? 'hover:border-blue-300' : 'opacity-50 cursor-not-allowed'"
+            >
               <i class="fas fa-cloud-upload-alt text-3xl text-blue-300 mb-2"></i>
               <p class="text-sm text-gray-500">Click to upload or drag and drop (image only)</p>
             </div>
-            <input type="file" accept="image/*" class="hidden" @change="emit('mediaChange', $event)" />
+            <input v-if="!props.readOnly" type="file" accept="image/*" class="hidden" @change="emit('mediaChange', $event)" />
           </label>
         </div>
       </div>
 
       <!-- Quick Actions -->
-      <div v-if="question">
+      <div v-if="question && !props.readOnly">
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-medium text-gray-700">Quick Actions</label>
         </div>

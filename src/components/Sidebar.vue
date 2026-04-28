@@ -323,7 +323,8 @@ async function handleImport(file: File) {
                   </li>
                 </ul>
               </li>
-              <li>
+              <!-- Archived Classes - Admin-only -->
+              <!-- <li>
                 <button
                   @click="$emit('nav-archived-classes')"
                   class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
@@ -331,8 +332,9 @@ async function handleImport(file: File) {
                   <i class="fas fa-users w-4"></i>
                   <span class="ml-3">Classes</span>
                 </button>
-              </li>
-              <li>
+              </li> -->
+              <!-- Archived Courses - Admin-only -->
+              <!-- <li>
                 <button
                   @click="$emit('nav-archived-courses')"
                   class="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
@@ -340,7 +342,7 @@ async function handleImport(file: File) {
                   <i class="fas fa-book-open w-4"></i>
                   <span class="ml-3">Courses</span>
                 </button>
-              </li>
+              </li> -->
             </ul>
           </li>
 
@@ -355,6 +357,20 @@ async function handleImport(file: File) {
             >
               <Fingerprint class="w-5 h-5 mr-3" :class="route.path === '/teacher/biometric' ? 'text-blue-500' : 'text-gray-400'" />
               Biometrics
+            </RouterLink>
+          </li>
+
+          <!-- Manual Grading -->
+          <li v-if="isTeacher">
+            <RouterLink
+              to="/teacher/manual-grading"
+              class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="route.path === '/teacher/manual-grading'
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-700 hover:bg-gray-50'"
+            >
+              <i class="fas fa-pen-to-square w-5" :class="route.path === '/teacher/manual-grading' ? 'text-blue-500' : 'text-gray-400'"></i>
+              <span class="ml-3">Manual Grading</span>
             </RouterLink>
           </li>
         </ul>

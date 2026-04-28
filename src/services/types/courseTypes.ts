@@ -4,9 +4,21 @@
  */
 
 export interface CourseEnrollment {
-  section?: string
-  studentSection?: string
+  enrollmentId?: number
+  studentId?: number
+  userId?: number
+  studentName?: string
+  email?: string
+  studentNumber?: string
+  courseId?: number
+  courseName?: string
+  courseCode?: string
+  enrolledAt?: string
+  section?: string          
+  studentSection?: string  
   courseSection?: string
+  enrolledBy?: number
+  enrolledByName?: string
   [key: string]: unknown
 }
 

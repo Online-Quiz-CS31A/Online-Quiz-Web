@@ -4,9 +4,12 @@ import type { QuestionOption } from '@/interfaces/interfaces'
 interface Props {
   options: QuestionOption[]
   questionId: number
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   'update:options': [options: QuestionOption[]]
@@ -62,9 +65,10 @@ function onOptionImageChange(index: number, e: Event) {
             <input 
               :checked="option.isCorrect" 
               @change="updateOption(index, 'isCorrect', true)"
+              :disabled="props.readOnly"
               type="radio" 
               :name="`correct-${questionId}`"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" 
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 disabled:opacity-50" 
             />
 
             <!-- Option index chip -->
@@ -81,14 +85,15 @@ function onOptionImageChange(index: number, e: Event) {
             <input 
               :value="option.text"
               @input="updateOption(index, 'text', ($event.target as HTMLInputElement).value)"
+              :disabled="props.readOnly"
               type="text" 
               :placeholder="`Option ${index + 1}`"
-              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400" 
+              class="flex-1 px-3 py-2 rounded-md bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400 disabled:opacity-80" 
             />
           </div>
         </div>
 
-        <div class="ml-3 flex items-center gap-2 self-stretch">
+        <div class="ml-3 flex items-center gap-2 self-stretch" v-if="!props.readOnly">
           <!-- Image upload -->
           <input 
             :id="`opt-img-${questionId}-${index}`" 
@@ -117,6 +122,7 @@ function onOptionImageChange(index: number, e: Event) {
       </div>
     </div>
     <button 
+      v-if="!props.readOnly"
       @click="addOption"
       class="mt-3 bg-blue-50 text-blue-600 text-sm py-2 px-3 rounded-md hover:bg-blue-100 transition-colors"
     >

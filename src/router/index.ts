@@ -144,6 +144,11 @@ const router = createRouter({
       component: () => import('../views/BiometricEnrollmentView.vue'),
     },
     {
+      path: '/teacher/manual-grading',
+      name: 'teacher-manual-grading',
+      component: () => import('../views/ManualGradingView.vue'),
+    },
+    {
       path: '/teacher/classes/:code',
       name: 'teacher-class',
       component: () => import('../views/TeacherClassView.vue'),

@@ -15,6 +15,7 @@ const props = defineProps<{
 defineEmits<{
   (e: 'update:viewMode', value: 'cards' | 'rows'): void,
   (e: 'create-quiz'): void,
+  (e: 'quiz-archived'): void,
 }>()
 </script>
 
@@ -102,6 +103,7 @@ defineEmits<{
         :archivedMode="props.isArchived"
         :archivedContextType="props.archivedContextType || null"
         :archivedSectionId="props.archivedSectionId ?? null"
+        @quiz-archived="$emit('quiz-archived')"
       />
     </div>
   </div>

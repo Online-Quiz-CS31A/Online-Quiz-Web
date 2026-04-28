@@ -1,43 +1,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Archive, RotateCcw, Trash2, AlertCircle, Search } from 'lucide-vue-next'
+import { Archive, RotateCcw, AlertCircle, Search } from 'lucide-vue-next'
 import SkeletonCard from '@/components/skeletons/SkeletonCard.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
-import CourseArchiveModal from '@/components/modals/CourseArchiveModal.vue'
 import ConfirmUnarchiveModal from '@/components/modals/ConfirmUnarchiveModal.vue'
 import { useAdminStore } from '@/stores/adminStore'
-
-interface ArchivedCourse {
-  id: number
-  code: string
-  title: string
-  category: string
-  status: string
-  deletedAt: string
-  instructors?: Array<{
-    teacherId: number
-    section: string
-    students?: number
-  }> 
-}
-
-const STORAGE_KEY = 'archivedCourses'
+import type { Course } from '@/interfaces/interfaces'
 
 // STATE
-const archivedCourses = ref<ArchivedCourse[]>([])
+const archivedCourses = ref<Course[]>([])
 const searchQuery = ref('')
 const filterStatus = ref<'All' | 'Recent' | 'Older'>('All')
 const isLoading = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(1000)
-const showDeleteModal = ref(false)
-const courseToDelete = ref<ArchivedCourse | null>(null)
 const showRestoreModal = ref(false)
-const courseToRestore = ref<ArchivedCourse | null>(null)
+const courseToRestore = ref<Course | null>(null)
 
 const adminStore = useAdminStore()
-
-
 
 const filteredCourses = computed(() => {
   let result = archivedCourses.value
@@ -47,25 +27,25 @@ const filteredCourses = computed(() => {
     result = result.filter(c => 
       c.title.toLowerCase().includes(query) ||
       c.code.toLowerCase().includes(query) ||
-      c.category?.toLowerCase().includes(query)
+      c.subjectCode?.toLowerCase().includes(query)
     )
   }
 
   if (filterStatus.value === 'Recent') {
     const weekAgo = new Date()
     weekAgo.setDate(weekAgo.getDate() - 7)
-    result = result.filter(c => new Date(c.deletedAt) > weekAgo)
+    result = result.filter(c => c.archivedAt && new Date(c.archivedAt) > weekAgo)
   } else if (filterStatus.value === 'Older') {
     const weekAgo = new Date()
     weekAgo.setDate(weekAgo.getDate() - 7)
-    result = result.filter(c => new Date(c.deletedAt) <= weekAgo)
+    result = result.filter(c => c.archivedAt && new Date(c.archivedAt) <= weekAgo)
   }
 
   return result
 })
 
 const groupedCourses = computed(() => {
-  const groups: Record<string, ArchivedCourse> = {}
+  const groups: Record<string, Course> = {}
   for (const c of filteredCourses.value) {
     if (!groups[c.code]) {
       groups[c.code] = { ...c, instructors: [...(c.instructors || [])] }
@@ -88,37 +68,20 @@ const skeletonCount = computed(() => {
 })
 
 // METHODS
-const loadArchivedCourses = () => {
+const loadArchivedCourses = async () => {
   isLoading.value = true
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    archivedCourses.value = stored ? JSON.parse(stored) : []
-    
-    setTimeout(() => {
-      isLoading.value = false
-    }, 300)
+    const archived = await adminStore.fetchArchivedCourses()
+    archivedCourses.value = archived
   } catch (e) {
     console.error('Failed to load archived courses:', e)
     archivedCourses.value = []
+  } finally {
     isLoading.value = false
   }
 }
 
-const confirmPermanentDelete = (course: ArchivedCourse) => {
-  courseToDelete.value = course
-  showDeleteModal.value = true
-}
-
-const permanentlyDelete = () => {
-  if (!courseToDelete.value) return
-  const remaining = archivedCourses.value.filter(c => c.code !== courseToDelete.value?.code)
-  archivedCourses.value = remaining
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
-  showDeleteModal.value = false
-  courseToDelete.value = null
-}
-
-const confirmRestore = (course: ArchivedCourse) => {
+const confirmRestore = (course: Course) => {
   courseToRestore.value = course
   showRestoreModal.value = true
 }
@@ -128,22 +91,9 @@ const restoreCourse = async () => {
   const course = courseToRestore.value
   try {
     const coursesToRestore = archivedCourses.value.filter(c => c.code === course.code)
-    const promises = coursesToRestore.map(c => {
-      const updatePayload = {
-        name: c.title,
-        status: 'Active',
-        category: c.category,
-        section: c.instructors?.[0]?.section || 'A',
-        instructorId: c.instructors?.[0]?.teacherId || 1
-      }
-      return adminStore.updateCourse(c.id, updatePayload)
-    })
+    const courseIds = coursesToRestore.map(c => c.id)
     
-    await Promise.all(promises)
-    
-    const remaining = archivedCourses.value.filter(c => c.code !== course.code)
-    archivedCourses.value = remaining
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining))
+    await adminStore.bulkUnarchiveCourses(courseIds)
     
     showRestoreModal.value = false
     courseToRestore.value = null
@@ -153,7 +103,8 @@ const restoreCourse = async () => {
   }
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string) => {
+  if (!dateString) return 'N/A'
   try {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -166,8 +117,6 @@ const formatDate = (dateString: string) => {
     return dateString
   }
 }
-
-
 
 // LIFECYCLE
 onMounted(() => {
@@ -266,7 +215,7 @@ onMounted(() => {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
               </svg>
-              <span>Deleted: {{ formatDate(course.deletedAt) }}</span>
+              <span>Archived: {{ formatDate(course.archivedAt) }}</span>
             </div>
           </div>
         </div>
@@ -290,14 +239,6 @@ onMounted(() => {
     />
 
     <!-- Delete Confirmation Modal -->
-    <CourseArchiveModal
-      :open="showDeleteModal"
-      :course-name="courseToDelete?.title || ''"
-      :course-code="courseToDelete?.code || ''"
-      @confirm="permanentlyDelete"
-      @cancel="showDeleteModal = false"
-    />
-
     <ConfirmUnarchiveModal
       :open="showRestoreModal"
       title="Restore Course"
