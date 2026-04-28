@@ -5,16 +5,12 @@ import { useQuizzesStore } from '@/stores/quizzesStore'
 import { useCoursesStore } from '@/stores/coursesStore'
 import { useSectionsStore } from '@/stores/sectionsStore'
 import { useStudentsStore } from '@/stores/studentsStore'
-import { useRoute } from 'vue-router'
 
 // STORES
 const quizzesStore = useQuizzesStore()
 const coursesStore = useCoursesStore()
 const sectionsStore = useSectionsStore()
 const studentsStore = useStudentsStore()
-
-// ROUTE
-const route = useRoute()
 
 // REFS
 const saving = ref(false)
@@ -46,6 +42,8 @@ const deadline = reactive({
   date: '',
   time: '',
 })
+
+const timePresets = [30, 60, 90, 120, 180]
 
 const options = reactive({
   timeLimit: 60,
@@ -149,20 +147,14 @@ onMounted(async () => {
       }
     }
   }
-  options.timeLimit = timeLimitMinutes
+  // Map to nearest preset
+  const nearest = timePresets.reduce((prev, curr) =>
+    Math.abs(curr - timeLimitMinutes) < Math.abs(prev - timeLimitMinutes) ? curr : prev
+  , timePresets[0])
+  options.timeLimit = nearest
 
-  let attempts = 3
-  const metaMaxAttempts = meta && (meta as any).maxAttempts
-  if (metaMaxAttempts != null) {
-    const parsed = Number(metaMaxAttempts)
-    if (!Number.isNaN(parsed) && parsed > 0) {
-      attempts = parsed
-    }
-  } else if (typeof current.id === 'number') {
-    if (current.id === 1) attempts = 2
-    else if (current.id === 2) attempts = 1
-  }
-  options.attempts = attempts
+  // Retake policy: all quizzes can only be taken once
+  options.attempts = 1
 
   const subject = (current.subject || '').trim().toLowerCase()
   
@@ -552,17 +544,19 @@ async function saveAssignment() {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Time Limit</label>
-                  <p class="text-xs text-gray-500">Set quiz duration in minutes</p>
+                  <p class="text-xs text-gray-500">Select quiz duration</p>
                 </div>
-                <input v-model.number="options.timeLimit" type="number" placeholder="60" class="w-20 px-3 py-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                <select v-model.number="options.timeLimit" class="w-24 px-3 py-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white">
+                  <option v-for="preset in timePresets" :key="preset" :value="preset">{{ preset }} min</option>
+                </select>
               </div>
 
               <div class="flex items-center justify-between">
                 <div>
-                  <label class="block text sm font-medium text-gray-700 mb-1">Attempts Allowed</label>
-                  <p class="text-xs text-gray-500">Number of attempts per student</p>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Attempts Allowed</label>
+                  <p class="text-xs text-gray-500">All quizzes can only be taken once</p>
                 </div>
-                <input v-model.number="options.attempts" type="number" min="1" class="w-20 px-3 py-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                <input v-model.number="options.attempts" type="number" min="1" readonly class="w-20 px-3 py-1 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed">
               </div>
 
               <div class="pt-2">

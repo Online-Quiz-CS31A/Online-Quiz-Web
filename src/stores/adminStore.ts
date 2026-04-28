@@ -270,7 +270,7 @@ export const useAdminStore = defineStore('admin', () => {
         error.value = null
         try {
             const response = await api.get('/user/archived')
-            let data = response.data || []
+            const data = response.data || []
 
             // Get archive reasons from localStorage
             const archiveReasons = JSON.parse(localStorage.getItem('userArchiveReasons') || '{}')
@@ -388,7 +388,7 @@ export const useAdminStore = defineStore('admin', () => {
         error.value = null
         try {
             const response = await api.get('/course/archived')
-            let data = response.data || []
+            const data = response.data || []
 
             let mapped: Course[] = data.map((c: any) => {
                 return {
