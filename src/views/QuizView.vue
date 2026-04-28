@@ -1,5 +1,5 @@
   <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import type { QuizQuestion, QuestionOption } from '@/interfaces/interfaces'
@@ -763,9 +763,6 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       // Initialize duration and timer AFTER all async operations
       await initDuration()
       
-      // Force reactivity update for timer
-      timer.value = timer.value
-      
       loadCurrentQuestionAnswers()
 
       // Only auto-submit if timer has actually run out during quiz-taking
@@ -786,6 +783,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
       quizSecurityService.setCallbacks(handleSecurityViolation, handleMaxViolations)
       quizSecurityService.start()
     } finally {
+      await nextTick()
       isLoading.value = false
     }
   })
