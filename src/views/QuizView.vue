@@ -69,14 +69,6 @@ interface QuestionWithChoices extends QuizQuestion {
   choices?: QuestionOption[]
 }
 
-interface QuestionWithItems extends QuizQuestion {
-  items?: string[]
-}
-
-interface QuestionWithPairs extends QuizQuestion {
-  pairs?: Array<{ left: string; right: string }>
-}
-
 interface QuestionWithBlanks extends QuizQuestion {
   blanks?: Array<{ text: string }>
 }
@@ -1153,7 +1145,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
             <!-- Enumeration -->
             <div v-else-if="questions[currentQuestion].type === 'enumeration' || questions[currentQuestion].type === 'Enumeration'" class="space-y-3">
               <div
-                v-for="(item, index) in ((questions[currentQuestion] as QuestionWithItems).items || [])"
+                v-for="(item, index) in (questions[currentQuestion].items || [])"
                 :key="index"
                 class="flex items-center gap-3"
               >
@@ -1175,7 +1167,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                 <div>
                   <h3 class="font-semibold text-gray-700 mb-3">Column A</h3>
                   <div
-                    v-for="(pair, index) in ((questions[currentQuestion] as QuestionWithPairs).pairs || [])"
+                    v-for="(pair, index) in (questions[currentQuestion].pairs || [])"
                     :key="index"
                     class="mb-2 p-3 bg-[#F4F7F9] border border-[#7B90DF] rounded-lg"
                   >
@@ -1187,7 +1179,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                 <div>
                   <h3 class="font-semibold text-gray-700 mb-3">Column B</h3>
                   <div
-                    v-for="(pair, leftIndex) in ((questions[currentQuestion] as QuestionWithPairs).pairs || [])"
+                    v-for="(pair, leftIndex) in (questions[currentQuestion].pairs || [])"
                     :key="leftIndex"
                     class="mb-2"
                   >
@@ -1198,7 +1190,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
                     >
                       <option :value="undefined">Select answer...</option>
                       <option
-                        v-for="(rightPair, rightIndex) in ((questions[currentQuestion] as QuestionWithPairs).pairs || [])"
+                        v-for="(rightPair, rightIndex) in (questions[currentQuestion].pairs || [])"
                         :key="rightIndex"
                         :value="Number(rightIndex)"
                       >
