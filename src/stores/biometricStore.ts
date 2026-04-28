@@ -128,16 +128,20 @@ export const useBiometricStore = defineStore('biometric', () => {
   }
 
   function handleVerificationStarted(_data: VerificationPayload) {
+    console.log('[BiometricStore] VerificationStarted event received:', _data, 'Expected userId:', verificationTargetUserId.value)
     // Only handle if this is for the user we're verifying
     if (verificationTargetUserId.value && _data.userId === verificationTargetUserId.value) {
       verificationState.value = 'waiting-for-scan'
       verificationError.value = null
       verificationErrorCode.value = null
       toast.info('Please place your finger on the scanner')
+    } else {
+      console.log('[BiometricStore] VerificationStarted event ignored - userId mismatch')
     }
   }
 
   function handleVerificationCompleted(data: VerificationPayload) {
+    console.log('[BiometricStore] VerificationCompleted event received:', data, 'Expected userId:', verificationTargetUserId.value)
     // Only handle if this is for the user we're verifying
     if (verificationTargetUserId.value && data.userId === verificationTargetUserId.value) {
       if (data.success && data.matched) {
@@ -153,10 +157,13 @@ export const useBiometricStore = defineStore('biometric', () => {
         verificationErrorCode.value = data.errorCode ?? null
         toast.error(data.message || 'Unable to verify identity')
       }
+    } else {
+      console.log('[BiometricStore] VerificationCompleted event ignored - userId mismatch')
     }
   }
 
   function handleVerificationFailed(data: VerificationPayload) {
+    console.log('[BiometricStore] VerificationFailed event received:', data, 'Expected userId:', verificationTargetUserId.value)
     // Only handle if this is for the user we're verifying
     if (verificationTargetUserId.value && data.userId === verificationTargetUserId.value) {
       verificationState.value = 'failed'
@@ -164,6 +171,8 @@ export const useBiometricStore = defineStore('biometric', () => {
       verificationError.value = data.message || 'Unable to verify identity. Please try again.'
       verificationErrorCode.value = data.errorCode ?? null
       toast.error(data.message || 'Unable to verify identity')
+    } else {
+      console.log('[BiometricStore] VerificationFailed event ignored - userId mismatch')
     }
   }
 
