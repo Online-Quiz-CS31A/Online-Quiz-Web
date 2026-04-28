@@ -46,14 +46,6 @@ interface AnswerResponse {
   textAnswer: string | null
 }
 
-interface QuestionResponse {
-  questionId?: number
-  id?: number
-  type?: string
-  options?: QuestionOption[]
-  choices?: { choiceId: number; body?: string; text?: string }[]
-}
-
 interface QuizMetadata {
   title?: string
   timeLimitMinutes?: number
@@ -830,7 +822,7 @@ const initialQuestionIndex = (typeof (history.state as HistoryState)?.questionIn
           const detail = await quizzesStore.fetchQuizDetail(mountQid, authLocal2.currentUser.id)
 
           if (detail && Array.isArray(detail.questions)) {
-            questions.value = detail.questions.map((q: QuestionResponse) => quizzesStore.mapApiQuestionToFrontend(q))
+            questions.value = detail.questions.map((q) => quizzesStore.mapApiQuestionToFrontend(q as unknown as Record<string, unknown>))
             quizzesStore.currentAttempt.questionsLength = questions.value.length
 
             // Store quiz metadata for timer initialization
