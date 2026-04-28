@@ -4,14 +4,14 @@
  */
 
 export interface QuizChoice {
-  choiceId: number
-  questionId: number
+  choiceId: number | null
+  questionId: number | null
   body: string
   isCorrect: boolean
 }
 
 export interface QuizQuestionDto {
-  questionId: number
+  questionId: number | null
   quizId: number
   type: string
   body: string

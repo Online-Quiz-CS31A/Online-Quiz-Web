@@ -514,16 +514,19 @@ export const useQuizzesStore = defineStore('quizzes', () => {
           mappedType = 'Single'
         }
 
+        const isNewQuestion = typeof q.id === 'string' || q.id > 1000000
+        const questionId = isNewQuestion ? null : q.id
+
         return {
-          questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+          questionId,
           quizId: currentQuiz.id ?? 0,
           type: mappedType,
           body: q.text,
           points: q.points || 1,
           sortOrder: idx + 1,
           choices: q.options ? q.options.map((opt) => ({
-            choiceId: 0,
-            questionId: typeof q.id === 'string' ? 0 : (q.id > 1000000 ? 0 : q.id),
+            choiceId: opt.choiceId ?? null,
+            questionId,
             body: opt.text,
             isCorrect: opt.isCorrect
           })) : []
@@ -829,7 +832,7 @@ export const useQuizzesStore = defineStore('quizzes', () => {
             : (storedQuiz?.class ? [storedQuiz.class] : [])
           
           const rawQs = Array.isArray(detail.questions) ? detail.questions : []
-          currentQuiz.questions = rawQs.map(mapApiQuestionToFrontend)
+          currentQuiz.questions = rawQs.map((rawQ) => mapApiQuestionToFrontend(rawQ as ApiQuestion | Record<string, unknown>))
           currentQuiz.currentQuestionIndex = currentQuiz.questions.length > 0 ? 0 : -1
           return true
         }
