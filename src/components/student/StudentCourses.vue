@@ -195,6 +195,9 @@ onMounted(async () => {
             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm text-white border border-white/30">
               {{ classItem.code }}
             </span>
+            <span v-if="classItem.section" class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/40 backdrop-blur-sm text-white border border-white/30">
+              {{ classItem.section }}
+            </span>
           </div>
 
           <!-- Course title -->

@@ -45,6 +45,7 @@ export interface ClassItem {
   description: string
   students: number
   color: string
+  section?: string
   studentUsernames?: string[]
   status?: 'Active' | 'Archived'
 }

@@ -240,6 +240,7 @@ export const useCoursesStore = defineStore('classes', () => {
         description: c.category || '',
         students: c.enrollmentCount ?? 0,
         color: 'blue',
+        section: c.section,
         status: (c.status === 'Active' || c.status === 'Archived') ? c.status : 'Active',
         studentUsernames: []
       }))
